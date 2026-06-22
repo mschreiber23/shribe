@@ -107,23 +107,32 @@ function SessionDetail({ sessionId, onDelete }) {
 
 function SessionCard({ session }) {
   const [expanded, setExpanded] = useState(false);
+  const qc = useQueryClient();
+
+  const { mutate: remove } = useMutation({
+    mutationFn: () => deleteSession(session.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('Workout deleted');
+    },
+  });
 
   return (
     <div
       className="rounded-xl overflow-hidden"
       style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface-2)' }}
     >
-      <button
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-white/5 transition-colors"
-        onClick={() => setExpanded(v => !v)}
-      >
+      <div className="flex items-center gap-3 p-4">
         <div className="shrink-0">
           {session.completed_at
             ? <CheckCircle size={20} className="text-green-400" />
             : <Clock size={20} className="text-yellow-400" />
           }
         </div>
-        <div className="flex-1 min-w-0">
+        <button
+          className="flex-1 min-w-0 text-left"
+          onClick={() => setExpanded(v => !v)}
+        >
           <div className="font-semibold">{session.plan_name}</div>
           <div className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
             {format(parseISO(session.date), 'EEEE, MMMM d, yyyy')}
@@ -131,13 +140,24 @@ function SessionCard({ session }) {
             {session.total_sets} sets
             {session.completed_at ? '' : ' · In progress'}
           </div>
-        </div>
-        {expanded ? <ChevronUp size={16} className="shrink-0 text-gray-500" /> : <ChevronDown size={16} className="shrink-0 text-gray-500" />}
-      </button>
+        </button>
+        <button
+          onClick={() => { if (confirm('Delete this workout?')) remove(); }}
+          className="p-2 rounded-lg hover:bg-red-500/20 transition-colors shrink-0"
+        >
+          <Trash2 size={15} className="text-red-400" />
+        </button>
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="p-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+        >
+          {expanded ? <ChevronUp size={15} className="text-gray-500" /> : <ChevronDown size={15} className="text-gray-500" />}
+        </button>
+      </div>
 
       {expanded && (
-        <div className="px-4 pb-4">
-          <SessionDetail sessionId={session.id} onDelete={() => setExpanded(false)} />
+        <div className="px-4 pb-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <SessionDetail sessionId={session.id} onDelete={() => {}} />
         </div>
       )}
     </div>
