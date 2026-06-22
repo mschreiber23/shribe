@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,17 +15,6 @@ function sectionColor(section) {
   if (s.includes('cool') || s.includes('stretch')) return { bg: 'rgba(16,185,129,0.15)', color: '#34d399' };
   if (s.includes('cardio')) return { bg: 'rgba(239,68,68,0.15)', color: '#f87171' };
   return { bg: 'rgba(99,102,241,0.15)', color: '#a5b4fc' };
-}
-
-function groupBySection(exercises) {
-  const order = [];
-  const map = {};
-  for (const ex of exercises) {
-    const s = ex.section || 'Workout';
-    if (!map[s]) { map[s] = []; order.push(s); }
-    map[s].push(ex);
-  }
-  return order.map(s => ({ section: s, exercises: map[s] }));
 }
 
 function ExerciseItem({ exercise, planId, onDelete }) {

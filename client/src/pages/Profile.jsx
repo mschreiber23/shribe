@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { groupBySection as sortSections } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Edit2, Flame, Dumbbell, BarChart2, Hash, ChevronDown, ChevronUp, Check, X, Camera, Trash2 } from 'lucide-react';
@@ -240,7 +241,7 @@ function WorkoutPost({ post }) {
       {/* Expanded exercise detail */}
       {expanded && (
         <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
-          {post.sections.map(({ section, exercises }) => (
+          {sortSections(post.sections.flatMap(s => s.exercises.map(e => ({ ...e, section: s.section })))).map(({ section, exercises }) => (
             <div key={section} className="pt-3">
               {post.sections.length > 1 && (
                 <div className="flex items-center gap-2 mb-2">

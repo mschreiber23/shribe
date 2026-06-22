@@ -1,16 +1,5 @@
 import { useState } from 'react';
-
-// Group exercises preserving order, keeping sections in first-seen order
-function groupBySection(exercises) {
-  const order = [];
-  const map = {};
-  for (const ex of exercises) {
-    const s = ex.section || 'Workout';
-    if (!map[s]) { map[s] = []; order.push(s); }
-    map[s].push(ex);
-  }
-  return order.map(s => ({ section: s, exercises: map[s] }));
-}
+import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar } from 'lucide-react';
