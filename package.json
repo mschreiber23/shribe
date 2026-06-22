@@ -1,5 +1,8 @@
 {
   "name": "gymtrack",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "version": "1.0.0",
   "description": "Gym workout tracker - manage plans, schedule workouts, log sets/reps/weight",
   "private": true,
