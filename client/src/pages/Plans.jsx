@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV } from '../api';
+import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 
@@ -366,9 +366,236 @@ function ImportCSVModal({ open, onClose }) {
   );
 }
 
+function ImportImageModal({ open, onClose }) {
+  const fileRef = useRef();
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null); // extracted plans for review
+  const [editablePlans, setEditablePlans] = useState(null);
+  const [step, setStep] = useState('upload'); // 'upload' | 'review' | 'done'
+  const qc = useQueryClient();
+
+  const reset = () => {
+    setFile(null);
+    setPreview(null);
+    setEditablePlans(null);
+    setStep('upload');
+  };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const { mutate: analyze, isPending: analyzing } = useMutation({
+    mutationFn: () => importImage(file),
+    onSuccess: (data) => {
+      setPreview(data.plans);
+      setEditablePlans(data.plans.map(p => ({
+        ...p,
+        exercises: p.exercises.map(e => ({ ...e })),
+      })));
+      setStep('review');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Could not read image');
+    },
+  });
+
+  const { mutate: save, isPending: saving } = useMutation({
+    mutationFn: () => saveImageImport(editablePlans),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['plans'] });
+      toast.success(`Saved ${data.saved} plan(s)!`);
+      setStep('done');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Save failed');
+    },
+  });
+
+  const updatePlanName = (i, val) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === i ? { ...p, name: val } : p));
+
+  const updatePlanDesc = (i, val) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === i ? { ...p, description: val } : p));
+
+  const updateExName = (pi, ei, val) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === pi
+      ? { ...p, exercises: p.exercises.map((e, eidx) => eidx === ei ? { ...e, name: val } : e) }
+      : p));
+
+  const updateExNotes = (pi, ei, val) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === pi
+      ? { ...p, exercises: p.exercises.map((e, eidx) => eidx === ei ? { ...e, notes: val } : e) }
+      : p));
+
+  const removeEx = (pi, ei) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === pi
+      ? { ...p, exercises: p.exercises.filter((_, eidx) => eidx !== ei) }
+      : p));
+
+  const addEx = (pi) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === pi
+      ? { ...p, exercises: [...p.exercises, { name: '', notes: '' }] }
+      : p));
+
+  return (
+    <Modal open={open} onClose={handleClose} title="Import from Photo" size="lg">
+      {step === 'upload' && (
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Take a photo of your workout plan (written, printed, or on a screen) and AI will read it and create the plan for you.
+          </p>
+          <div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={e => setFile(e.target.files[0])}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="w-full p-8 rounded-xl flex flex-col items-center gap-3 transition-colors hover:bg-white/5"
+              style={{ border: '2px dashed var(--color-border)' }}
+            >
+              {file ? (
+                <>
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt="Preview"
+                    className="max-h-48 rounded-lg object-contain"
+                  />
+                  <div className="text-center">
+                    <div className="font-medium text-sm">{file.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      Tap to change
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ImageIcon size={36} style={{ color: 'var(--color-text-muted)' }} />
+                  <div className="text-center">
+                    <div className="font-medium">Tap to select or take a photo</div>
+                    <div className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                      JPG, PNG, HEIC supported
+                    </div>
+                  </div>
+                </>
+              )}
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={() => analyze()} loading={analyzing} disabled={!file}>
+              {analyzing ? <><Loader2 size={15} className="animate-spin" /> Reading image...</> : <><ImageIcon size={15} /> Scan Image</>}
+            </Button>
+            <Button variant="secondary" onClick={handleClose}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {step === 'review' && editablePlans && (
+        <div className="space-y-5">
+          <div
+            className="flex items-center gap-2 p-3 rounded-lg text-sm"
+            style={{ backgroundColor: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}
+          >
+            <CheckCircle size={16} />
+            AI found {editablePlans.length} plan(s). Review and edit below before saving.
+          </div>
+
+          {editablePlans.map((plan, pi) => (
+            <div
+              key={pi}
+              className="rounded-xl p-4 space-y-3"
+              style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface-3)' }}
+            >
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+                  Plan Name
+                </label>
+                <input
+                  value={plan.name}
+                  onChange={e => updatePlanName(pi, e.target.value)}
+                  placeholder="Plan name"
+                  style={{ fontSize: '0.95rem', fontWeight: 600 }}
+                />
+                <input
+                  value={plan.description || ''}
+                  onChange={e => updatePlanDesc(pi, e.target.value)}
+                  placeholder="Description (optional)"
+                  style={{ fontSize: '0.875rem' }}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+                  Exercises ({plan.exercises.length})
+                </label>
+                <div className="mt-2 space-y-1.5">
+                  {plan.exercises.map((ex, ei) => (
+                    <div key={ei} className="flex gap-2 items-center">
+                      <input
+                        value={ex.name}
+                        onChange={e => updateExName(pi, ei, e.target.value)}
+                        placeholder="Exercise name"
+                        style={{ flex: 2, padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
+                      />
+                      <input
+                        value={ex.notes || ''}
+                        onChange={e => updateExNotes(pi, ei, e.target.value)}
+                        placeholder="Notes / sets & reps"
+                        style={{ flex: 2, padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
+                      />
+                      <button
+                        onClick={() => removeEx(pi, ei)}
+                        className="p-1.5 rounded hover:bg-red-500/20 transition-colors shrink-0"
+                      >
+                        <Trash2 size={13} className="text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addEx(pi)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                    style={{ color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)' }}
+                  >
+                    <Plus size={12} /> Add exercise
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <div className="flex gap-3">
+            <Button onClick={() => save()} loading={saving}>
+              Save {editablePlans.length} Plan(s)
+            </Button>
+            <Button variant="secondary" onClick={() => setStep('upload')}>Back</Button>
+          </div>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div className="text-center py-8 space-y-3">
+          <CheckCircle size={48} className="mx-auto text-green-400" />
+          <p className="text-lg font-semibold">Plans saved!</p>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Your workout plans are ready to use.
+          </p>
+          <div className="flex gap-3 justify-center pt-2">
+            <Button onClick={reset}>Import Another</Button>
+            <Button variant="secondary" onClick={handleClose}>Done</Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 export default function Plans() {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showImageImport, setShowImageImport] = useState(false);
   const [editing, setEditing] = useState(null);
 
   const { data: plans, isLoading } = useQuery({
@@ -381,6 +608,10 @@ export default function Plans() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Workout Plans</h1>
         <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setShowImageImport(true)}>
+            <ImageIcon size={15} />
+            Scan Photo
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => setShowImport(true)}>
             <Upload size={15} />
             Import CSV
@@ -403,11 +634,14 @@ export default function Plans() {
         >
           <p className="text-lg font-medium mb-1">No plans yet</p>
           <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-            Create a plan manually or import from a CSV spreadsheet
+            Create a plan manually, scan a photo, or import from a CSV spreadsheet
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
             <Button onClick={() => setShowCreate(true)}>
               <Plus size={15} /> Create Plan
+            </Button>
+            <Button variant="secondary" onClick={() => setShowImageImport(true)}>
+              <ImageIcon size={15} /> Scan Photo
             </Button>
             <Button variant="secondary" onClick={() => setShowImport(true)}>
               <Upload size={15} /> Import CSV
@@ -432,6 +666,7 @@ export default function Plans() {
         editing={editing}
       />
       <ImportCSVModal open={showImport} onClose={() => setShowImport(false)} />
+      <ImportImageModal open={showImageImport} onClose={() => setShowImageImport(false)} />
     </div>
   );
 }

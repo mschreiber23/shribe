@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -9,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/plans', require('./routes/plans'));
+app.use('/api/plans/import/image', require('./routes/imageImport'));
 app.use('/api/schedule', require('./routes/schedule'));
 app.use('/api/sessions', require('./routes/sessions'));
 

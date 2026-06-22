@@ -19,6 +19,15 @@ export const importCSV = (file) => {
   return api.post('/plans/import/csv', form).then(r => r.data);
 };
 
+export const importImage = (file) => {
+  const form = new FormData();
+  form.append('image', file);
+  return api.post('/plans/import/image', form).then(r => r.data);
+};
+
+export const saveImageImport = (plans) =>
+  api.post('/plans/import/image/save', { plans }).then(r => r.data);
+
 // Schedule
 export const getSchedule = (start, end) => api.get('/schedule', { params: { start, end } }).then(r => r.data);
 export const getScheduleByDate = (date) => api.get(`/schedule/date/${date}`).then(r => r.data);
