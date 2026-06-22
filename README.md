@@ -1,4 +1,4 @@
-# GymTrack
+# ShribeTRAKR
 
 A personal gym workout tracker. Create workout plans from your spreadsheets, build a weekly schedule, and log every set, rep, and weight as you train.
 

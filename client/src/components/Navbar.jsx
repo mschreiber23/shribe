@@ -52,7 +52,7 @@ export default function Navbar() {
       <div className="hidden md:flex items-center gap-1 px-4 py-3 max-w-5xl mx-auto">
         <div className="flex items-center gap-2 mr-6">
           <Dumbbell size={22} className="text-indigo-400" />
-          <span className="font-bold text-lg">GymTrack</span>
+          <span className="font-bold text-lg">ShribeTRAKR</span>
         </div>
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink

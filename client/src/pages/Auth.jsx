@@ -48,7 +48,7 @@ export default function Auth() {
           >
             <Dumbbell size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold">GymTrack</h1>
+          <h1 className="text-3xl font-bold">ShribeTRAKR</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
             {mode === 'login' ? 'Sign in to your account' : 'Create your account'}
           </p>
