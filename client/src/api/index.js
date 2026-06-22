@@ -2,6 +2,13 @@ import axios from 'axios';
 
 const api = axios.create({ baseURL: '/api' });
 
+// Attach auth token to every request from this instance
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('gymtrack_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 // Plans
 export const getPlans = () => api.get('/plans').then(r => r.data);
 export const getPlan = (id) => api.get(`/plans/${id}`).then(r => r.data);
