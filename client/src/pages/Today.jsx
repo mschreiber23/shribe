@@ -1,4 +1,16 @@
 import { useState } from 'react';
+
+// Group exercises preserving order, keeping sections in first-seen order
+function groupBySection(exercises) {
+  const order = [];
+  const map = {};
+  for (const ex of exercises) {
+    const s = ex.section || 'Workout';
+    if (!map[s]) { map[s] = []; order.push(s); }
+    map[s].push(ex);
+  }
+  return order.map(s => ({ section: s, exercises: map[s] }));
+}
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar } from 'lucide-react';
@@ -259,14 +271,32 @@ function ActiveSession({ sessionId, onComplete }) {
         </Button>
       </div>
 
-      <div className="space-y-3">
-        {session?.exercises?.map(exercise => (
-          <ExerciseLogger
-            key={exercise.id}
-            exercise={exercise}
-            sessionId={sessionId}
-            loggedSets={setsByExercise[exercise.id] || []}
-          />
+      <div className="space-y-4">
+        {groupBySection(session?.exercises || []).map(({ section, exercises }) => (
+          <div key={section}>
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded"
+                style={{
+                  backgroundColor: section === 'Warm Up' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)',
+                  color: section === 'Warm Up' ? '#fbbf24' : '#a5b4fc',
+                }}
+              >
+                {section}
+              </span>
+              <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+            </div>
+            <div className="space-y-2">
+              {exercises.map(exercise => (
+                <ExerciseLogger
+                  key={exercise.id}
+                  exercise={exercise}
+                  sessionId={sessionId}
+                  loggedSets={setsByExercise[exercise.id] || []}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>

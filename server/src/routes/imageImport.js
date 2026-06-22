@@ -44,7 +44,8 @@ Return ONLY valid JSON in this exact format (no markdown, no explanation):
       "exercises": [
         {
           "name": "Exercise name",
-          "notes": "Any sets/reps/notes visible for this exercise, or empty string"
+          "section": "Section name (e.g. Warm Up, Workout, Cool Down, Cardio) — use exactly what the plan shows",
+          "notes": "Sets x reps or any notes visible for this exercise, or empty string"
         }
       ]
     }
@@ -55,7 +56,8 @@ Rules:
 - If the image shows multiple distinct workout plans/days, include each as a separate plan object.
 - If it's one workout, return one plan.
 - Include every exercise you can see.
-- For notes, include things like "3x10", "4 sets of 8-12 reps", "to failure", etc.
+- For the "section" field: if the plan has labeled sections (e.g. "Warm Up", "Workout", "Cool Down"), use those exact labels. If there are no sections, use "Workout" for all exercises.
+- For notes, include sets/reps info like "3x10", "2-3 sets, 5 each side", "15-20 reps", etc.
 - If you cannot read the image or it doesn't contain a workout plan, return: {"error": "Could not extract workout plan from image"}
 - Do NOT include any text outside the JSON.`;
 
@@ -129,11 +131,11 @@ router.post('/save', (req, res) => {
 
       if (plan.exercises?.length > 0) {
         const insertEx = db.prepare(
-          'INSERT INTO exercises (plan_id, name, order_index, notes) VALUES (?, ?, ?, ?)'
+          'INSERT INTO exercises (plan_id, name, section, order_index, notes) VALUES (?, ?, ?, ?, ?)'
         );
         plan.exercises.forEach((ex, i) => {
           if (ex.name?.trim()) {
-            insertEx.run(planId, ex.name.trim(), i, ex.notes?.trim() || null);
+            insertEx.run(planId, ex.name.trim(), ex.section?.trim() || 'Workout', i, ex.notes?.trim() || null);
           }
         });
       }

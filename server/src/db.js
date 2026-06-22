@@ -10,6 +10,12 @@ const db = new Database(path.join(DATA_DIR, 'gym.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Migrate existing databases to add section column if missing
+const cols = db.prepare("PRAGMA table_info(exercises)").all();
+if (cols.length > 0 && !cols.find(c => c.name === 'section')) {
+  db.exec("ALTER TABLE exercises ADD COLUMN section TEXT NOT NULL DEFAULT 'Workout'");
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS workout_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +28,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id INTEGER NOT NULL REFERENCES workout_plans(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
+    section TEXT NOT NULL DEFAULT 'Workout',
     order_index INTEGER NOT NULL DEFAULT 0,
     notes TEXT
   );

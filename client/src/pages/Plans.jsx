@@ -6,14 +6,36 @@ import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, upd
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 
+const SECTIONS = ['Warm Up', 'Workout', 'Cool Down', 'Cardio', 'Stretching'];
+
+function sectionColor(section) {
+  const s = (section || 'Workout').toLowerCase();
+  if (s.includes('warm')) return { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' };
+  if (s.includes('cool') || s.includes('stretch')) return { bg: 'rgba(16,185,129,0.15)', color: '#34d399' };
+  if (s.includes('cardio')) return { bg: 'rgba(239,68,68,0.15)', color: '#f87171' };
+  return { bg: 'rgba(99,102,241,0.15)', color: '#a5b4fc' };
+}
+
+function groupBySection(exercises) {
+  const order = [];
+  const map = {};
+  for (const ex of exercises) {
+    const s = ex.section || 'Workout';
+    if (!map[s]) { map[s] = []; order.push(s); }
+    map[s].push(ex);
+  }
+  return order.map(s => ({ section: s, exercises: map[s] }));
+}
+
 function ExerciseItem({ exercise, planId, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(exercise.name);
+  const [section, setSection] = useState(exercise.section || 'Workout');
   const [notes, setNotes] = useState(exercise.notes || '');
   const qc = useQueryClient();
 
   const { mutate: save, isPending } = useMutation({
-    mutationFn: () => updateExercise(planId, exercise.id, { name, notes }),
+    mutationFn: () => updateExercise(planId, exercise.id, { name, section, notes }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['plan', planId] });
       setEditing(false);
@@ -35,12 +57,21 @@ function ExerciseItem({ exercise, planId, onDelete }) {
             placeholder="Exercise name"
             style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
           />
-          <input
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Notes (optional)"
-            style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
-          />
+          <div className="flex gap-2">
+            <select
+              value={section}
+              onChange={e => setSection(e.target.value)}
+              style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem', flex: 1 }}
+            >
+              {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Notes (optional)"
+              style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem', flex: 2 }}
+            />
+          </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => save()} loading={isPending}>Save</Button>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
@@ -49,7 +80,17 @@ function ExerciseItem({ exercise, planId, onDelete }) {
       ) : (
         <>
           <div className="flex-1 min-w-0">
-            <div className="font-medium text-sm truncate">{exercise.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm truncate">{exercise.name}</span>
+              {exercise.section && exercise.section !== 'Workout' && (
+                <span
+                  className="text-xs px-1.5 py-0.5 rounded shrink-0"
+                  style={sectionColor(exercise.section)}
+                >
+                  {exercise.section}
+                </span>
+              )}
+            </div>
             {exercise.notes && (
               <div className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>{exercise.notes}</div>
             )}
@@ -71,6 +112,7 @@ function ExerciseItem({ exercise, planId, onDelete }) {
 function PlanCard({ plan, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const [newExName, setNewExName] = useState('');
+  const [newExSection, setNewExSection] = useState('Workout');
   const [newExNotes, setNewExNotes] = useState('');
   const [addingEx, setAddingEx] = useState(false);
   const qc = useQueryClient();
@@ -91,11 +133,12 @@ function PlanCard({ plan, onEdit }) {
   });
 
   const { mutate: addEx, isPending: addingPending } = useMutation({
-    mutationFn: () => addExercise(plan.id, { name: newExName, notes: newExNotes }),
+    mutationFn: () => addExercise(plan.id, { name: newExName, section: newExSection, notes: newExNotes }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['plan', plan.id] });
       qc.invalidateQueries({ queryKey: ['plans'] });
       setNewExName('');
+      setNewExSection('Workout');
       setNewExNotes('');
       setAddingEx(false);
       toast.success('Exercise added');
@@ -166,12 +209,21 @@ function PlanCard({ plan, onEdit }) {
                 autoFocus
                 style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
               />
-              <input
-                value={newExNotes}
-                onChange={e => setNewExNotes(e.target.value)}
-                placeholder="Notes (optional)"
-                style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
-              />
+              <div className="flex gap-2">
+                <select
+                  value={newExSection}
+                  onChange={e => setNewExSection(e.target.value)}
+                  style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem', flex: 1 }}
+                >
+                  {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <input
+                  value={newExNotes}
+                  onChange={e => setNewExNotes(e.target.value)}
+                  placeholder="Notes (optional)"
+                  style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem', flex: 2 }}
+                />
+              </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => addEx()} loading={addingPending} disabled={!newExName.trim()}>
                   Add
@@ -421,6 +473,11 @@ function ImportImageModal({ open, onClose }) {
       ? { ...p, exercises: p.exercises.map((e, eidx) => eidx === ei ? { ...e, name: val } : e) }
       : p));
 
+  const updateExSection = (pi, ei, val) =>
+    setEditablePlans(ps => ps.map((p, idx) => idx === pi
+      ? { ...p, exercises: p.exercises.map((e, eidx) => eidx === ei ? { ...e, section: val } : e) }
+      : p));
+
   const updateExNotes = (pi, ei, val) =>
     setEditablePlans(ps => ps.map((p, idx) => idx === pi
       ? { ...p, exercises: p.exercises.map((e, eidx) => eidx === ei ? { ...e, notes: val } : e) }
@@ -540,6 +597,13 @@ function ImportImageModal({ open, onClose }) {
                         placeholder="Exercise name"
                         style={{ flex: 2, padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
                       />
+                      <select
+                        value={ex.section || 'Workout'}
+                        onChange={e => updateExSection(pi, ei, e.target.value)}
+                        style={{ flex: 1, padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
+                      >
+                        {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                       <input
                         value={ex.notes || ''}
                         onChange={e => updateExNotes(pi, ei, e.target.value)}

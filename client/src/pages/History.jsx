@@ -51,7 +51,17 @@ function SessionDetail({ sessionId, onDelete }) {
       {/* Exercise breakdown */}
       {session?.logged_exercises?.map(le => (
         <div key={le.exercise_id}>
-          <h4 className="font-semibold text-sm mb-2">{le.exercise_name}</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <h4 className="font-semibold text-sm">{le.exercise_name}</h4>
+            {le.section && le.section !== 'Workout' && (
+              <span
+                className="text-xs px-1.5 py-0.5 rounded"
+                style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}
+              >
+                {le.section}
+              </span>
+            )}
+          </div>
           <div className="space-y-1">
             {le.sets.map(set => (
               <div

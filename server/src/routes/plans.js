@@ -41,10 +41,10 @@ router.post('/', (req, res) => {
 
     if (exercises && exercises.length > 0) {
       const insertEx = db.prepare(
-        'INSERT INTO exercises (plan_id, name, order_index, notes) VALUES (?, ?, ?, ?)'
+        'INSERT INTO exercises (plan_id, name, section, order_index, notes) VALUES (?, ?, ?, ?, ?)'
       );
       exercises.forEach((ex, i) => {
-        insertEx.run(plan.lastInsertRowid, ex.name, ex.order_index ?? i, ex.notes || null);
+        insertEx.run(plan.lastInsertRowid, ex.name, ex.section || 'Workout', ex.order_index ?? i, ex.notes || null);
       });
     }
 
@@ -81,7 +81,7 @@ router.delete('/:id', (req, res) => {
 
 // POST add exercise to plan
 router.post('/:id/exercises', (req, res) => {
-  const { name, order_index, notes } = req.body;
+  const { name, section, order_index, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Exercise name is required' });
 
   const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
@@ -91,8 +91,8 @@ router.post('/:id/exercises', (req, res) => {
   const idx = order_index ?? (maxOrder.max !== null ? maxOrder.max + 1 : 0);
 
   const result = db.prepare(
-    'INSERT INTO exercises (plan_id, name, order_index, notes) VALUES (?, ?, ?, ?)'
-  ).run(req.params.id, name, idx, notes || null);
+    'INSERT INTO exercises (plan_id, name, section, order_index, notes) VALUES (?, ?, ?, ?, ?)'
+  ).run(req.params.id, name, section || 'Workout', idx, notes || null);
 
   const exercise = db.prepare('SELECT * FROM exercises WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(exercise);
@@ -100,12 +100,12 @@ router.post('/:id/exercises', (req, res) => {
 
 // PUT update exercise
 router.put('/:planId/exercises/:exId', (req, res) => {
-  const { name, order_index, notes } = req.body;
+  const { name, section, order_index, notes } = req.body;
   const ex = db.prepare('SELECT * FROM exercises WHERE id = ? AND plan_id = ?').get(req.params.exId, req.params.planId);
   if (!ex) return res.status(404).json({ error: 'Exercise not found' });
 
-  db.prepare('UPDATE exercises SET name = ?, order_index = ?, notes = ? WHERE id = ?')
-    .run(name ?? ex.name, order_index ?? ex.order_index, notes ?? ex.notes, req.params.exId);
+  db.prepare('UPDATE exercises SET name = ?, section = ?, order_index = ?, notes = ? WHERE id = ?')
+    .run(name ?? ex.name, section ?? ex.section, order_index ?? ex.order_index, notes ?? ex.notes, req.params.exId);
 
   const updated = db.prepare('SELECT * FROM exercises WHERE id = ?').get(req.params.exId);
   res.json(updated);
@@ -131,7 +131,7 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
       trim: true,
     });
 
-    // Expected columns: plan_name, exercise_name, notes (optional)
+    // Expected columns: plan_name, exercise_name, section (optional), notes (optional)
     // Group by plan_name
     const planMap = {};
     for (const row of records) {
@@ -142,6 +142,7 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
       if (!planMap[planName]) planMap[planName] = { description: row.plan_description || row['Plan Description'] || '', exercises: [] };
       planMap[planName].exercises.push({
         name: exerciseName,
+        section: row.section || row['Section'] || 'Workout',
         notes: row.notes || row['Notes'] || null,
       });
     }
@@ -154,10 +155,10 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
         ).run(planName, data.description || null);
 
         const insertEx = db.prepare(
-          'INSERT INTO exercises (plan_id, name, order_index, notes) VALUES (?, ?, ?, ?)'
+          'INSERT INTO exercises (plan_id, name, section, order_index, notes) VALUES (?, ?, ?, ?, ?)'
         );
         data.exercises.forEach((ex, i) => {
-          insertEx.run(plan.lastInsertRowid, ex.name, i, ex.notes);
+          insertEx.run(plan.lastInsertRowid, ex.name, ex.section || 'Workout', i, ex.notes);
         });
 
         created.push({

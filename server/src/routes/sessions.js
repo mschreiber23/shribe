@@ -39,7 +39,7 @@ router.get('/:id', (req, res) => {
   ).all(session.plan_id);
 
   const sets = db.prepare(`
-    SELECT sl.*, e.name as exercise_name
+    SELECT sl.*, e.name as exercise_name, e.section as section
     FROM set_logs sl
     JOIN exercises e ON e.id = sl.exercise_id
     WHERE sl.session_id = ?
@@ -50,7 +50,7 @@ router.get('/:id', (req, res) => {
   const setsByExercise = {};
   for (const s of sets) {
     if (!setsByExercise[s.exercise_id]) {
-      setsByExercise[s.exercise_id] = { exercise_id: s.exercise_id, exercise_name: s.exercise_name, sets: [] };
+      setsByExercise[s.exercise_id] = { exercise_id: s.exercise_id, exercise_name: s.exercise_name, section: s.section, sets: [] };
     }
     setsByExercise[s.exercise_id].sets.push(s);
   }
