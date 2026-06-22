@@ -8,6 +8,7 @@ import Schedule from './pages/Schedule';
 import Plans from './pages/Plans';
 import History from './pages/History';
 import Profile from './pages/Profile';
+import People from './pages/People';
 import Auth from './pages/Auth';
 
 const queryClient = new QueryClient({
@@ -38,7 +39,8 @@ function AppRoutes() {
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/history" element={<History />} />
-          <Route path="/profile" element={<Profile />} />
+              <Route path="/people" element={<People />} />
+              <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

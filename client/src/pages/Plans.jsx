@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport, reorderPlans } from '../api';
+import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport, reorderPlans, sharePlan, getFollowing } from '../api';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -123,6 +123,7 @@ function SortablePlanCard({ plan, onEdit }) {
 
 function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
   const [expanded, setExpanded] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [newExName, setNewExName] = useState('');
   const [newExSection, setNewExSection] = useState('Workout');
   const [newExNotes, setNewExNotes] = useState('');
@@ -198,6 +199,9 @@ function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => setSharing(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Share plan">
+            <Share2 size={15} style={{ color: 'var(--color-text-muted)' }} />
+          </button>
           <button onClick={() => onEdit(plan)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
           </button>
@@ -289,6 +293,8 @@ function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
           )}
         </div>
       )}
+
+      <SharePlanModal open={sharing} onClose={() => setSharing(false)} plan={plan} />
     </div>
   );
 }
@@ -377,6 +383,72 @@ function CreatePlanModal({ open, onClose, editing }) {
             {editing ? 'Save Changes' : 'Create Plan'}
           </Button>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function SharePlanModal({ open, onClose, plan }) {
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState([]);
+
+  const { data: following = [] } = useQuery({
+    queryKey: ['following'],
+    queryFn: getFollowing,
+    enabled: open,
+  });
+
+  const { mutate: doShare, isPending } = useMutation({
+    mutationFn: (userId) => sharePlan(plan?.id, { to_user_id: userId, message }),
+    onSuccess: (_, userId) => {
+      setSent(s => [...s, userId]);
+      toast.success('Plan shared!');
+    },
+    onError: () => toast.error('Could not share plan'),
+  });
+
+  const handleClose = () => { setSent([]); setMessage(''); onClose(); };
+
+  return (
+    <Modal open={open} onClose={handleClose} title={`Share: ${plan?.name || ''}`}>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Message (optional)</label>
+          <input value={message} onChange={e => setMessage(e.target.value)} placeholder="Try this plan!" />
+        </div>
+
+        <div>
+          <p className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Send to someone you follow:</p>
+          {following.length === 0 && (
+            <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>
+              You're not following anyone yet. Go to the People tab to find friends!
+            </p>
+          )}
+          <div className="space-y-2">
+            {following.map(user => {
+              const alreadySent = sent.includes(user.id);
+              return (
+                <div key={user.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)', border: '1px solid var(--color-border)' }}>
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden"
+                    style={{ backgroundColor: user.avatar_color || '#6366f1' }}
+                  >
+                    {user.avatar_url
+                      ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                      : (user.name || 'A').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{user.name}</div>
+                    <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>@{user.username}</div>
+                  </div>
+                  <Button size="sm" variant={alreadySent ? 'secondary' : 'primary'} disabled={alreadySent} loading={isPending} onClick={() => doShare(user.id)}>
+                    {alreadySent ? <><CheckCircle size={13} /> Sent</> : <><Share2 size={13} /> Send</>}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </Modal>

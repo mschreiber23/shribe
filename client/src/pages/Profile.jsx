@@ -2,9 +2,9 @@ import { useState, useRef } from 'react';
 import { groupBySection as sortSections } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { Edit2, Flame, Dumbbell, BarChart2, Hash, ChevronDown, ChevronUp, Check, X, Camera, Trash2 } from 'lucide-react';
+import { Edit2, Flame, Dumbbell, BarChart2, Hash, ChevronDown, ChevronUp, Check, X, Camera, Users, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar } from '../api';
+import { getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar, getInbox, acceptShare, dismissShare, getFollowers, getFollowing } from '../api';
 import Button from '../components/Button';
 
 const AVATAR_COLORS = [
@@ -323,6 +323,21 @@ export default function Profile() {
     queryFn: () => getFeed({ limit: feedLimit }),
   });
 
+  const { data: followersData } = useQuery({ queryKey: ['followers'], queryFn: getFollowers });
+
+  const { data: inbox = [] } = useQuery({ queryKey: ['inbox'], queryFn: getInbox });
+  const unreadInbox = inbox.filter(s => !s.accepted);
+
+  const { mutate: accept } = useMutation({
+    mutationFn: (shareId) => acceptShare(shareId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['inbox'] }); qc.invalidateQueries({ queryKey: ['plans'] }); toast.success('Plan added to your collection!'); },
+  });
+
+  const { mutate: dismiss } = useMutation({
+    mutationFn: (shareId) => dismissShare(shareId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['inbox'] }); toast.success('Dismissed'); },
+  });
+
   if (profileLoading) return (
     <div className="text-center py-20" style={{ color: 'var(--color-text-muted)' }}>Loading...</div>
   );
@@ -363,12 +378,12 @@ export default function Profile() {
 
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-3 mt-5">
-          {[
-            { icon: Dumbbell, label: 'Workouts', value: profile.stats.total_workouts },
-            { icon: Hash, label: 'Sets', value: profile.stats.total_sets.toLocaleString() },
-            { icon: BarChart2, label: 'Volume', value: profile.stats.total_volume > 0 ? `${(profile.stats.total_volume / 1000).toFixed(1)}k` : '0' },
-            { icon: Flame, label: 'Streak', value: `${profile.streak}d` },
-          ].map(({ icon: Icon, label, value }) => (
+        {[
+          { icon: Dumbbell, label: 'Workouts', value: profile.stats.total_workouts },
+          { icon: Hash, label: 'Sets', value: profile.stats.total_sets.toLocaleString() },
+          { icon: Users, label: 'Followers', value: followersData?.length ?? '—' },
+          { icon: Flame, label: 'Streak', value: `${profile.streak}d` },
+        ].map(({ icon: Icon, label, value }) => (
             <div
               key={label}
               className="text-center p-3 rounded-xl"
@@ -381,6 +396,51 @@ export default function Profile() {
           ))}
         </div>
       </div>
+
+      {/* Inbox */}
+      {inbox.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Bell size={15} style={{ color: 'var(--color-text-muted)' }} />
+            <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
+              Shared Plans
+            </h2>
+            {unreadInbox.length > 0 && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full font-bold bg-indigo-600 text-white">{unreadInbox.length}</span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {inbox.map(share => (
+              <div key={share.id} className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--color-surface-2)', border: `1px solid ${share.accepted ? 'var(--color-border)' : 'rgba(99,102,241,0.4)'}` }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden"
+                    style={{ backgroundColor: share.from_avatar_color || '#6366f1' }}>
+                    {share.from_avatar_url
+                      ? <img src={share.from_avatar_url} alt={share.from_name} className="w-full h-full object-cover" />
+                      : (share.from_name || 'A').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm"><strong>{share.from_name}</strong> shared a plan with you</p>
+                    <p className="font-semibold">{share.plan_name}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      {share.exercise_count} exercises
+                      {share.message && ` · "${share.message}"`}
+                    </p>
+                  </div>
+                </div>
+                {!share.accepted ? (
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => accept(share.id)}>Add to My Plans</Button>
+                    <Button size="sm" variant="secondary" onClick={() => dismiss(share.id)}>Dismiss</Button>
+                  </div>
+                ) : (
+                  <p className="text-xs" style={{ color: '#4ade80' }}>✓ Added to your plans</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Feed */}
       <div className="space-y-1 mb-4">

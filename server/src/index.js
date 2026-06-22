@@ -29,6 +29,7 @@ app.use('/api/plans', requireAuth, require('./routes/plans'));
 app.use('/api/schedule', requireAuth, require('./routes/schedule'));
 app.use('/api/sessions', requireAuth, require('./routes/sessions'));
 app.use('/api/profile', requireAuth, require('./routes/profile'));
+app.use('/api/social', requireAuth, require('./routes/social'));
 
 // Serve built client in production
 const clientDist = path.join(__dirname, '../../client/dist');

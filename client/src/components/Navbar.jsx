@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Dumbbell, CalendarDays, ClipboardList, BarChart2, UserCircle, LogOut } from 'lucide-react';
+import { Dumbbell, CalendarDays, ClipboardList, BarChart2, UserCircle, LogOut, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -8,6 +8,7 @@ const links = [
   { to: '/schedule', label: 'Schedule', icon: CalendarDays },
   { to: '/plans', label: 'Plans', icon: ClipboardList },
   { to: '/history', label: 'History', icon: BarChart2 },
+  { to: '/people', label: 'People', icon: Users },
   { to: '/profile', label: 'Profile', icon: UserCircle },
 ];
 

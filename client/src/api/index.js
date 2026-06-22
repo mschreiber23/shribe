@@ -31,6 +31,19 @@ export const importCSV = (file) => {
 export const getProfile = () => api.get('/profile').then(r => r.data);
 export const updateProfile = (data) => api.put('/profile', data).then(r => r.data);
 export const getFeed = (params) => api.get('/profile/feed', { params }).then(r => r.data);
+// Social
+export const searchUsers = (q) => api.get('/social/search', { params: { q } }).then(r => r.data);
+export const getUserProfile = (userId) => api.get(`/social/users/${userId}`).then(r => r.data);
+export const getFollowers = () => api.get('/social/followers').then(r => r.data);
+export const getFollowing = () => api.get('/social/following').then(r => r.data);
+export const followUser = (userId) => api.post(`/social/follow/${userId}`).then(r => r.data);
+export const unfollowUser = (userId) => api.delete(`/social/follow/${userId}`).then(r => r.data);
+export const sharePlan = (planId, data) => api.post(`/social/share/${planId}`, data).then(r => r.data);
+export const getInbox = () => api.get('/social/inbox').then(r => r.data);
+export const getInboxUnread = () => api.get('/social/inbox/unread').then(r => r.data);
+export const acceptShare = (shareId) => api.post(`/social/inbox/${shareId}/accept`).then(r => r.data);
+export const dismissShare = (shareId) => api.delete(`/social/inbox/${shareId}`).then(r => r.data);
+
 export const uploadAvatar = (file) => {
   const form = new FormData();
   form.append('avatar', file);
