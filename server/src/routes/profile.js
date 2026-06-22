@@ -70,6 +70,7 @@ router.put('/', (req, res) => {
 router.post('/avatar', uploadAvatar.single('avatar'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
+  // Store as a path; the client will prepend the base URL if needed
   const avatarUrl = `/api/profile/avatar/${req.userId}`;
   db.prepare('UPDATE profile SET avatar_url = ? WHERE user_id = ?').run(avatarUrl, req.userId);
   res.json({ avatar_url: avatarUrl });
