@@ -129,6 +129,17 @@ router.put('/:id', (req, res) => {
   db.prepare('UPDATE workout_sessions SET notes = ?, completed_at = ? WHERE id = ?')
     .run(notes ?? session.notes, completed_at ?? session.completed_at, req.params.id);
 
+  // When marking complete, auto-add to schedule for that day if not already there
+  if (completed_at && !session.completed_at) {
+    const alreadyScheduled = db.prepare(
+      'SELECT id FROM schedule_entries WHERE date = ? AND plan_id = ?'
+    ).get(session.date, session.plan_id);
+    if (!alreadyScheduled) {
+      db.prepare('INSERT OR IGNORE INTO schedule_entries (date, plan_id) VALUES (?, ?)')
+        .run(session.date, session.plan_id);
+    }
+  }
+
   const updated = db.prepare(`
     SELECT ws.*, wp.name as plan_name
     FROM workout_sessions ws JOIN workout_plans wp ON wp.id = ws.plan_id

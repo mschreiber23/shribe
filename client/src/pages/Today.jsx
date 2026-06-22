@@ -360,10 +360,11 @@ export default function Today() {
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const qc = useQueryClient();
 
-  const { data: scheduled } = useQuery({
+  const { data: scheduledEntries = [] } = useQuery({
     queryKey: ['today', today],
     queryFn: () => getScheduleByDate(today),
   });
+  const scheduled = scheduledEntries?.[0] ?? null;
 
   const { data: existingSessions } = useQuery({
     queryKey: ['sessions', today],
@@ -451,32 +452,41 @@ export default function Today() {
         </div>
       ))}
 
-      {/* Scheduled plan */}
-      {scheduled ? (
-        <div
-          className="rounded-xl p-5 mb-4 space-y-3"
-          style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
-        >
+      {/* Scheduled workouts */}
+      {scheduledEntries.length > 0 ? (
+        <div className="space-y-3 mb-4">
           <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
             <Calendar size={14} />
             Scheduled for today
           </div>
-          <h2 className="text-2xl font-bold">{scheduled.plan_name}</h2>
-          {scheduled.plan_description && (
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{scheduled.plan_description}</p>
-          )}
-          <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            {scheduled.exercises?.length || 0} exercises
-          </div>
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={() => startSession(scheduled.plan_id)}
-            loading={starting}
-          >
-            <Play size={18} />
-            Start Workout
-          </Button>
+          {scheduledEntries.map(entry => {
+            const done = existingSessions?.find(s => s.plan_id === entry.plan_id && s.completed_at);
+            return (
+              <div
+                key={entry.id}
+                className="rounded-xl p-4 space-y-2"
+                style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-bold truncate">{entry.plan_name}</h2>
+                    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                      {entry.exercises?.length || 0} exercises
+                      {entry.plan_description && ` · ${entry.plan_description}`}
+                    </p>
+                  </div>
+                  {done
+                    ? <CheckCircle size={22} className="text-green-400 shrink-0" />
+                    : (
+                      <Button size="sm" onClick={() => startSession(entry.plan_id)} loading={starting}>
+                        <Play size={14} /> Start
+                      </Button>
+                    )
+                  }
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div

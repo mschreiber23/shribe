@@ -49,10 +49,11 @@ export const saveImageImport = (plans) =>
 
 // Schedule
 export const getSchedule = (start, end) => api.get('/schedule', { params: { start, end } }).then(r => r.data);
-export const getScheduleByDate = (date) => api.get(`/schedule/date/${date}`).then(r => r.data);
+export const getScheduleByDate = (date) => api.get(`/schedule/date/${date}`).then(r => r.data); // returns array
 export const setScheduleEntry = (data) => api.post('/schedule', data).then(r => r.data);
 export const deleteScheduleEntry = (id) => api.delete(`/schedule/${id}`).then(r => r.data);
 export const deleteScheduleByDate = (date) => api.delete(`/schedule/date/${date}`).then(r => r.data);
+export { deleteScheduleEntry as removeScheduleEntry };
 
 // Sessions
 export const getSessions = (params) => api.get('/sessions', { params }).then(r => r.data);

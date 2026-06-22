@@ -42,6 +42,7 @@ db.exec(`
     notes TEXT,
     UNIQUE(date, plan_id)
   );
+  -- Note: existing DBs with UNIQUE(date) only are migrated below
 
   CREATE TABLE IF NOT EXISTS workout_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,6 +90,29 @@ const profileCols = db.prepare("PRAGMA table_info(profile)").all();
 if (profileCols.length > 0 && !profileCols.find(c => c.name === 'avatar_url')) {
   db.exec("ALTER TABLE profile ADD COLUMN avatar_url TEXT");
 }
+
+// Migrate schedule_entries: old table had UNIQUE(date), new needs UNIQUE(date, plan_id)
+try {
+  const scheduleIndexes = db.prepare("PRAGMA index_list(schedule_entries)").all();
+  const hasOldUniqueDate = scheduleIndexes.some(idx => {
+    const cols = db.prepare(`PRAGMA index_info(${idx.name})`).all();
+    return idx.unique && cols.length === 1 && cols[0].name === 'date';
+  });
+  if (hasOldUniqueDate) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS schedule_entries_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        plan_id INTEGER NOT NULL REFERENCES workout_plans(id) ON DELETE CASCADE,
+        notes TEXT,
+        UNIQUE(date, plan_id)
+      );
+      INSERT OR IGNORE INTO schedule_entries_new SELECT * FROM schedule_entries;
+      DROP TABLE schedule_entries;
+      ALTER TABLE schedule_entries_new RENAME TO schedule_entries;
+    `);
+  }
+} catch (e) { /* table may not exist yet */ }
 
 const planCols2 = db.prepare("PRAGMA table_info(workout_plans)").all();
 if (planCols2.length > 0 && !planCols2.find(c => c.name === 'sort_order')) {
