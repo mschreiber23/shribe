@@ -30,6 +30,12 @@ export const importCSV = (file) => {
 export const getProfile = () => api.get('/profile').then(r => r.data);
 export const updateProfile = (data) => api.put('/profile', data).then(r => r.data);
 export const getFeed = (params) => api.get('/profile/feed', { params }).then(r => r.data);
+export const uploadAvatar = (file) => {
+  const form = new FormData();
+  form.append('avatar', file);
+  return api.post('/profile/avatar', form).then(r => r.data);
+};
+export const deleteAvatar = () => api.delete('/profile/avatar').then(r => r.data);
 
 export const importImage = (file) => {
   const form = new FormData();

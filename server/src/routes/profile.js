@@ -1,6 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const AVATARS_DIR = path.join(__dirname, '../../data/avatars');
+if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
+
+const avatarStorage = multer.diskStorage({
+  destination: AVATARS_DIR,
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `user_${req.userId}${ext}`);
+  },
+});
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only images allowed'));
+  },
+});
 
 function ensureProfile(userId) {
   const existing = db.prepare('SELECT * FROM profile WHERE user_id = ?').get(userId);
@@ -42,6 +64,30 @@ router.put('/', (req, res) => {
     .run(name ?? profile.name, username ?? profile.username, bio ?? profile.bio, avatar_color ?? profile.avatar_color, req.userId);
 
   res.json(db.prepare('SELECT * FROM profile WHERE user_id = ?').get(req.userId));
+});
+
+// POST upload avatar photo
+router.post('/avatar', uploadAvatar.single('avatar'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+
+  const avatarUrl = `/api/profile/avatar/${req.userId}`;
+  db.prepare('UPDATE profile SET avatar_url = ? WHERE user_id = ?').run(avatarUrl, req.userId);
+  res.json({ avatar_url: avatarUrl });
+});
+
+// GET serve avatar image
+router.get('/avatar/:userId', (req, res) => {
+  const files = fs.readdirSync(AVATARS_DIR).filter(f => f.startsWith(`user_${req.params.userId}`));
+  if (!files.length) return res.status(404).json({ error: 'No avatar' });
+  res.sendFile(path.join(AVATARS_DIR, files[0]));
+});
+
+// DELETE avatar
+router.delete('/avatar', (req, res) => {
+  db.prepare('UPDATE profile SET avatar_url = NULL WHERE user_id = ?').run(req.userId);
+  const files = fs.readdirSync(AVATARS_DIR).filter(f => f.startsWith(`user_${req.userId}`));
+  files.forEach(f => fs.unlinkSync(path.join(AVATARS_DIR, f)));
+  res.json({ success: true });
 });
 
 // GET feed

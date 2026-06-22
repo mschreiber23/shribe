@@ -85,6 +85,11 @@ if (planCols.length > 0 && !planCols.find(c => c.name === 'user_id')) {
   db.exec("ALTER TABLE workout_plans ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE");
 }
 
+const profileCols = db.prepare("PRAGMA table_info(profile)").all();
+if (profileCols.length > 0 && !profileCols.find(c => c.name === 'avatar_url')) {
+  db.exec("ALTER TABLE profile ADD COLUMN avatar_url TEXT");
+}
+
 // Fix old schedule_entries UNIQUE constraint (date only → date+plan_id)
 // SQLite can't drop constraints, so we check if a duplicate would fail gracefully
 

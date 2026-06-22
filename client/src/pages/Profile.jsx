@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { Edit2, Flame, Dumbbell, BarChart2, Hash, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+import { Edit2, Flame, Dumbbell, BarChart2, Hash, ChevronDown, ChevronUp, Check, X, Camera, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getProfile, updateProfile, getFeed } from '../api';
+import { getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar } from '../api';
 import Button from '../components/Button';
 
 const AVATAR_COLORS = [
@@ -11,19 +11,29 @@ const AVATAR_COLORS = [
   '#10b981', '#3b82f6', '#ef4444', '#14b8a6',
 ];
 
-function Avatar({ name, color, size = 56 }) {
-  const initials = name
+function Avatar({ name, color, avatarUrl, size = 56, onClick }) {
+  const initials = (name || 'A')
     .split(' ')
     .map(w => w[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
+
   return (
     <div
-      className="rounded-full flex items-center justify-center font-bold shrink-0"
-      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.35 }}
+      className="rounded-full shrink-0 overflow-hidden flex items-center justify-center font-bold relative"
+      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.35, cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
     >
-      {initials}
+      {avatarUrl
+        ? <img src={`${avatarUrl}?t=${Date.now()}`} alt={name} className="w-full h-full object-cover" />
+        : initials
+      }
+      {onClick && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full">
+          <Camera size={size * 0.28} className="text-white" />
+        </div>
+      )}
     </div>
   );
 }
@@ -33,6 +43,7 @@ function EditProfileModal({ profile, onClose }) {
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio || '');
   const [color, setColor] = useState(profile.avatar_color);
+  const fileRef = useRef();
   const qc = useQueryClient();
 
   const { mutate: save, isPending } = useMutation({
@@ -41,6 +52,22 @@ function EditProfileModal({ profile, onClose }) {
       qc.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile updated!');
       onClose();
+    },
+  });
+
+  const { mutate: doUpload, isPending: uploading } = useMutation({
+    mutationFn: (file) => uploadAvatar(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Photo updated!');
+    },
+  });
+
+  const { mutate: doDelete } = useMutation({
+    mutationFn: deleteAvatar,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Photo removed');
     },
   });
 
@@ -60,22 +87,49 @@ function EditProfileModal({ profile, onClose }) {
           </button>
         </div>
         <div className="p-5 space-y-4">
-          {/* Avatar preview + color picker */}
+          {/* Avatar */}
           <div className="flex items-center gap-4">
-            <Avatar name={name || 'A'} color={color} size={64} />
-            <div>
-              <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Avatar color</p>
+            <div className="relative">
+              <Avatar name={name || 'A'} color={color} avatarUrl={profile.avatar_url} size={72}
+                onClick={() => fileRef.current?.click()} />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={e => e.target.files[0] && doUpload(e.target.files[0])} />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-white/10"
+                  style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}
+                >
+                  <Camera size={12} className="inline mr-1" />
+                  Upload photo
+                </button>
+                {profile.avatar_url && (
+                  <button
+                    onClick={() => doDelete()}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-500/20 text-red-400"
+                    style={{ border: '1px solid var(--color-border)' }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                Or pick a color:
+              </p>
               <div className="flex gap-2 flex-wrap">
                 {AVATAR_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => setColor(c)}
-                    className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                    style={{
-                      backgroundColor: c,
-                      outline: c === color ? `2px solid white` : 'none',
-                      outlineOffset: 2,
-                    }}
+                    className="w-6 h-6 rounded-full transition-transform hover:scale-110"
+                    style={{ backgroundColor: c, outline: c === color ? '2px solid white' : 'none', outlineOffset: 2 }}
                   />
                 ))}
               </div>
@@ -245,6 +299,16 @@ function WorkoutPost({ post }) {
 export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [feedLimit, setFeedLimit] = useState(10);
+  const avatarFileRef = useRef();
+  const qc = useQueryClient();
+
+  const { mutate: quickUpload } = useMutation({
+    mutationFn: (file) => uploadAvatar(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Profile photo updated!');
+    },
+  });
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['profile'],
@@ -267,9 +331,17 @@ export default function Profile() {
         className="rounded-xl p-5 mb-6"
         style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
       >
-        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Avatar name={profile.name} color={profile.avatar_color} size={64} />
+            <input ref={avatarFileRef} type="file" accept="image/*" className="hidden"
+              onChange={e => e.target.files[0] && quickUpload(e.target.files[0])} />
+            <Avatar
+              name={profile.name}
+              color={profile.avatar_color}
+              avatarUrl={profile.avatar_url}
+              size={64}
+              onClick={() => avatarFileRef.current?.click()}
+            />
             <div>
               <h1 className="text-xl font-bold">{profile.name}</h1>
               <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>@{profile.username}</p>
