@@ -1,0 +1,38 @@
+import axios from 'axios';
+
+const api = axios.create({ baseURL: '/api' });
+
+// Plans
+export const getPlans = () => api.get('/plans').then(r => r.data);
+export const getPlan = (id) => api.get(`/plans/${id}`).then(r => r.data);
+export const createPlan = (data) => api.post('/plans', data).then(r => r.data);
+export const updatePlan = (id, data) => api.put(`/plans/${id}`, data).then(r => r.data);
+export const deletePlan = (id) => api.delete(`/plans/${id}`).then(r => r.data);
+
+export const addExercise = (planId, data) => api.post(`/plans/${planId}/exercises`, data).then(r => r.data);
+export const updateExercise = (planId, exId, data) => api.put(`/plans/${planId}/exercises/${exId}`, data).then(r => r.data);
+export const deleteExercise = (planId, exId) => api.delete(`/plans/${planId}/exercises/${exId}`).then(r => r.data);
+
+export const importCSV = (file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return api.post('/plans/import/csv', form).then(r => r.data);
+};
+
+// Schedule
+export const getSchedule = (start, end) => api.get('/schedule', { params: { start, end } }).then(r => r.data);
+export const getScheduleByDate = (date) => api.get(`/schedule/date/${date}`).then(r => r.data);
+export const setScheduleEntry = (data) => api.post('/schedule', data).then(r => r.data);
+export const deleteScheduleEntry = (id) => api.delete(`/schedule/${id}`).then(r => r.data);
+export const deleteScheduleByDate = (date) => api.delete(`/schedule/date/${date}`).then(r => r.data);
+
+// Sessions
+export const getSessions = (params) => api.get('/sessions', { params }).then(r => r.data);
+export const getSession = (id) => api.get(`/sessions/${id}`).then(r => r.data);
+export const createSession = (data) => api.post('/sessions', data).then(r => r.data);
+export const updateSession = (id, data) => api.put(`/sessions/${id}`, data).then(r => r.data);
+export const deleteSession = (id) => api.delete(`/sessions/${id}`).then(r => r.data);
+
+export const logSet = (sessionId, data) => api.post(`/sessions/${sessionId}/sets`, data).then(r => r.data);
+export const updateSet = (sessionId, setId, data) => api.put(`/sessions/${sessionId}/sets/${setId}`, data).then(r => r.data);
+export const deleteSet = (sessionId, setId) => api.delete(`/sessions/${sessionId}/sets/${setId}`).then(r => r.data);
