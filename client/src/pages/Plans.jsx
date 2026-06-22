@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle, Share2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle, Share2, Globe, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport, reorderPlans, sharePlan, getFollowing } from '../api';
+import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport, reorderPlans, sharePlan, getFollowing, toggleGlobalPlan } from '../api';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -166,6 +166,14 @@ function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
     },
   });
 
+  const { mutate: toggleGlobal } = useMutation({
+    mutationFn: () => toggleGlobalPlan(plan.id),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['plans'] });
+      toast.success(data.is_global ? 'Plan shared with everyone!' : 'Plan set to private');
+    },
+  });
+
   return (
     <div
       className="rounded-xl overflow-hidden"
@@ -183,13 +191,19 @@ function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-base">{plan.name}</h3>
             {plan.completed_count > 0 && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
-                style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}
-              >
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>
                 ✓ {plan.completed_count}×
               </span>
             )}
+            {plan.is_global ? (
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 flex items-center gap-1" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>
+                <Globe size={10} /> Shared
+              </span>
+            ) : !plan.is_mine ? (
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>
+                Shared plan
+              </span>
+            ) : null}
           </div>
           {plan.description && (
             <p className="text-sm truncate mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{plan.description}</p>
@@ -199,12 +213,19 @@ function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => setSharing(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Share plan">
-            <Share2 size={15} style={{ color: 'var(--color-text-muted)' }} />
-          </button>
-          <button onClick={() => onEdit(plan)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-            <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
-          </button>
+          {plan.is_mine && (
+            <>
+              <button onClick={() => toggleGlobal()} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title={plan.is_global ? 'Make private' : 'Share with all users'}>
+                {plan.is_global ? <Globe size={15} className="text-indigo-400" /> : <Lock size={15} style={{ color: 'var(--color-text-muted)' }} />}
+              </button>
+              <button onClick={() => setSharing(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Share with a friend">
+                <Share2 size={15} style={{ color: 'var(--color-text-muted)' }} />
+              </button>
+              <button onClick={() => onEdit(plan)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
+              </button>
+            </>
+          )}
           <button
             onClick={() => {
               if (confirm(`Delete "${plan.name}"?`)) removePlan();

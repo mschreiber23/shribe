@@ -23,6 +23,7 @@ db.exec(`
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
+    is_global INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -46,6 +47,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS workout_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     schedule_entry_id INTEGER REFERENCES schedule_entries(id) ON DELETE SET NULL,
     plan_id INTEGER NOT NULL REFERENCES workout_plans(id),
     date TEXT NOT NULL,
@@ -136,8 +138,17 @@ try {
 const planCols2 = db.prepare("PRAGMA table_info(workout_plans)").all();
 if (planCols2.length > 0 && !planCols2.find(c => c.name === 'sort_order')) {
   db.exec("ALTER TABLE workout_plans ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
-  // Initialize sort_order from existing row order
   db.exec("UPDATE workout_plans SET sort_order = id");
+}
+if (planCols2.length > 0 && !planCols2.find(c => c.name === 'is_global')) {
+  db.exec("ALTER TABLE workout_plans ADD COLUMN is_global INTEGER NOT NULL DEFAULT 0");
+}
+
+const sessionCols = db.prepare("PRAGMA table_info(workout_sessions)").all();
+if (sessionCols.length > 0 && !sessionCols.find(c => c.name === 'user_id')) {
+  db.exec("ALTER TABLE workout_sessions ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE");
+  // Backfill user_id from the plan's owner
+  db.exec("UPDATE workout_sessions SET user_id = (SELECT user_id FROM workout_plans WHERE workout_plans.id = workout_sessions.plan_id)");
 }
 
 // Fix old schedule_entries UNIQUE constraint (date only → date+plan_id)

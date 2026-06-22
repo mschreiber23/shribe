@@ -16,6 +16,7 @@ export const createPlan = (data) => api.post('/plans', data).then(r => r.data);
 export const updatePlan = (id, data) => api.put(`/plans/${id}`, data).then(r => r.data);
 export const deletePlan = (id) => api.delete(`/plans/${id}`).then(r => r.data);
 export const reorderPlans = (ids) => api.put('/plans/reorder', { ids }).then(r => r.data);
+export const toggleGlobalPlan = (id) => api.put(`/plans/${id}/global`).then(r => r.data);
 
 export const addExercise = (planId, data) => api.post(`/plans/${planId}/exercises`, data).then(r => r.data);
 export const updateExercise = (planId, exId, data) => api.put(`/plans/${planId}/exercises/${exId}`, data).then(r => r.data);
