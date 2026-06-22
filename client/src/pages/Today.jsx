@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar } from 'lucide-react';
+import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
@@ -10,6 +10,7 @@ import {
 } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { WorkoutEditorModal } from '../components/WorkoutEditor';
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -358,6 +359,7 @@ function ActiveSession({ sessionId, onComplete }) {
 export default function Today() {
   const [sessionId, setSessionId] = useState(null);
   const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [editingSession, setEditingSession] = useState(null); // { id, plan_name }
   const qc = useQueryClient();
 
   const { data: scheduledEntries = [] } = useQuery({
@@ -449,6 +451,12 @@ export default function Today() {
               Completed · {s.total_sets} sets
             </div>
           </div>
+          <button
+            onClick={() => setEditingSession({ id: s.id, plan_name: s.plan_name })}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
+          </button>
         </div>
       ))}
 
@@ -509,6 +517,14 @@ export default function Today() {
         <Plus size={16} />
         {scheduled ? 'Start a Different Plan' : 'Choose a Plan'}
       </Button>
+
+      {/* Edit completed session modal */}
+      <WorkoutEditorModal
+        open={!!editingSession}
+        sessionId={editingSession?.id}
+        planName={editingSession?.plan_name}
+        onClose={() => setEditingSession(null)}
+      />
 
       {/* Plan picker modal */}
       <Modal open={showPlanPicker} onClose={() => setShowPlanPicker(false)} title="Choose a Plan">

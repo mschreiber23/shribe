@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { ChevronDown, ChevronUp, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2, CheckCircle, Clock, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getSessions, getSession, deleteSession } from '../api';
 import Button from '../components/Button';
+import { WorkoutEditorModal } from '../components/WorkoutEditor';
 
 function SessionDetail({ sessionId, onDelete }) {
   const qc = useQueryClient();
@@ -107,6 +108,7 @@ function SessionDetail({ sessionId, onDelete }) {
 
 function SessionCard({ session }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
   const qc = useQueryClient();
 
   const { mutate: remove } = useMutation({
@@ -142,6 +144,12 @@ function SessionCard({ session }) {
           </div>
         </button>
         <button
+          onClick={() => setEditing(true)}
+          className="p-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+        >
+          <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
+        </button>
+        <button
           onClick={() => { if (confirm('Delete this workout?')) remove(); }}
           className="p-2 rounded-lg hover:bg-red-500/20 transition-colors shrink-0"
         >
@@ -160,6 +168,13 @@ function SessionCard({ session }) {
           <SessionDetail sessionId={session.id} onDelete={() => {}} />
         </div>
       )}
+
+      <WorkoutEditorModal
+        open={editing}
+        sessionId={session.id}
+        planName={session.plan_name}
+        onClose={() => setEditing(false)}
+      />
     </div>
   );
 }
