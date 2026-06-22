@@ -181,13 +181,30 @@ function PlanCard({ plan, onEdit }) {
 
       {expanded && (
         <div className="px-4 pb-4 space-y-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
-          <div className="pt-3 space-y-1.5">
-            {fullPlan?.exercises?.map(ex => (
-              <ExerciseItem key={ex.id} exercise={ex} planId={plan.id} onDelete={() => removeEx(ex.id)} />
-            ))}
+          <div className="pt-3 space-y-3">
             {fullPlan?.exercises?.length === 0 && (
               <p className="text-sm text-center py-3" style={{ color: 'var(--color-text-muted)' }}>No exercises yet</p>
             )}
+            {groupBySection(fullPlan?.exercises || []).map(({ section, exercises }) => (
+              <div key={section}>
+                {groupBySection(fullPlan?.exercises || []).length > 1 && (
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span
+                      className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded"
+                      style={sectionColor(section)}
+                    >
+                      {section}
+                    </span>
+                    <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  {exercises.map(ex => (
+                    <ExerciseItem key={ex.id} exercise={ex} planId={plan.id} onDelete={() => removeEx(ex.id)} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {addingEx ? (
