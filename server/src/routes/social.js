@@ -27,8 +27,8 @@ router.get('/users/:userId', (req, res) => {
     SELECT u.id, p.name, p.username, p.bio, p.avatar_color, p.avatar_url,
            (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as follower_count,
            (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count,
-           (SELECT COUNT(*) FROM workout_sessions ws JOIN workout_plans wp ON wp.id = ws.plan_id
-            WHERE ws.completed_at IS NOT NULL AND wp.user_id = u.id) as total_workouts,
+           (SELECT COUNT(*) FROM workout_sessions ws
+            WHERE ws.completed_at IS NOT NULL AND ws.user_id = u.id) as total_workouts,
            EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following
     FROM users u
     JOIN profile p ON p.user_id = u.id
@@ -43,7 +43,7 @@ router.get('/users/:userId', (req, res) => {
     FROM workout_sessions ws
     JOIN workout_plans wp ON wp.id = ws.plan_id
     LEFT JOIN set_logs sl ON sl.session_id = ws.id
-    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
+    WHERE ws.completed_at IS NOT NULL AND ws.user_id = ?
     GROUP BY ws.id
     ORDER BY ws.completed_at DESC
     LIMIT 5
