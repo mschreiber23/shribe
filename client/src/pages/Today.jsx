@@ -130,7 +130,6 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [], previousSets = [
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['session', sessionId] });
-      setReps('');
       toast.success(`Set ${loggedSets.length + 1} logged!`);
     },
   });
