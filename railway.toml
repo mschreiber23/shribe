@@ -2,6 +2,9 @@
 builder = "nixpacks"
 buildCommand = "npm --prefix server install && npm --prefix client install && npm run build"
 
+[build.nixpacksPlan.phases.setup]
+nixPkgs = ["nodejs_22", "python3", "pkg-config", "pixman", "cairo", "pango"]
+
 [deploy]
 startCommand = "npm --prefix server run start"
 restartPolicyType = "on_failure"
