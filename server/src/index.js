@@ -15,8 +15,6 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
 
 // Public avatar serving (image tags can't send auth headers)
-const path = require('path');
-const fs = require('fs');
 app.get('/api/profile/avatar/:userId', (req, res) => {
   const avatarsDir = path.join(__dirname, '../data/avatars');
   if (!fs.existsSync(avatarsDir)) return res.status(404).end();
