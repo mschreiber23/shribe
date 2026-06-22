@@ -18,7 +18,7 @@ function Avatar({ name, color, avatarUrl, size = 40 }) {
       style={{ width: size, height: size, backgroundColor: color || '#6366f1', fontSize: size * 0.35 }}
     >
       {avatarUrl
-        ? <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+        ? <img src={avatarUrl} alt={name} className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
         : initials}
     </div>
   );
@@ -91,7 +91,7 @@ function UserProfileModal({ userId, open, onClose }) {
         <div className="space-y-5">
           {/* Header */}
           <div className="flex items-center gap-4">
-            <Avatar name={profile.name} color={profile.avatar_color} avatarUrl={profile.avatar_url} size={64} />
+            <Avatar name={profile.name} color={profile.avatar_color} avatarUrl={profile.avatar_url} size={80} />
             <div className="flex-1">
               <h2 className="text-xl font-bold">{profile.name}</h2>
               <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>@{profile.username}</p>
