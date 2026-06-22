@@ -90,6 +90,13 @@ if (profileCols.length > 0 && !profileCols.find(c => c.name === 'avatar_url')) {
   db.exec("ALTER TABLE profile ADD COLUMN avatar_url TEXT");
 }
 
+const planCols2 = db.prepare("PRAGMA table_info(workout_plans)").all();
+if (planCols2.length > 0 && !planCols2.find(c => c.name === 'sort_order')) {
+  db.exec("ALTER TABLE workout_plans ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+  // Initialize sort_order from existing row order
+  db.exec("UPDATE workout_plans SET sort_order = id");
+}
+
 // Fix old schedule_entries UNIQUE constraint (date only → date+plan_id)
 // SQLite can't drop constraints, so we check if a duplicate would fail gracefully
 

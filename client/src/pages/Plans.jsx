@@ -3,7 +3,14 @@ import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit2, Upload, GripVertical, ChevronDown, ChevronUp, FileSpreadsheet, ImageIcon, Loader2, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport } from '../api';
+import { getPlans, getPlan, createPlan, updatePlan, deletePlan, addExercise, updateExercise, deleteExercise, importCSV, importImage, saveImageImport, reorderPlans } from '../api';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 
@@ -99,7 +106,22 @@ function ExerciseItem({ exercise, planId, onDelete }) {
   );
 }
 
-function PlanCard({ plan, onEdit }) {
+function SortablePlanCard({ plan, onEdit }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: plan.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <PlanCard plan={plan} onEdit={onEdit} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
+function PlanCard({ plan, onEdit, dragHandleProps = {} }) {
   const [expanded, setExpanded] = useState(false);
   const [newExName, setNewExName] = useState('');
   const [newExSection, setNewExSection] = useState('Workout');
@@ -149,6 +171,13 @@ function PlanCard({ plan, onEdit }) {
       style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface-2)' }}
     >
       <div className="flex items-center gap-3 p-4">
+        <button
+          {...dragHandleProps}
+          className="shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 rounded hover:bg-white/10 transition-colors"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          <GripVertical size={18} />
+        </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-base">{plan.name}</h3>
@@ -678,11 +707,35 @@ export default function Plans() {
   const [showImport, setShowImport] = useState(false);
   const [showImageImport, setShowImageImport] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [orderedPlans, setOrderedPlans] = useState(null);
+  const qc = useQueryClient();
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ['plans'],
     queryFn: getPlans,
   });
+
+  // Sync local order when server data loads/refreshes
+  const displayPlans = orderedPlans && plans && orderedPlans.length === plans.length
+    ? orderedPlans
+    : plans ?? [];
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const { mutate: saveOrder } = useMutation({
+    mutationFn: (ids) => reorderPlans(ids),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plans'] }),
+  });
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = displayPlans.findIndex(p => p.id === active.id);
+    const newIndex = displayPlans.findIndex(p => p.id === over.id);
+    const newOrder = arrayMove(displayPlans, oldIndex, newIndex);
+    setOrderedPlans(newOrder);
+    saveOrder(newOrder.map(p => p.id));
+  };
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -731,15 +784,19 @@ export default function Plans() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {plans?.map(plan => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            onEdit={(p) => { setEditing(p); setShowCreate(true); }}
-          />
-        ))}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={displayPlans.map(p => p.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {displayPlans.map(plan => (
+              <SortablePlanCard
+                key={plan.id}
+                plan={plan}
+                onEdit={(p) => { setEditing(p); setShowCreate(true); }}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <CreatePlanModal
         open={showCreate}

@@ -16,9 +16,22 @@ router.get('/', (req, res) => {
     LEFT JOIN workout_sessions ws ON ws.plan_id = wp.id
     WHERE wp.user_id = ?
     GROUP BY wp.id
-    ORDER BY wp.created_at DESC
+    ORDER BY wp.sort_order ASC, wp.id ASC
   `).all(req.userId);
   res.json(plans);
+});
+
+// PUT reorder plans — body: { ids: [id1, id2, ...] } in desired order
+router.put('/reorder', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids array required' });
+
+  const update = db.prepare('UPDATE workout_plans SET sort_order = ? WHERE id = ? AND user_id = ?');
+  const reorder = db.transaction(() => {
+    ids.forEach((id, i) => update.run(i, id, req.userId));
+  });
+  reorder();
+  res.json({ success: true });
 });
 
 // GET single plan with exercises
