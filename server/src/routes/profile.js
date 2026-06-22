@@ -48,7 +48,7 @@ router.get('/', (req, res) => {
     FROM workout_sessions ws
     JOIN workout_plans wp ON wp.id = ws.plan_id
     LEFT JOIN set_logs sl ON sl.session_id = ws.id
-    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
+    WHERE ws.completed_at IS NOT NULL AND ws.user_id = ?
   `).get(req.userId);
 
   res.json({ ...profile, stats, streak: getStreak(req.userId) });
@@ -98,7 +98,7 @@ router.get('/feed', (req, res) => {
     SELECT ws.id, ws.date, ws.completed_at, ws.notes, wp.name as plan_name
     FROM workout_sessions ws
     JOIN workout_plans wp ON wp.id = ws.plan_id
-    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
+    WHERE ws.completed_at IS NOT NULL AND ws.user_id = ?
     ORDER BY ws.completed_at DESC
     LIMIT ? OFFSET ?
   `).all(req.userId, Number(limit), Number(offset));
@@ -142,7 +142,7 @@ function getStreak(userId) {
   const sessions = db.prepare(`
     SELECT DISTINCT ws.date FROM workout_sessions ws
     JOIN workout_plans wp ON wp.id = ws.plan_id
-    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
+    WHERE ws.completed_at IS NOT NULL AND ws.user_id = ?
     ORDER BY ws.date DESC
   `).all(userId);
 
