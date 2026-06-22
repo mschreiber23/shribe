@@ -17,7 +17,7 @@ import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Cale
 import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
-  logSet, updateSet, deleteSet, updateSession, getSession,
+  logSet, updateSet, deleteSet, updateSession, getSession, getPreviousSession,
 } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -114,7 +114,7 @@ function SetRow({ set, sessionId, onDelete }) {
   );
 }
 
-function ExerciseLogger({ exercise, sessionId, loggedSets = [] }) {
+function ExerciseLogger({ exercise, sessionId, loggedSets = [], previousSets = [] }) {
   const [open, setOpen] = useState(false);
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
@@ -130,7 +130,6 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [] }) {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['session', sessionId] });
-      // Keep last weight, clear reps for quick logging
       setReps('');
       toast.success(`Set ${loggedSets.length + 1} logged!`);
     },
@@ -159,13 +158,58 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [] }) {
           {exercise.notes && (
             <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>{exercise.notes}</p>
           )}
+          {/* Previous session summary shown in collapsed state */}
+          {!open && previousSets.length > 0 && loggedSets.length === 0 && (
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
+              Last time: {previousSets.map(s =>
+                `${s.reps ?? '—'} reps${s.weight != null ? ` @ ${s.weight}${s.unit}` : ''}`
+              ).join(' · ')}
+            </p>
+          )}
         </div>
         {open ? <ChevronUp size={18} className="shrink-0 text-gray-500" /> : <ChevronDown size={18} className="shrink-0 text-gray-500" />}
       </button>
 
       {open && (
         <div className="p-4 pt-0 space-y-3">
-          {/* Previous sets */}
+          {/* Previous session reference */}
+          {previousSets.length > 0 && (
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ border: '1px solid var(--color-border)' }}
+            >
+              <div
+                className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide"
+                style={{ backgroundColor: 'rgba(99,102,241,0.08)', color: 'var(--color-text-muted)' }}
+              >
+                Last session
+              </div>
+              <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
+                {previousSets.map((set, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 px-3 py-2 text-sm"
+                    style={{ opacity: 0.7 }}
+                  >
+                    <span className="w-12 text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>
+                      Set {set.set_number}
+                    </span>
+                    <span className="flex-1">
+                      {set.reps != null ? <><strong>{set.reps}</strong> reps</> : <span style={{ color: 'var(--color-text-muted)' }}>— reps</span>}
+                    </span>
+                    <span>
+                      {set.weight != null
+                        ? <><strong>{set.weight}</strong> <span style={{ color: 'var(--color-text-muted)' }}>{set.unit}</span></>
+                        : <span style={{ color: 'var(--color-text-muted)' }}>bodyweight</span>
+                      }
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Current session sets */}
           {loggedSets.length > 0 && (
             <div className="space-y-1.5">
               {loggedSets.map(set => (
@@ -185,7 +229,7 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [] }) {
                 type="number"
                 value={reps}
                 onChange={e => setReps(e.target.value)}
-                placeholder={lastSet?.reps ?? '—'}
+                placeholder={lastSet?.reps ?? previousSets[0]?.reps ?? '—'}
                 min="0"
                 style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
               />
@@ -196,7 +240,7 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [] }) {
                 type="number"
                 value={weight}
                 onChange={e => setWeight(e.target.value)}
-                placeholder={lastSet?.weight ?? '—'}
+                placeholder={lastSet?.weight ?? previousSets[0]?.weight ?? '—'}
                 min="0"
                 step="0.5"
                 style={{ padding: '0.375rem 0.5rem', fontSize: '0.875rem' }}
@@ -237,6 +281,12 @@ function ActiveSession({ sessionId, onComplete }) {
     refetchInterval: 0,
   });
 
+  const { data: previousSession } = useQuery({
+    queryKey: ['previousSession', session?.plan_id, sessionId],
+    queryFn: () => getPreviousSession(session.plan_id, sessionId),
+    enabled: !!session?.plan_id,
+  });
+
   const { mutate: complete, isPending } = useMutation({
     mutationFn: () => updateSession(sessionId, { completed_at: new Date().toISOString() }),
     onSuccess: () => {
@@ -254,6 +304,12 @@ function ActiveSession({ sessionId, onComplete }) {
     setsByExercise[le.exercise_id] = le.sets;
   }
 
+  // Map previous sets by exercise_id for quick lookup
+  const previousSetsByExercise = {};
+  for (const le of (previousSession?.exercises || [])) {
+    previousSetsByExercise[le.exercise_id] = le.sets;
+  }
+
   const totalSets = Object.values(setsByExercise).reduce((sum, sets) => sum + sets.length, 0);
 
   return (
@@ -261,9 +317,16 @@ function ActiveSession({ sessionId, onComplete }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">{session?.plan_name}</h2>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            {totalSets} {totalSets === 1 ? 'set' : 'sets'} logged
-          </p>
+          <div className="flex items-center gap-3 mt-0.5">
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              {totalSets} {totalSets === 1 ? 'set' : 'sets'} logged
+            </p>
+            {previousSession && (
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                · Last done {format(new Date(previousSession.date), 'MMM d')}
+              </p>
+            )}
+          </div>
         </div>
         <Button variant="success" onClick={() => complete()} loading={isPending}>
           <CheckCircle size={16} />
@@ -293,6 +356,7 @@ function ActiveSession({ sessionId, onComplete }) {
                   exercise={exercise}
                   sessionId={sessionId}
                   loggedSets={setsByExercise[exercise.id] || []}
+                  previousSets={previousSetsByExercise[exercise.id] || []}
                 />
               ))}
             </div>

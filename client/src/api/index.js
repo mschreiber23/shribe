@@ -37,6 +37,8 @@ export const deleteScheduleByDate = (date) => api.delete(`/schedule/date/${date}
 
 // Sessions
 export const getSessions = (params) => api.get('/sessions', { params }).then(r => r.data);
+export const getPreviousSession = (planId, excludeSessionId) =>
+  api.get('/sessions/previous', { params: { planId, excludeSessionId } }).then(r => r.data);
 export const getSession = (id) => api.get(`/sessions/${id}`).then(r => r.data);
 export const createSession = (data) => api.post('/sessions', data).then(r => r.data);
 export const updateSession = (id, data) => api.put(`/sessions/${id}`, data).then(r => r.data);

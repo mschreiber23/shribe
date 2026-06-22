@@ -2,6 +2,64 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// GET previous completed session for a plan (for "last time" reference)
+// Query params: planId (required), excludeSessionId (optional - exclude current session)
+router.get('/previous', (req, res) => {
+  const { planId, excludeSessionId } = req.query;
+  if (!planId) return res.status(400).json({ error: 'planId is required' });
+
+  let query = `
+    SELECT id FROM workout_sessions
+    WHERE plan_id = ? AND completed_at IS NOT NULL
+  `;
+  const params = [planId];
+
+  if (excludeSessionId) {
+    query += ' AND id != ?';
+    params.push(excludeSessionId);
+  }
+
+  query += ' ORDER BY date DESC, id DESC LIMIT 1';
+  const session = db.prepare(query).get(...params);
+
+  if (!session) return res.json(null);
+
+  const sets = db.prepare(`
+    SELECT sl.*, e.name as exercise_name, e.section as section
+    FROM set_logs sl
+    JOIN exercises e ON e.id = sl.exercise_id
+    WHERE sl.session_id = ?
+    ORDER BY sl.exercise_id ASC, sl.set_number ASC
+  `).all(session.id);
+
+  // Group by exercise
+  const byExercise = {};
+  for (const s of sets) {
+    if (!byExercise[s.exercise_id]) {
+      byExercise[s.exercise_id] = {
+        exercise_id: s.exercise_id,
+        exercise_name: s.exercise_name,
+        section: s.section,
+        sets: [],
+      };
+    }
+    byExercise[s.exercise_id].sets.push({
+      set_number: s.set_number,
+      reps: s.reps,
+      weight: s.weight,
+      unit: s.unit,
+    });
+  }
+
+  const sessionInfo = db.prepare('SELECT date FROM workout_sessions WHERE id = ?').get(session.id);
+
+  res.json({
+    session_id: session.id,
+    date: sessionInfo.date,
+    exercises: Object.values(byExercise),
+  });
+});
+
 // GET all sessions (with summary)
 router.get('/', (req, res) => {
   const { limit = 20, offset = 0, date } = req.query;
