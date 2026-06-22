@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { Dumbbell, CalendarDays, ClipboardList, BarChart2 } from 'lucide-react';
+import { Dumbbell, CalendarDays, ClipboardList, BarChart2, UserCircle } from 'lucide-react';
 
 const links = [
   { to: '/', label: 'Today', icon: Dumbbell },
   { to: '/schedule', label: 'Schedule', icon: CalendarDays },
   { to: '/plans', label: 'Plans', icon: ClipboardList },
   { to: '/history', label: 'History', icon: BarChart2 },
+  { to: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
 export default function Navbar() {

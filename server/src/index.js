@@ -13,6 +13,7 @@ app.use('/api/plans', require('./routes/plans'));
 app.use('/api/plans/import/image', require('./routes/imageImport'));
 app.use('/api/schedule', require('./routes/schedule'));
 app.use('/api/sessions', require('./routes/sessions'));
+app.use('/api/profile', require('./routes/profile'));
 
 // Serve built client in production
 const clientDist = path.join(__dirname, '../../client/dist');

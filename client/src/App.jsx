@@ -6,6 +6,7 @@ import Today from './pages/Today';
 import Schedule from './pages/Schedule';
 import Plans from './pages/Plans';
 import History from './pages/History';
+import Profile from './pages/Profile';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/plans" element={<Plans />} />
               <Route path="/history" element={<History />} />
+              <Route path="/profile" element={<Profile />} />
             </Routes>
           </main>
         </div>

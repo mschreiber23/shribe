@@ -10,12 +10,6 @@ const db = new Database(path.join(DATA_DIR, 'gym.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// Migrate existing databases to add section column if missing
-const cols = db.prepare("PRAGMA table_info(exercises)").all();
-if (cols.length > 0 && !cols.find(c => c.name === 'section')) {
-  db.exec("ALTER TABLE exercises ADD COLUMN section TEXT NOT NULL DEFAULT 'Workout'");
-}
-
 db.exec(`
   CREATE TABLE IF NOT EXISTS workout_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +54,24 @@ db.exec(`
     unit TEXT NOT NULL DEFAULT 'lbs',
     notes TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    name TEXT NOT NULL DEFAULT 'Athlete',
+    username TEXT NOT NULL DEFAULT 'me',
+    bio TEXT,
+    avatar_color TEXT NOT NULL DEFAULT '#6366f1',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
+
+// Migrations for existing databases
+const exCols = db.prepare("PRAGMA table_info(exercises)").all();
+if (exCols.length > 0 && !exCols.find(c => c.name === 'section')) {
+  db.exec("ALTER TABLE exercises ADD COLUMN section TEXT NOT NULL DEFAULT 'Workout'");
+}
+
+// Ensure single profile row always exists
+db.prepare('INSERT OR IGNORE INTO profile (id) VALUES (1)').run();
 
 module.exports = db;

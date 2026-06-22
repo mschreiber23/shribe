@@ -19,6 +19,11 @@ export const importCSV = (file) => {
   return api.post('/plans/import/csv', form).then(r => r.data);
 };
 
+// Profile
+export const getProfile = () => api.get('/profile').then(r => r.data);
+export const updateProfile = (data) => api.put('/profile', data).then(r => r.data);
+export const getFeed = (params) => api.get('/profile/feed', { params }).then(r => r.data);
+
 export const importImage = (file) => {
   const form = new FormData();
   form.append('image', file);
