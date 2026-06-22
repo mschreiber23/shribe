@@ -5,21 +5,22 @@ const multer = require('multer');
 const { parse } = require('csv-parse/sync');
 const upload = multer({ storage: multer.memoryStorage() });
 
-// GET all plans
+// GET all plans for current user
 router.get('/', (req, res) => {
   const plans = db.prepare(`
     SELECT wp.*, COUNT(e.id) as exercise_count
     FROM workout_plans wp
     LEFT JOIN exercises e ON e.plan_id = wp.id
+    WHERE wp.user_id = ?
     GROUP BY wp.id
     ORDER BY wp.created_at DESC
-  `).all();
+  `).all(req.userId);
   res.json(plans);
 });
 
 // GET single plan with exercises
 router.get('/:id', (req, res) => {
-  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
 
   const exercises = db.prepare(
@@ -36,8 +37,8 @@ router.post('/', (req, res) => {
 
   const insert = db.transaction(() => {
     const plan = db.prepare(
-      'INSERT INTO workout_plans (name, description) VALUES (?, ?)'
-    ).run(name, description || null);
+      'INSERT INTO workout_plans (user_id, name, description) VALUES (?, ?, ?)'
+    ).run(req.userId, name, description || null);
 
     if (exercises && exercises.length > 0) {
       const insertEx = db.prepare(
@@ -60,7 +61,7 @@ router.post('/', (req, res) => {
 // PUT update plan
 router.put('/:id', (req, res) => {
   const { name, description } = req.body;
-  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
 
   db.prepare('UPDATE workout_plans SET name = ?, description = ? WHERE id = ?')
@@ -73,7 +74,7 @@ router.put('/:id', (req, res) => {
 
 // DELETE plan
 router.delete('/:id', (req, res) => {
-  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
   db.prepare('DELETE FROM workout_plans WHERE id = ?').run(req.params.id);
   res.json({ success: true });
@@ -84,7 +85,7 @@ router.post('/:id/exercises', (req, res) => {
   const { name, section, order_index, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Exercise name is required' });
 
-  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
 
   const maxOrder = db.prepare('SELECT MAX(order_index) as max FROM exercises WHERE plan_id = ?').get(req.params.id);
@@ -101,6 +102,8 @@ router.post('/:id/exercises', (req, res) => {
 // PUT update exercise
 router.put('/:planId/exercises/:exId', (req, res) => {
   const { name, section, order_index, notes } = req.body;
+  const plan = db.prepare('SELECT id FROM workout_plans WHERE id = ? AND user_id = ?').get(req.params.planId, req.userId);
+  if (!plan) return res.status(404).json({ error: 'Plan not found' });
   const ex = db.prepare('SELECT * FROM exercises WHERE id = ? AND plan_id = ?').get(req.params.exId, req.params.planId);
   if (!ex) return res.status(404).json({ error: 'Exercise not found' });
 
@@ -113,6 +116,8 @@ router.put('/:planId/exercises/:exId', (req, res) => {
 
 // DELETE exercise
 router.delete('/:planId/exercises/:exId', (req, res) => {
+  const plan = db.prepare('SELECT id FROM workout_plans WHERE id = ? AND user_id = ?').get(req.params.planId, req.userId);
+  if (!plan) return res.status(404).json({ error: 'Plan not found' });
   const ex = db.prepare('SELECT * FROM exercises WHERE id = ? AND plan_id = ?').get(req.params.exId, req.params.planId);
   if (!ex) return res.status(404).json({ error: 'Exercise not found' });
   db.prepare('DELETE FROM exercises WHERE id = ?').run(req.params.exId);
@@ -125,14 +130,8 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
 
   try {
     const content = req.file.buffer.toString('utf-8');
-    const records = parse(content, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-    });
+    const records = parse(content, { columns: true, skip_empty_lines: true, trim: true });
 
-    // Expected columns: plan_name, exercise_name, section (optional), notes (optional)
-    // Group by plan_name
     const planMap = {};
     for (const row of records) {
       const planName = row.plan_name || row['Plan Name'] || row['Plan'];
@@ -151,8 +150,8 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
     const insertAll = db.transaction(() => {
       for (const [planName, data] of Object.entries(planMap)) {
         const plan = db.prepare(
-          'INSERT INTO workout_plans (name, description) VALUES (?, ?)'
-        ).run(planName, data.description || null);
+          'INSERT INTO workout_plans (user_id, name, description) VALUES (?, ?, ?)'
+        ).run(req.userId, planName, data.description || null);
 
         const insertEx = db.prepare(
           'INSERT INTO exercises (plan_id, name, section, order_index, notes) VALUES (?, ?, ?, ?, ?)'
@@ -161,11 +160,7 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
           insertEx.run(plan.lastInsertRowid, ex.name, ex.section || 'Workout', i, ex.notes);
         });
 
-        created.push({
-          id: plan.lastInsertRowid,
-          name: planName,
-          exercise_count: data.exercises.length,
-        });
+        created.push({ id: plan.lastInsertRowid, name: planName, exercise_count: data.exercises.length });
       }
     });
 

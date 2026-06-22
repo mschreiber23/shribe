@@ -2,11 +2,21 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+function ensureProfile(userId) {
+  const existing = db.prepare('SELECT * FROM profile WHERE user_id = ?').get(userId);
+  if (!existing) {
+    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId);
+    const name = user?.email?.split('@')[0] || 'Athlete';
+    db.prepare('INSERT INTO profile (user_id, name, username) VALUES (?, ?, ?)').run(userId, name, name.toLowerCase());
+    return db.prepare('SELECT * FROM profile WHERE user_id = ?').get(userId);
+  }
+  return existing;
+}
+
 // GET profile
 router.get('/', (req, res) => {
-  const profile = db.prepare('SELECT * FROM profile WHERE id = 1').get();
+  const profile = ensureProfile(req.userId);
 
-  // Attach lifetime stats
   const stats = db.prepare(`
     SELECT
       COUNT(DISTINCT ws.id) as total_workouts,
@@ -14,28 +24,27 @@ router.get('/', (req, res) => {
       COALESCE(SUM(sl.reps), 0) as total_reps,
       COALESCE(SUM(CASE WHEN sl.weight IS NOT NULL THEN sl.reps * sl.weight ELSE 0 END), 0) as total_volume
     FROM workout_sessions ws
+    JOIN workout_plans wp ON wp.id = ws.plan_id
     LEFT JOIN set_logs sl ON sl.session_id = ws.id
-    WHERE ws.completed_at IS NOT NULL
-  `).get();
+    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
+  `).get(req.userId);
 
-  const streak = getStreak();
-
-  res.json({ ...profile, stats, streak });
+  res.json({ ...profile, stats, streak: getStreak(req.userId) });
 });
 
 // PUT update profile
 router.put('/', (req, res) => {
   const { name, username, bio, avatar_color } = req.body;
-  const profile = db.prepare('SELECT * FROM profile WHERE id = 1').get();
+  ensureProfile(req.userId);
+  const profile = db.prepare('SELECT * FROM profile WHERE user_id = ?').get(req.userId);
 
-  db.prepare('UPDATE profile SET name = ?, username = ?, bio = ?, avatar_color = ? WHERE id = 1')
-    .run(name ?? profile.name, username ?? profile.username, bio ?? profile.bio, avatar_color ?? profile.avatar_color);
+  db.prepare('UPDATE profile SET name = ?, username = ?, bio = ?, avatar_color = ? WHERE user_id = ?')
+    .run(name ?? profile.name, username ?? profile.username, bio ?? profile.bio, avatar_color ?? profile.avatar_color, req.userId);
 
-  const updated = db.prepare('SELECT * FROM profile WHERE id = 1').get();
-  res.json(updated);
+  res.json(db.prepare('SELECT * FROM profile WHERE user_id = ?').get(req.userId));
 });
 
-// GET feed - completed workout sessions as posts
+// GET feed
 router.get('/feed', (req, res) => {
   const { limit = 20, offset = 0 } = req.query;
 
@@ -43,21 +52,20 @@ router.get('/feed', (req, res) => {
     SELECT ws.id, ws.date, ws.completed_at, ws.notes, wp.name as plan_name
     FROM workout_sessions ws
     JOIN workout_plans wp ON wp.id = ws.plan_id
-    WHERE ws.completed_at IS NOT NULL
+    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
     ORDER BY ws.completed_at DESC
     LIMIT ? OFFSET ?
-  `).all(Number(limit), Number(offset));
+  `).all(req.userId, Number(limit), Number(offset));
 
   const posts = sessions.map(session => {
     const sets = db.prepare(`
-      SELECT sl.*, e.name as exercise_name, e.section as section
+      SELECT sl.*, e.name as exercise_name, e.section as section, e.order_index
       FROM set_logs sl
       JOIN exercises e ON e.id = sl.exercise_id
       WHERE sl.session_id = ?
-      ORDER BY e.section ASC, e.order_index ASC, sl.set_number ASC
+      ORDER BY e.order_index ASC, sl.set_number ASC
     `).all(session.id);
 
-    // Group sets by exercise preserving section order
     const sectionOrder = [];
     const sectionMap = {};
     for (const s of sets) {
@@ -69,46 +77,37 @@ router.get('/feed', (req, res) => {
       sectionMap[sec][s.exercise_id].sets.push({ set_number: s.set_number, reps: s.reps, weight: s.weight, unit: s.unit });
     }
 
-    const sections = sectionOrder.map(sec => ({
-      section: sec,
-      exercises: Object.values(sectionMap[sec]),
-    }));
-
+    const sections = sectionOrder.map(sec => ({ section: sec, exercises: Object.values(sectionMap[sec]) }));
     const totalSets = sets.length;
-    const totalReps = sets.reduce((sum, s) => sum + (s.reps || 0), 0);
-    const totalVolume = sets.reduce((sum, s) => sum + (s.weight && s.reps ? s.weight * s.reps : 0), 0);
-    const exerciseCount = new Set(sets.map(s => s.exercise_id)).size;
+    const totalReps = sets.reduce((s, r) => s + (r.reps || 0), 0);
+    const totalVolume = sets.reduce((s, r) => s + (r.weight && r.reps ? r.weight * r.reps : 0), 0);
 
     return {
       ...session,
       sections,
-      stats: { total_sets: totalSets, total_reps: totalReps, total_volume: Math.round(totalVolume), exercise_count: exerciseCount },
+      stats: { total_sets: totalSets, total_reps: totalReps, total_volume: Math.round(totalVolume), exercise_count: new Set(sets.map(s => s.exercise_id)).size },
     };
   });
 
   res.json(posts);
 });
 
-function getStreak() {
+function getStreak(userId) {
   const sessions = db.prepare(`
-    SELECT DISTINCT date FROM workout_sessions
-    WHERE completed_at IS NOT NULL
-    ORDER BY date DESC
-  `).all();
+    SELECT DISTINCT ws.date FROM workout_sessions ws
+    JOIN workout_plans wp ON wp.id = ws.plan_id
+    WHERE ws.completed_at IS NOT NULL AND wp.user_id = ?
+    ORDER BY ws.date DESC
+  `).all(userId);
 
   if (!sessions.length) return 0;
-
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-
-  // Streak only counts if worked out today or yesterday
   if (sessions[0].date !== today && sessions[0].date !== yesterday) return 0;
 
   let streak = 1;
   for (let i = 1; i < sessions.length; i++) {
-    const prev = new Date(sessions[i - 1].date);
-    const curr = new Date(sessions[i].date);
-    const diff = (prev - curr) / 86400000;
+    const diff = (new Date(sessions[i - 1].date) - new Date(sessions[i].date)) / 86400000;
     if (diff === 1) streak++;
     else break;
   }

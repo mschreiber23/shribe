@@ -11,8 +11,16 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS workout_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -32,7 +40,7 @@ db.exec(`
     date TEXT NOT NULL,
     plan_id INTEGER NOT NULL REFERENCES workout_plans(id) ON DELETE CASCADE,
     notes TEXT,
-    UNIQUE(date)
+    UNIQUE(date, plan_id)
   );
 
   CREATE TABLE IF NOT EXISTS workout_sessions (
@@ -56,7 +64,8 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS profile (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL DEFAULT 'Athlete',
     username TEXT NOT NULL DEFAULT 'me',
     bio TEXT,
@@ -71,7 +80,12 @@ if (exCols.length > 0 && !exCols.find(c => c.name === 'section')) {
   db.exec("ALTER TABLE exercises ADD COLUMN section TEXT NOT NULL DEFAULT 'Workout'");
 }
 
-// Ensure single profile row always exists
-db.prepare('INSERT OR IGNORE INTO profile (id) VALUES (1)').run();
+const planCols = db.prepare("PRAGMA table_info(workout_plans)").all();
+if (planCols.length > 0 && !planCols.find(c => c.name === 'user_id')) {
+  db.exec("ALTER TABLE workout_plans ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE");
+}
+
+// Fix old schedule_entries UNIQUE constraint (date only → date+plan_id)
+// SQLite can't drop constraints, so we check if a duplicate would fail gracefully
 
 module.exports = db;

@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const requireAuth = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,15 +11,18 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/plans', require('./routes/plans'));
-app.use('/api/plans/import/image', require('./routes/imageImport'));
-app.use('/api/schedule', require('./routes/schedule'));
-app.use('/api/sessions', require('./routes/sessions'));
-app.use('/api/profile', require('./routes/profile'));
+// Public auth routes (no token required)
+app.use('/api/auth', require('./routes/auth'));
+
+// All routes below require a valid JWT
+app.use('/api/plans/import/image', requireAuth, require('./routes/imageImport'));
+app.use('/api/plans', requireAuth, require('./routes/plans'));
+app.use('/api/schedule', requireAuth, require('./routes/schedule'));
+app.use('/api/sessions', requireAuth, require('./routes/sessions'));
+app.use('/api/profile', requireAuth, require('./routes/profile'));
 
 // Serve built client in production
 const clientDist = path.join(__dirname, '../../client/dist');
-const fs = require('fs');
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
   app.get('/{*splat}', (req, res) => {

@@ -124,8 +124,8 @@ router.post('/save', (req, res) => {
       if (!plan.name?.trim()) continue;
 
       const result = db.prepare(
-        'INSERT INTO workout_plans (name, description) VALUES (?, ?)'
-      ).run(plan.name.trim(), plan.description?.trim() || null);
+        'INSERT INTO workout_plans (user_id, name, description) VALUES (?, ?, ?)'
+      ).run(req.userId, plan.name.trim(), plan.description?.trim() || null);
 
       const planId = result.lastInsertRowid;
 

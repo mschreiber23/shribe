@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { Dumbbell, CalendarDays, ClipboardList, BarChart2, UserCircle } from 'lucide-react';
+import { Dumbbell, CalendarDays, ClipboardList, BarChart2, UserCircle, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 const links = [
   { to: '/', label: 'Today', icon: Dumbbell },
@@ -10,6 +12,14 @@ const links = [
 ];
 
 export default function Navbar() {
+  const { logout } = useAuth();
+  const qc = useQueryClient();
+
+  const handleLogout = () => {
+    qc.clear();
+    logout();
+  };
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 md:relative md:bottom-auto"
@@ -18,6 +28,7 @@ export default function Navbar() {
         borderTop: '1px solid var(--color-border)',
       }}
     >
+      {/* Mobile */}
       <div className="max-w-5xl mx-auto flex md:hidden">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
@@ -36,7 +47,7 @@ export default function Navbar() {
         ))}
       </div>
 
-      {/* Desktop sidebar */}
+      {/* Desktop */}
       <div className="hidden md:flex items-center gap-1 px-4 py-3 max-w-5xl mx-auto">
         <div className="flex items-center gap-2 mr-6">
           <Dumbbell size={22} className="text-indigo-400" />
@@ -59,6 +70,15 @@ export default function Navbar() {
             {label}
           </NavLink>
         ))}
+        <div className="ml-auto">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors"
+          >
+            <LogOut size={16} />
+            Log out
+          </button>
+        </div>
       </div>
     </nav>
   );
