@@ -26,7 +26,7 @@ function Avatar({ name, color, avatarUrl, size = 56, onClick }) {
       onClick={onClick}
     >
       {avatarUrl
-        ? <img src={`${avatarUrl}?t=${Date.now()}`} alt={name} className="w-full h-full object-cover" />
+        ? <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
         : initials
       }
       {onClick && (
@@ -59,6 +59,7 @@ function EditProfileModal({ profile, onClose }) {
     mutationFn: (file) => uploadAvatar(file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.refetchQueries({ queryKey: ['profile'] });
       toast.success('Photo updated!');
     },
   });
@@ -306,6 +307,7 @@ export default function Profile() {
     mutationFn: (file) => uploadAvatar(file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.refetchQueries({ queryKey: ['profile'] });
       toast.success('Profile photo updated!');
     },
   });
