@@ -150,7 +150,17 @@ function PlanCard({ plan, onEdit }) {
     >
       <div className="flex items-center gap-3 p-4">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-base">{plan.name}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-semibold text-base">{plan.name}</h3>
+            {plan.completed_count > 0 && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
+                style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}
+              >
+                ✓ {plan.completed_count}×
+              </span>
+            )}
+          </div>
           {plan.description && (
             <p className="text-sm truncate mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{plan.description}</p>
           )}

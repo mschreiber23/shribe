@@ -8,9 +8,12 @@ const upload = multer({ storage: multer.memoryStorage() });
 // GET all plans for current user
 router.get('/', (req, res) => {
   const plans = db.prepare(`
-    SELECT wp.*, COUNT(e.id) as exercise_count
+    SELECT wp.*,
+           COUNT(DISTINCT e.id) as exercise_count,
+           COUNT(DISTINCT CASE WHEN ws.completed_at IS NOT NULL THEN ws.id END) as completed_count
     FROM workout_plans wp
     LEFT JOIN exercises e ON e.plan_id = wp.id
+    LEFT JOIN workout_sessions ws ON ws.plan_id = wp.id
     WHERE wp.user_id = ?
     GROUP BY wp.id
     ORDER BY wp.created_at DESC
