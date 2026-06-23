@@ -683,10 +683,12 @@ export default function Today() {
                 <input type="number" value={activityMetric} onChange={e => setActivityMetric(e.target.value)} placeholder={`Enter ${loggingActivity.metric_label.toLowerCase()}`} />
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Duration (minutes)</label>
-              <input type="number" value={activityDuration} onChange={e => setActivityDuration(e.target.value)} placeholder="e.g. 240" min="0" />
-            </div>
+            {loggingActivity.show_duration !== 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Duration (minutes)</label>
+                <input type="number" value={activityDuration} onChange={e => setActivityDuration(e.target.value)} placeholder="e.g. 60" min="0" />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1.5">Notes (optional)</label>
               <input value={activityNotes} onChange={e => setActivityNotes(e.target.value)} placeholder="e.g. Back 9, great conditions" />
