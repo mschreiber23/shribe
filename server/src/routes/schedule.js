@@ -74,7 +74,7 @@ router.get('/', (req, res) => {
   let alQuery = `
     SELECT al.id, al.date, NULL as plan_id, at.name as plan_name, NULL as plan_description,
            0 as exercise_count, 1 as is_completed, 0 as is_recovery_day, 1 as is_activity,
-           at.emoji, al.activity_type_id, al.metric_value, al.metric_label as metric_label_val,
+           at.emoji, al.activity_type_id, al.metric_value, at.metric_label as metric_label_val,
            al.location, al.duration_mins
     FROM activity_logs al
     JOIN activity_types at ON at.id = al.activity_type_id
