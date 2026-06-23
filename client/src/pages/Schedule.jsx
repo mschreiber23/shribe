@@ -135,8 +135,12 @@ export default function Schedule() {
                         🔋 Rest
                       </div>
                     ) : entry.is_activity ? (
-                      <div key={`a-${i}`} className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
-                        {entry.emoji} {entry.plan_name}
+                      <div key={`a-${i}`} className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight" style={{
+                        backgroundColor: !!entry.is_completed ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
+                        color: !!entry.is_completed ? '#4ade80' : '#a5b4fc',
+                        border: `1px solid ${!!entry.is_completed ? 'rgba(74,222,128,0.3)' : 'rgba(99,102,241,0.3)'}`,
+                      }}>
+                        {!!entry.is_completed ? '✓ ' : ''}{entry.emoji} {entry.plan_name}
                       </div>
                     ) : (
                       <div
@@ -175,6 +179,7 @@ export default function Schedule() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{entry.plan_name}</span>
                     {!!entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ Done</span>}
+                    {entry.is_activity && !entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>Planned</span>}
                   </div>
                   <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                     {format(parseISO(entry.date), 'EEEE, MMMM d')}{!entry.is_activity && !entry.is_recovery_day ? ` · ${entry.exercise_count} exercises` : ''}
