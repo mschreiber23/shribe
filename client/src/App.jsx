@@ -10,6 +10,7 @@ import History from './pages/History';
 import Profile from './pages/Profile';
 import People from './pages/People';
 import Whoop from './pages/Whoop';
+import Privacy from './pages/Privacy';
 import Auth from './pages/Auth';
 
 const queryClient = new QueryClient({
@@ -42,6 +43,7 @@ function AppRoutes() {
           <Route path="/history" element={<History />} />
               <Route path="/people" element={<People />} />
               <Route path="/whoop" element={<Whoop />} />
+              <Route path="/privacy" element={<Privacy />} />
               <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
