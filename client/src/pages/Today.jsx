@@ -562,104 +562,82 @@ export default function Today() {
         </div>
       </div>
 
-      {/* Completed non-workout activities today */}
-      {todayActivities.map(a => (
-        <div key={a.id} className="rounded-xl p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-          <span className="text-2xl shrink-0">{a.emoji}</span>
-          <div className="flex-1">
-            <div className="font-semibold">{a.type_name}</div>
-            <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              {a.location ? <span className="font-medium" style={{ color: 'var(--color-text)' }}>{a.location}</span> : 'Completed'}{a.metric_label && a.metric_value ? ` · ${a.metric_label}: ${a.metric_value}` : ''}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
-            </div>
-          </div>
-          <button onClick={() => setEditingActivity(a)} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} /></button>
-          <button onClick={() => removeActivity(a.id)} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
-        </div>
-      ))}
-
-      {/* Completed sessions today */}
-      {existingSessions?.filter(s => s.completed_at).map(s => (
-        <div
-          key={s.id}
-          className="rounded-xl p-4 mb-4 flex items-center gap-3"
-          style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
-        >
-          <CheckCircle size={20} className="text-green-400 shrink-0" />
-          <div className="flex-1">
-            <div className="font-semibold">{s.plan_name}</div>
-            <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Completed · {s.total_sets} sets
-            </div>
-          </div>
-          <button
-            onClick={() => setExportingSession({ id: s.id, plan_name: s.plan_name })}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-            title="Export as image"
-          >
-            <Download size={15} style={{ color: 'var(--color-text-muted)' }} />
-          </button>
-          <button
-            onClick={() => setEditingSession({ id: s.id, plan_name: s.plan_name })}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
-          </button>
-          <button
-            onClick={() => { if (confirm('Delete this workout?')) deleteSession(s.id).then(() => qc.invalidateQueries({ queryKey: ['sessions', selectedDate] })); }}
-            className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
-          >
-            <Trash2 size={15} className="text-red-400" />
-          </button>
-        </div>
-      ))}
-
-      {/* Scheduled workouts */}
-      {scheduledEntries.length > 0 ? (
-        <div className="space-y-3 mb-4">
+      {/* ── COMPLETED ACTIVITIES ─────────────────────── */}
+      {(existingSessions?.some(s => s.completed_at) || todayActivities.length > 0) && (
+        <div className="mb-4 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            <Calendar size={14} />
-            Scheduled for today
+            <CheckCircle size={14} className="text-green-400" />
+            Completed Activities
           </div>
-          {scheduledEntries.map(entry => {
-            const done = existingSessions?.find(s => s.plan_id === entry.plan_id && s.completed_at);
-            return (
-              <div
-                key={entry.id}
-                className="rounded-xl p-4 space-y-2"
-                style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}
-              >
+
+          {/* Completed workout sessions */}
+          {existingSessions?.filter(s => s.completed_at).map(s => (
+            <div key={s.id} className="rounded-xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid rgba(34,197,94,0.2)' }}>
+              <CheckCircle size={20} className="text-green-400 shrink-0" />
+              <div className="flex-1">
+                <div className="font-semibold">{s.plan_name}</div>
+                <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{s.total_sets} sets</div>
+              </div>
+              <button onClick={() => setExportingSession({ id: s.id, plan_name: s.plan_name })} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><Download size={15} style={{ color: 'var(--color-text-muted)' }} /></button>
+              <button onClick={() => setEditingSession({ id: s.id, plan_name: s.plan_name })} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} /></button>
+              <button onClick={() => { if (confirm('Delete this workout?')) deleteSession(s.id).then(() => qc.invalidateQueries({ queryKey: ['sessions', selectedDate] })); }} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
+            </div>
+          ))}
+
+          {/* Completed non-workout activities */}
+          {todayActivities.map(a => (
+            <div key={a.id} className="rounded-xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid rgba(34,197,94,0.2)' }}>
+              <span className="text-2xl shrink-0">{a.emoji}</span>
+              <div className="flex-1">
+                <div className="font-semibold">{a.type_name}</div>
+                <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                  {a.location ? <span className="font-medium" style={{ color: 'var(--color-text)' }}>{a.location}</span> : 'Completed'}{a.metric_label && a.metric_value ? ` · ${a.metric_label}: ${a.metric_value}` : ''}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
+                </div>
+              </div>
+              <button onClick={() => setEditingActivity(a)} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} /></button>
+              <button onClick={() => removeActivity(a.id)} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── SCHEDULED (INCOMPLETE ONLY) ──────────────── */}
+      {(() => {
+        const incomplete = scheduledEntries.filter(entry => !existingSessions?.find(s => s.plan_id === entry.plan_id && s.completed_at));
+        if (incomplete.length === 0 && scheduledEntries.length === 0) return (
+          <div className="rounded-xl p-8 text-center mb-4" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px dashed var(--color-border)' }}>
+            <Calendar size={40} className="mx-auto mb-3 opacity-30" />
+            <p className="text-lg font-medium mb-1">{isFutureDay ? 'Nothing planned yet' : isCurrentDay ? 'No activity scheduled today' : 'No activity logged this day'}</p>
+            <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
+              {isFutureDay ? 'Plan an activity for this day' : isPastDay ? 'Log what you did' : 'Choose an activity to get started'}
+            </p>
+          </div>
+        );
+        if (incomplete.length === 0) return null;
+        return (
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              <Calendar size={14} />
+              Scheduled for today
+            </div>
+            {incomplete.map(entry => (
+              <div key={entry.id} className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-lg font-bold truncate">{entry.plan_name}</h2>
                     <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                      {entry.exercises?.length || 0} exercises
-                      {entry.plan_description && ` · ${entry.plan_description}`}
+                      {entry.exercises?.length || 0} exercises{entry.plan_description && ` · ${entry.plan_description}`}
                     </p>
                   </div>
-                  {done
-                    ? <CheckCircle size={22} className="text-green-400 shrink-0" />
-                    : (
-                      <Button size="sm" onClick={() => startSession(entry.plan_id)} loading={starting}>
-                        <Play size={14} /> Start
-                      </Button>
-                    )
-                  }
+                  <Button size="sm" onClick={() => startSession(entry.plan_id)} loading={starting}>
+                    <Play size={14} /> Start
+                  </Button>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div
-          className="rounded-xl p-8 text-center mb-4"
-          style={{ backgroundColor: 'var(--color-surface-2)', border: '1px dashed var(--color-border)' }}
-        >
-          <Calendar size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium mb-1">{isFutureDay ? 'Nothing planned yet' : isCurrentDay ? 'No activity scheduled today' : 'No activity logged this day'}</p>
-          <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-            {isFutureDay ? 'Plan an activity for this day' : isPastDay ? 'Log what you did' : 'Choose an activity to get started'}
-          </p>
-        </div>
+            ))}
+          </div>
+        );
+      })()}
       )}
 
       <Button
