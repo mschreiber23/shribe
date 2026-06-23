@@ -29,12 +29,14 @@ router.get('/connect', (req, res) => {
     return res.status(401).json({ error: 'Invalid session' });
   }
 
+  const crypto = require('crypto');
+  const state = `${userId}_${crypto.randomBytes(8).toString('hex')}`;
   const params = new URLSearchParams({
     client_id: WHOOP_CLIENT_ID,
     redirect_uri: WHOOP_REDIRECT_URI,
     response_type: 'code',
     scope: 'read:profile read:recovery read:sleep read:workout read:cycles read:body_measurement offline',
-    state: userId.toString(),
+    state,
   });
   res.redirect(`${WHOOP_AUTH}/auth?${params}`);
 });
@@ -45,7 +47,7 @@ router.get('/callback', async (req, res) => {
   console.log('Whoop callback:', { code: !!code, state, error, error_description });
   if (error || !code) return res.redirect(`/?whoop=error&reason=${encodeURIComponent(error_description || error || 'unknown')}`);
 
-  const userId = parseInt(state);
+  const userId = parseInt(state?.split('_')[0]);
   if (!userId) return res.redirect('/?whoop=error');
 
   try {
