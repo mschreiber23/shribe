@@ -5,7 +5,7 @@ import { format, addDays, subDays, isToday, isFuture, parseISO } from 'date-fns'
 import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download, BatteryCharging, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  getScheduleByDate, getPlans, createSession, getSessions,
+  getScheduleByDate, getPlans, createSession, getSessions, deleteSession,
   logSet, updateSet, deleteSet, updateSession, getSession, getPreviousSession,
   getWhoopStatus, getWhoopDaily, getRecoveryDay, logRecoveryDay, removeRecoveryDay,
   getActivityTypes, getActivityLogs, logActivity, deleteActivityLog,
@@ -603,6 +603,12 @@ export default function Today() {
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
             <Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} />
+          </button>
+          <button
+            onClick={() => { if (confirm('Delete this workout?')) deleteSession(s.id).then(() => qc.invalidateQueries({ queryKey: ['sessions', selectedDate] })); }}
+            className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
+          >
+            <Trash2 size={15} className="text-red-400" />
           </button>
         </div>
       ))}
