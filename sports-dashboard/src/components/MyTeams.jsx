@@ -4,13 +4,14 @@ import TeamRow from './TeamRow';
 import { searchTeams, SPORTS } from '../api/espn';
 
 export default function MyTeams() {
-  const { favorites, addTeam } = useFavorites();
+  const { favorites, addTeam, removeTeam } = useFavorites();
   const [showPicker, setShowPicker] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [pickerSport, setPickerSport] = useState('nba');
   const [query, setQuery] = useState('');
   const [teams, setTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
-  const [hiddenTeams, setHiddenTeams] = useState({}); // { "teamId-sport": true }
+  const [hiddenTeams, setHiddenTeams] = useState({});
   const [showHidden, setShowHidden] = useState(false);
 
   const handleHiddenChange = useCallback((teamId, sport, isHidden) => {
@@ -35,11 +36,53 @@ export default function MyTeams() {
           <h2 className="section-title">My Teams</h2>
           <p className="section-sub">Today's games · updates every 30s</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowPicker((v) => !v)}>
-          {showPicker ? 'Done' : '+ Add Team'}
-        </button>
+        <div className="header-actions">
+          {favorites.teams.length > 0 && (
+            <button
+              className={editMode ? 'btn-primary' : 'btn-ghost'}
+              onClick={() => { setEditMode((v) => !v); setShowPicker(false); }}
+            >
+              {editMode ? 'Done' : 'Edit'}
+            </button>
+          )}
+          <button
+            className="btn-primary"
+            onClick={() => { setShowPicker((v) => !v); setEditMode(false); }}
+          >
+            {showPicker ? 'Done' : '+ Add Team'}
+          </button>
+        </div>
       </div>
 
+      {/* Edit mode panel */}
+      {editMode && (
+        <div className="edit-panel">
+          <div className="edit-panel-label">Tap — to remove a team</div>
+          {favorites.teams.map(({ sport, team }) => (
+            <div key={`${sport}-${team.id}`} className="edit-team-row">
+              <button
+                className="edit-remove-btn"
+                onClick={() => removeTeam(team.id, sport)}
+                title="Remove"
+              >
+                −
+              </button>
+              <div className="edit-team-info">
+                {team.logo && <img src={team.logo} alt="" className="edit-team-logo" />}
+                <div>
+                  <div className="edit-team-name">{team.displayName}</div>
+                  <div className="edit-team-sport">{SPORTS[sport]?.label}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {favorites.teams.length === 0 && (
+            <div className="loading-text" style={{ padding: '12px 0' }}>No teams added yet.</div>
+          )}
+        </div>
+      )}
+
+      {/* Add team picker */}
       {showPicker && (
         <div className="picker-panel">
           <div className="sport-tabs-row">
@@ -98,34 +141,38 @@ export default function MyTeams() {
         </div>
       )}
 
-      {favorites.teams.length === 0 && !showPicker && (
+      {favorites.teams.length === 0 && !showPicker && !editMode && (
         <div className="empty-state">
           <div className="empty-icon">🏆</div>
           <p>No teams added. Click "+ Add Team" to get started.</p>
         </div>
       )}
 
-      <div className="teams-list">
-        {favorites.teams.map(({ sport, team }) => {
-          const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
-          if (isHidden && !showHidden) return null;
-          return (
-            <TeamRow
-              key={`${sport}-${team.id}`}
-              sport={sport}
-              team={team}
-              onHiddenChange={handleHiddenChange}
-            />
-          );
-        })}
-      </div>
+      {!editMode && (
+        <>
+          <div className="teams-list">
+            {favorites.teams.map(({ sport, team }) => {
+              const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
+              if (isHidden && !showHidden) return null;
+              return (
+                <TeamRow
+                  key={`${sport}-${team.id}`}
+                  sport={sport}
+                  team={team}
+                  onHiddenChange={handleHiddenChange}
+                />
+              );
+            })}
+          </div>
 
-      {hiddenCount > 0 && (
-        <button className="hidden-teams-toggle" onClick={() => setShowHidden((v) => !v)}>
-          {showHidden
-            ? `▲ Hide ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`
-            : `▼ Show ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`}
-        </button>
+          {hiddenCount > 0 && (
+            <button className="hidden-teams-toggle" onClick={() => setShowHidden((v) => !v)}>
+              {showHidden
+                ? `▲ Hide ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`
+                : `▼ Show ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`}
+            </button>
+          )}
+        </>
       )}
     </section>
   );

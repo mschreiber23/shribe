@@ -238,12 +238,11 @@ export default function TeamRow({ sport, team, onHiddenChange }) {
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
   const accentColor = `#${team.color || '7c3aed'}`;
 
-  // Notify parent once hidden status known
-  useState(() => {
+  useEffect(() => {
     if (hasUpcomingGame !== undefined) {
       onHiddenChange?.(team.id, sport, !hasUpcomingGame);
     }
-  });
+  }, [hasUpcomingGame]);
 
   return (
     <>

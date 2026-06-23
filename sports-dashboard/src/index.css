@@ -1118,6 +1118,72 @@ body {
   .tp-schedule-row { grid-template-columns: 90px 1fr auto; gap: 8px; }
 }
 
+/* ── Edit Mode Panel ── */
+.edit-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.edit-panel-label {
+  font-size: 11px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.edit-team-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.edit-team-row:last-child { border-bottom: none; }
+.edit-team-row:hover { background: var(--bg3); }
+
+.edit-remove-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+.edit-remove-btn:hover { background: #dc2626; transform: scale(1.1); }
+
+.edit-team-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.edit-team-logo { width: 36px; height: 36px; object-fit: contain; }
+
+.edit-team-name { font-size: 15px; font-weight: 700; }
+
+.edit-team-sport {
+  font-size: 11px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
 /* ── Hidden teams toggle ── */
 .hidden-teams-toggle {
   background: transparent;
