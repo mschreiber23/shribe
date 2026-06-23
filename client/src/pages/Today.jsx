@@ -474,8 +474,24 @@ export default function Today() {
     return (
       <div className="flex items-center justify-between mb-4">
         <button onClick={goBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><ChevronLeft size={18} /></button>
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-sm">{isCurrentDay ? 'Today' : format(parseISO(selectedDate), 'MMM d, yyyy')}</span>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              onClick={() => document.getElementById('date-picker-input').showPicker?.() || document.getElementById('date-picker-input').click()}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <Calendar size={15} style={{ color: 'var(--color-text-muted)' }} />
+              <span className="font-semibold text-sm">{isCurrentDay ? 'Today' : format(parseISO(selectedDate), 'MMM d, yyyy')}</span>
+            </button>
+            <input
+              id="date-picker-input"
+              type="date"
+              value={selectedDate}
+              onChange={e => e.target.value && goToDate(e.target.value)}
+              className="absolute opacity-0 pointer-events-none"
+              style={{ top: 0, left: 0, width: '1px', height: '1px' }}
+            />
+          </div>
           {!isCurrentDay && (
             <button onClick={() => goToDate(todayStr)} className="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors" style={{ backgroundColor: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
               Today
