@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Dumbbell, CalendarDays, ClipboardList, UserCircle, LogOut, Users } from 'lucide-react';
+import { CalendarDays, ClipboardList, UserCircle, LogOut, Users, Dumbbell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -50,8 +50,7 @@ export default function Navbar() {
       {/* Desktop */}
       <div className="hidden md:flex items-center gap-1 px-4 py-3 max-w-5xl mx-auto">
         <div className="flex items-center gap-2 mr-6">
-          <Dumbbell size={22} className="text-indigo-400" />
-          <span className="font-bold text-lg">ShribeTRAKR</span>
+          <img src="/logo.png" alt="ShribeTRAKR" style={{ height: '28px', width: 'auto' }} />
         </div>
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
