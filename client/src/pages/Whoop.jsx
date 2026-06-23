@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { Heart, Zap, Moon, Activity, Link2, Link2Off, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop } from '../api';
+import { getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop, getWhoopDebug } from '../api';
 import Button from '../components/Button';
 
 function MetricCard({ icon: Icon, label, value, unit, color, sub }) {
@@ -153,6 +153,18 @@ export default function Whoop() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              const data = await getWhoopDebug();
+              console.log('Whoop debug:', JSON.stringify(data, null, 2));
+              alert('Debug data logged to browser console (F12 → Console tab). Also check: recovery records=' + data.recovery?.records?.length + ', sleep records=' + data.sleep?.records?.length + ', cycles=' + data.cycles?.records?.length);
+            }}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-xs"
+            title="Debug"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            DBG
+          </button>
           <button
             onClick={() => refetch()}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"

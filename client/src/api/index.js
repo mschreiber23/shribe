@@ -47,6 +47,7 @@ export const dismissShare = (shareId) => api.delete(`/social/inbox/${shareId}`).
 
 // Whoop
 export const getWhoopStatus = () => api.get('/whoop/status').then(r => r.data);
+export const getWhoopDebug = () => api.get('/whoop/debug').then(r => r.data);
 export const getWhoopDaily = () => api.get('/whoop/daily').then(r => r.data);
 export const getWhoopHistory = (limit) => api.get('/whoop/history', { params: { limit } }).then(r => r.data);
 export const disconnectWhoop = () => api.delete('/whoop/disconnect').then(r => r.data);
