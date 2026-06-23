@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS } from '../api/espn';
@@ -117,7 +118,7 @@ export default function TeamCard({ sport, team, onHiddenChange }) {
         style={{ '--team-accent': accentColor, '--team-alt': `#${team.alternateColor || 'ffffff'}` }}
       >
         <div className="team-card-header">
-          <div className="team-card-identity">
+          <Link to={`/team/${sport}/${team.id}`} className="team-card-identity team-card-link">
             {team.logo && (
               <img src={team.logo} alt={team.abbreviation} className="team-card-logo" />
             )}
@@ -125,7 +126,7 @@ export default function TeamCard({ sport, team, onHiddenChange }) {
               <div className="team-card-name">{team.displayName}</div>
               <div className="team-card-sport">{sportLabel}</div>
             </div>
-          </div>
+          </Link>
           <button className="remove-btn" onClick={() => removeTeam(team.id, sport)} title="Remove team">×</button>
         </div>
 

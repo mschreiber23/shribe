@@ -54,3 +54,25 @@ export async function getGameBoxscore(sport, gameId) {
   );
   return data;
 }
+
+export async function getTeamInfo(sport, teamId) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(`${BASE}/${league}/teams/${teamId}`);
+  return data.team || {};
+}
+
+export async function getTeamNews(sport, teamId, limit = 10) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `${BASE}/${league}/news?team=${teamId}&limit=${limit}`
+  );
+  return data.articles || [];
+}
+
+export async function getStandings(sport) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/v2/sports/${league}/standings`
+  );
+  return data;
+}
