@@ -86,6 +86,8 @@ export const getSchedule = (start, end) => api.get('/schedule', { params: { star
 export const getScheduleByDate = (date) => api.get(`/schedule/date/${date}`).then(r => r.data); // returns array
 export const setScheduleEntry = (data) => api.post('/schedule', data).then(r => r.data);
 export const deleteScheduleEntry = (id) => api.delete(`/schedule/${id}`).then(r => r.data);
+export const scheduleActivity = (data) => api.post('/schedule/activity', data).then(r => r.data);
+export const deleteScheduledActivity = (id) => api.delete(`/schedule/activity/${id}`).then(r => r.data);
 export const deleteScheduleByDate = (date) => api.delete(`/schedule/date/${date}`).then(r => r.data);
 export { deleteScheduleEntry as removeScheduleEntry };
 
