@@ -391,13 +391,14 @@ export default function Today() {
   const { data: todayActivities = [], refetch: refetchActivities } = useQuery({ queryKey: ['activityLogs', selectedDate], queryFn: () => getActivityLogs({ date: selectedDate }) });
   const [loggingActivity, setLoggingActivity] = useState(null);
   const [activityDuration, setActivityDuration] = useState('');
+  const [activityMetric, setActivityMetric] = useState('');
   const [activityNotes, setActivityNotes] = useState('');
 
   const { mutate: submitActivity, isPending: submittingActivity } = useMutation({
-    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: selectedDate, duration_mins: activityDuration ? Number(activityDuration) : null, notes: activityNotes || null }),
+    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: selectedDate, duration_mins: activityDuration ? Number(activityDuration) : null, metric_value: activityMetric || null, notes: activityNotes || null }),
     onSuccess: () => {
       refetchActivities();
-      setLoggingActivity(null); setActivityDuration(''); setActivityNotes('');
+      setLoggingActivity(null); setActivityDuration(''); setActivityMetric(''); setActivityNotes('');
       setShowPlanPicker(false);
       toast.success(`${loggingActivity.emoji} ${loggingActivity.name} logged!`);
     },
@@ -532,7 +533,7 @@ export default function Today() {
           <div className="flex-1">
             <div className="font-semibold">{a.type_name}</div>
             <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Completed{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
+              Completed{a.metric_label && a.metric_value ? ` · ${a.metric_label}: ${a.metric_value}` : ''}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
             </div>
           </div>
           <button onClick={() => removeActivity(a.id)} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
@@ -676,13 +677,19 @@ export default function Today() {
               <span className="text-2xl">{loggingActivity.emoji}</span>
               <span className="font-semibold">{loggingActivity.name}</span>
             </div>
+            {loggingActivity.metric_label && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">{loggingActivity.metric_label}</label>
+                <input type="number" value={activityMetric} onChange={e => setActivityMetric(e.target.value)} placeholder={`Enter ${loggingActivity.metric_label.toLowerCase()}`} />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1.5">Duration (minutes)</label>
-              <input type="number" value={activityDuration} onChange={e => setActivityDuration(e.target.value)} placeholder="e.g. 60" min="0" />
+              <input type="number" value={activityDuration} onChange={e => setActivityDuration(e.target.value)} placeholder="e.g. 240" min="0" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Notes (optional)</label>
-              <input value={activityNotes} onChange={e => setActivityNotes(e.target.value)} placeholder="e.g. Shot 82, felt great" />
+              <input value={activityNotes} onChange={e => setActivityNotes(e.target.value)} placeholder="e.g. Back 9, great conditions" />
             </div>
             <div className="flex gap-3">
               <Button onClick={() => submitActivity()} loading={submittingActivity}>Log Activity</Button>
