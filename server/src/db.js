@@ -81,6 +81,7 @@ db.exec(`
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     emoji TEXT NOT NULL DEFAULT '🏃',
+    metric_label TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0
   );
 
@@ -90,6 +91,7 @@ db.exec(`
     activity_type_id INTEGER NOT NULL REFERENCES activity_types(id),
     date TEXT NOT NULL,
     duration_mins INTEGER,
+    metric_value TEXT,
     notes TEXT,
     completed_at TEXT NOT NULL DEFAULT (datetime('now')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -198,23 +200,37 @@ if (sessionCols.length > 0 && !sessionCols.find(c => c.name === 'user_id')) {
   db.exec("UPDATE workout_sessions SET user_id = (SELECT user_id FROM workout_plans WHERE workout_plans.id = workout_sessions.plan_id)");
 }
 
+// Migrations for activity_types and activity_logs new columns
+const atCols = db.prepare("PRAGMA table_info(activity_types)").all();
+if (atCols.length > 0 && !atCols.find(c => c.name === 'metric_label')) {
+  db.exec("ALTER TABLE activity_types ADD COLUMN metric_label TEXT");
+  db.exec("UPDATE activity_types SET metric_label = 'Score' WHERE name = 'Golf Round' AND user_id IS NULL");
+}
+const alCols = db.prepare("PRAGMA table_info(activity_logs)").all();
+if (alCols.length > 0 && !alCols.find(c => c.name === 'metric_value')) {
+  db.exec("ALTER TABLE activity_logs ADD COLUMN metric_value TEXT");
+}
+
 // Seed default global activity types
 const existingTypes = db.prepare('SELECT COUNT(*) as count FROM activity_types WHERE user_id IS NULL').get();
 if (existingTypes.count === 0) {
   const defaultActivities = [
-    { name: 'Golf Round', emoji: '⛳', sort_order: 0 },
-    { name: 'Golf Practice', emoji: '🏌️', sort_order: 1 },
-    { name: 'Tennis', emoji: '🎾', sort_order: 2 },
-    { name: 'Pickleball', emoji: '🏓', sort_order: 3 },
-    { name: 'Baseball Catch', emoji: '⚾', sort_order: 4 },
-    { name: 'Running', emoji: '🏃', sort_order: 5 },
-    { name: 'Cycling', emoji: '🚴', sort_order: 6 },
-    { name: 'Swimming', emoji: '🏊', sort_order: 7 },
-    { name: 'Yoga', emoji: '🧘', sort_order: 8 },
-    { name: 'Hiking', emoji: '🥾', sort_order: 9 },
+    { name: 'Golf Round', emoji: '⛳', metric_label: 'Score', sort_order: 0 },
+    { name: 'Golf Practice', emoji: '🏌️', metric_label: null, sort_order: 1 },
+    { name: 'Tennis', emoji: '🎾', metric_label: null, sort_order: 2 },
+    { name: 'Pickleball', emoji: '🏓', metric_label: null, sort_order: 3 },
+    { name: 'Baseball Catch', emoji: '⚾', metric_label: null, sort_order: 4 },
+    { name: 'Running', emoji: '🏃', metric_label: null, sort_order: 5 },
+    { name: 'Cycling', emoji: '🚴', metric_label: null, sort_order: 6 },
+    { name: 'Swimming', emoji: '🏊', metric_label: null, sort_order: 7 },
+    { name: 'Yoga', emoji: '🧘', metric_label: null, sort_order: 8 },
+    { name: 'Hiking', emoji: '🥾', metric_label: null, sort_order: 9 },
   ];
-  const insertType = db.prepare('INSERT INTO activity_types (user_id, name, emoji, sort_order) VALUES (NULL, ?, ?, ?)');
-  defaultActivities.forEach(a => insertType.run(a.name, a.emoji, a.sort_order));
+  const insertType = db.prepare('INSERT INTO activity_types (user_id, name, emoji, metric_label, sort_order) VALUES (NULL, ?, ?, ?, ?)');
+  defaultActivities.forEach(a => insertType.run(a.name, a.emoji, a.metric_label, a.sort_order));
+} else {
+  // Backfill metric_label for existing Golf Round
+  db.prepare("UPDATE activity_types SET metric_label = 'Score' WHERE name = 'Golf Round' AND metric_label IS NULL AND user_id IS NULL").run();
 }
 
 module.exports = db;
