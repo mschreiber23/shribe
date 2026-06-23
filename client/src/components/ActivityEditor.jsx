@@ -1,27 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api } from '../api/index.js';
 import Modal from './Modal';
 import Button from './Button';
 
-// Update an activity log
 const updateActivity = (id, data) => api.put(`/activities/${id}`, data).then(r => r.data);
 
 export function ActivityEditorModal({ activity, open, onClose, onSave }) {
-  const [metricValue, setMetricValue] = useState(activity?.metric_value ?? '');
-  const [location, setLocation] = useState(activity?.location ?? '');
-  const [duration, setDuration] = useState(activity?.duration_mins ?? '');
-  const [notes, setNotes] = useState(activity?.notes ?? '');
+  const [metricValue, setMetricValue] = useState('');
+  const [location, setLocation] = useState('');
+  const [duration, setDuration] = useState('');
+  const [notes, setNotes] = useState('');
   const qc = useQueryClient();
 
-  // Reset state when activity changes
-  const reset = (a) => {
-    setMetricValue(a?.metric_value ?? '');
-    setLocation(a?.location ?? '');
-    setDuration(a?.duration_mins ?? '');
-    setNotes(a?.notes ?? '');
-  };
+  // Re-populate fields whenever the activity changes
+  useEffect(() => {
+    if (activity) {
+      setMetricValue(activity.metric_value ?? '');
+      setLocation(activity.location ?? '');
+      setDuration(activity.duration_mins ?? '');
+      setNotes(activity.notes ?? '');
+    }
+  }, [activity?.id]);
 
   const { mutate: save, isPending } = useMutation({
     mutationFn: () => updateActivity(activity.id, {
