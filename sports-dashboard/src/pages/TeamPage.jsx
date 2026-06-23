@@ -51,7 +51,15 @@ function ScheduleRow({ event, teamId }) {
   const isFinal = state === 'post';
   const date = new Date(event.date);
   const won = myTeam?.winner;
-  const lost = isFinal && !won;
+
+  // Score can be a plain value or an object { displayValue }
+  const getScore = (c) => {
+    const s = c?.score;
+    if (s == null) return null;
+    return typeof s === 'object' ? s.displayValue : String(s);
+  };
+  const myScore = getScore(myTeam);
+  const oppScore = getScore(opponent);
 
   return (
     <div className={`tp-schedule-row ${isLive ? 'tp-row-live' : ''}`}>
@@ -74,7 +82,7 @@ function ScheduleRow({ event, teamId }) {
         {isFinal && (
           <>
             <span className={`tp-row-wl ${won ? 'tp-win' : 'tp-loss'}`}>{won ? 'W' : 'L'}</span>
-            <span className="tp-row-score">{myTeam?.score}–{opponent?.score}</span>
+            <span className="tp-row-score">{myScore}–{oppScore}</span>
           </>
         )}
         {!isLive && !isFinal && (
