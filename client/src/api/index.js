@@ -45,6 +45,14 @@ export const getInboxUnread = () => api.get('/social/inbox/unread').then(r => r.
 export const acceptShare = (shareId) => api.post(`/social/inbox/${shareId}/accept`).then(r => r.data);
 export const dismissShare = (shareId) => api.delete(`/social/inbox/${shareId}`).then(r => r.data);
 
+// Activities (non-workout)
+export const getActivityTypes = () => api.get('/activities/types').then(r => r.data);
+export const createActivityType = (data) => api.post('/activities/types', data).then(r => r.data);
+export const deleteActivityType = (id) => api.delete(`/activities/types/${id}`).then(r => r.data);
+export const getActivityLogs = (params) => api.get('/activities', { params }).then(r => r.data);
+export const logActivity = (data) => api.post('/activities', data).then(r => r.data);
+export const deleteActivityLog = (id) => api.delete(`/activities/${id}`).then(r => r.data);
+
 // Recovery days
 export const getRecoveryDay = (date) => api.get(`/recovery/${date}`).then(r => r.data);
 export const logRecoveryDay = (date, notes) => api.post('/recovery', { date, notes }).then(r => r.data);

@@ -76,6 +76,25 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS activity_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    emoji TEXT NOT NULL DEFAULT '🏃',
+    sort_order INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_type_id INTEGER NOT NULL REFERENCES activity_types(id),
+    date TEXT NOT NULL,
+    duration_mins INTEGER,
+    notes TEXT,
+    completed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS recovery_days (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -170,7 +189,23 @@ if (sessionCols.length > 0 && !sessionCols.find(c => c.name === 'user_id')) {
   db.exec("UPDATE workout_sessions SET user_id = (SELECT user_id FROM workout_plans WHERE workout_plans.id = workout_sessions.plan_id)");
 }
 
-// Fix old schedule_entries UNIQUE constraint (date only → date+plan_id)
-// SQLite can't drop constraints, so we check if a duplicate would fail gracefully
+// Seed default global activity types
+const existingTypes = db.prepare('SELECT COUNT(*) as count FROM activity_types WHERE user_id IS NULL').get();
+if (existingTypes.count === 0) {
+  const defaultActivities = [
+    { name: 'Golf Round', emoji: '⛳', sort_order: 0 },
+    { name: 'Golf Practice', emoji: '🏌️', sort_order: 1 },
+    { name: 'Tennis', emoji: '🎾', sort_order: 2 },
+    { name: 'Pickleball', emoji: '🏓', sort_order: 3 },
+    { name: 'Baseball Catch', emoji: '⚾', sort_order: 4 },
+    { name: 'Running', emoji: '🏃', sort_order: 5 },
+    { name: 'Cycling', emoji: '🚴', sort_order: 6 },
+    { name: 'Swimming', emoji: '🏊', sort_order: 7 },
+    { name: 'Yoga', emoji: '🧘', sort_order: 8 },
+    { name: 'Hiking', emoji: '🥾', sort_order: 9 },
+  ];
+  const insertType = db.prepare('INSERT INTO activity_types (user_id, name, emoji, sort_order) VALUES (NULL, ?, ?, ?)');
+  defaultActivities.forEach(a => insertType.run(a.name, a.emoji, a.sort_order));
+}
 
 module.exports = db;

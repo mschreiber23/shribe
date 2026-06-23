@@ -8,6 +8,7 @@ import {
   getScheduleByDate, getPlans, createSession, getSessions,
   logSet, updateSet, deleteSet, updateSession, getSession, getPreviousSession,
   getWhoopStatus, getWhoopDaily, getRecoveryDay, logRecoveryDay, removeRecoveryDay,
+  getActivityTypes, getActivityLogs, logActivity, deleteActivityLog,
 } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -376,10 +377,25 @@ export default function Today() {
     queryFn: () => getSessions({ date: today }),
   });
 
-  const { data: plans } = useQuery({
-    queryKey: ['plans'],
-    queryFn: getPlans,
-    enabled: showPlanPicker,
+  const { data: plans } = useQuery({ queryKey: ['plans'], queryFn: getPlans, enabled: showPlanPicker });
+  const { data: activityTypes = [] } = useQuery({ queryKey: ['activityTypes'], queryFn: getActivityTypes, enabled: showPlanPicker });
+  const { data: todayActivities = [], refetch: refetchActivities } = useQuery({ queryKey: ['activityLogs', today], queryFn: () => getActivityLogs({ date: today }) });
+  const [loggingActivity, setLoggingActivity] = useState(null); // { type }
+  const [activityDuration, setActivityDuration] = useState('');
+  const [activityNotes, setActivityNotes] = useState('');
+
+  const { mutate: submitActivity, isPending: submittingActivity } = useMutation({
+    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: today, duration_mins: activityDuration ? Number(activityDuration) : null, notes: activityNotes || null }),
+    onSuccess: () => {
+      refetchActivities();
+      setLoggingActivity(null); setActivityDuration(''); setActivityNotes('');
+      setShowPlanPicker(false);
+      toast.success(`${loggingActivity.emoji} ${loggingActivity.name} logged!`);
+    },
+  });
+  const { mutate: removeActivity } = useMutation({
+    mutationFn: (id) => deleteActivityLog(id),
+    onSuccess: () => { refetchActivities(); toast.success('Activity removed'); },
   });
 
   const activeSession = existingSessions?.find(s => !s.completed_at);
@@ -480,6 +496,20 @@ export default function Today() {
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{dateLabel}</p>
         </div>
       </div>
+
+      {/* Completed non-workout activities today */}
+      {todayActivities.map(a => (
+        <div key={a.id} className="rounded-xl p-4 mb-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+          <span className="text-2xl shrink-0">{a.emoji}</span>
+          <div className="flex-1">
+            <div className="font-semibold">{a.type_name}</div>
+            <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Completed{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
+            </div>
+          </div>
+          <button onClick={() => removeActivity(a.id)} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
+        </div>
+      ))}
 
       {/* Completed sessions today */}
       {existingSessions?.filter(s => s.completed_at).map(s => (
@@ -610,30 +640,57 @@ export default function Today() {
         onClose={() => setEditingSession(null)}
       />
 
-      {/* Plan picker modal */}
-      <Modal open={showPlanPicker} onClose={() => setShowPlanPicker(false)} title="Choose an Activity">
-        <div className="space-y-2">
-          {plans?.length === 0 && (
-            <p className="text-center py-6" style={{ color: 'var(--color-text-muted)' }}>
-              No plans yet. Create one in the Plans tab.
-            </p>
-          )}
-          {plans?.map(plan => (
-            <button
-              key={plan.id}
-              className="w-full text-left p-4 rounded-xl transition-colors hover:bg-white/5"
-              style={{ border: '1px solid var(--color-border)' }}
-              onClick={() => startSession(plan.id)}
-              disabled={starting}
-            >
-              <div className="font-semibold">{plan.name}</div>
-              <div className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                {plan.exercise_count} exercises
-                {plan.description && ` · ${plan.description}`}
+      {/* Activity picker modal */}
+      <Modal open={showPlanPicker} onClose={() => { setShowPlanPicker(false); setLoggingActivity(null); setActivityDuration(''); setActivityNotes(''); }} title="Choose an Activity" size="lg">
+        {loggingActivity ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)' }}>
+              <span className="text-2xl">{loggingActivity.emoji}</span>
+              <span className="font-semibold">{loggingActivity.name}</span>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Duration (minutes)</label>
+              <input type="number" value={activityDuration} onChange={e => setActivityDuration(e.target.value)} placeholder="e.g. 60" min="0" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Notes (optional)</label>
+              <input value={activityNotes} onChange={e => setActivityNotes(e.target.value)} placeholder="e.g. Shot 82, felt great" />
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={() => submitActivity()} loading={submittingActivity}>Log Activity</Button>
+              <Button variant="secondary" onClick={() => setLoggingActivity(null)}>Back</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Workout Plans */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>Workout Plans</p>
+              <div className="space-y-2">
+                {plans?.length === 0 && <p className="text-sm py-2" style={{ color: 'var(--color-text-muted)' }}>No workout plans yet.</p>}
+                {plans?.map(plan => (
+                  <button key={plan.id} className="w-full text-left p-3 rounded-xl transition-colors hover:bg-white/5" style={{ border: '1px solid var(--color-border)' }} onClick={() => startSession(plan.id)} disabled={starting}>
+                    <div className="font-semibold text-sm">💪 {plan.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{plan.exercise_count} exercises{plan.description && ` · ${plan.description}`}</div>
+                  </button>
+                ))}
               </div>
-            </button>
-          ))}
-        </div>
+            </div>
+
+            {/* Other Activities */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>Other Activities</p>
+              <div className="grid grid-cols-2 gap-2">
+                {activityTypes.map(type => (
+                  <button key={type.id} className="flex items-center gap-2 p-3 rounded-xl text-left transition-colors hover:bg-white/5" style={{ border: '1px solid var(--color-border)' }} onClick={() => setLoggingActivity(type)}>
+                    <span className="text-xl shrink-0">{type.emoji}</span>
+                    <span className="font-medium text-sm truncate">{type.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
