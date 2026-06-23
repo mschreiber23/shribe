@@ -125,15 +125,19 @@ router.get('/debug', requireAuth, async (req, res) => {
   try {
     const token = await getToken(req.userId);
     const headers = { Authorization: `Bearer ${token}` };
-    const [c, r, s] = await Promise.allSettled([
+    const [c, r, s, r2, s2] = await Promise.allSettled([
       axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }),
       axios.get(`${WHOOP_API}/v1/recovery?limit=3`, { headers }),
       axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/sleep?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/activity/workout?limit=3`, { headers }),
     ]);
     res.json({
       cycles: c.status === 'fulfilled' ? c.value.data : c.reason?.response?.data,
-      recovery: r.status === 'fulfilled' ? r.value.data : r.reason?.response?.data,
-      sleep: s.status === 'fulfilled' ? s.value.data : s.reason?.response?.data,
+      recovery_v1: r.status === 'fulfilled' ? r.value.data : r.reason?.response?.data,
+      sleep_activity: s.status === 'fulfilled' ? s.value.data : s.reason?.response?.data,
+      sleep_v1: r2.status === 'fulfilled' ? r2.value.data : r2.reason?.response?.data,
+      workout_activity: s2.status === 'fulfilled' ? s2.value.data : s2.reason?.response?.data,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -149,8 +153,12 @@ router.get('/daily', requireAuth, async (req, res) => {
     // Fetch latest cycle (strain), recovery, and sleep in parallel
     const [cycleRes, recoveryRes, sleepRes] = await Promise.allSettled([
       axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/recovery?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/recovery?limit=3&next_token=`, { headers }).catch(() =>
+        axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }) // fallback: parse recovery from cycle
+      ),
+      axios.get(`${WHOOP_API}/v1/sleep?limit=3`, { headers }).catch(() =>
+        axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers })
+      ),
     ]);
 
     const cycles = cycleRes.status === 'fulfilled' ? cycleRes.value.data?.records || [] : [];
