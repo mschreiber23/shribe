@@ -82,6 +82,7 @@ db.exec(`
     name TEXT NOT NULL,
     emoji TEXT NOT NULL DEFAULT '🏃',
     metric_label TEXT,
+    show_duration INTEGER NOT NULL DEFAULT 1,
     sort_order INTEGER NOT NULL DEFAULT 0
   );
 
@@ -206,6 +207,10 @@ if (atCols.length > 0 && !atCols.find(c => c.name === 'metric_label')) {
   db.exec("ALTER TABLE activity_types ADD COLUMN metric_label TEXT");
   db.exec("UPDATE activity_types SET metric_label = 'Score' WHERE name = 'Golf Round' AND user_id IS NULL");
 }
+if (atCols.length > 0 && !atCols.find(c => c.name === 'show_duration')) {
+  db.exec("ALTER TABLE activity_types ADD COLUMN show_duration INTEGER NOT NULL DEFAULT 1");
+  db.exec("UPDATE activity_types SET show_duration = 0 WHERE name = 'Golf Round' AND user_id IS NULL");
+}
 const alCols = db.prepare("PRAGMA table_info(activity_logs)").all();
 if (alCols.length > 0 && !alCols.find(c => c.name === 'metric_value')) {
   db.exec("ALTER TABLE activity_logs ADD COLUMN metric_value TEXT");
@@ -215,7 +220,7 @@ if (alCols.length > 0 && !alCols.find(c => c.name === 'metric_value')) {
 const existingTypes = db.prepare('SELECT COUNT(*) as count FROM activity_types WHERE user_id IS NULL').get();
 if (existingTypes.count === 0) {
   const defaultActivities = [
-    { name: 'Golf Round', emoji: '⛳', metric_label: 'Score', sort_order: 0 },
+    { name: 'Golf Round', emoji: '⛳', metric_label: 'Score', show_duration: 0, sort_order: 0 },
     { name: 'Golf Practice', emoji: '🏌️', metric_label: null, sort_order: 1 },
     { name: 'Tennis', emoji: '🎾', metric_label: null, sort_order: 2 },
     { name: 'Pickleball', emoji: '🏓', metric_label: null, sort_order: 3 },
@@ -226,8 +231,8 @@ if (existingTypes.count === 0) {
     { name: 'Yoga', emoji: '🧘', metric_label: null, sort_order: 8 },
     { name: 'Hiking', emoji: '🥾', metric_label: null, sort_order: 9 },
   ];
-  const insertType = db.prepare('INSERT INTO activity_types (user_id, name, emoji, metric_label, sort_order) VALUES (NULL, ?, ?, ?, ?)');
-  defaultActivities.forEach(a => insertType.run(a.name, a.emoji, a.metric_label, a.sort_order));
+  const insertType = db.prepare('INSERT INTO activity_types (user_id, name, emoji, metric_label, show_duration, sort_order) VALUES (NULL, ?, ?, ?, ?, ?)');
+  defaultActivities.forEach(a => insertType.run(a.name, a.emoji, a.metric_label, a.show_duration ?? 1, a.sort_order));
 } else {
   // Backfill metric_label for existing Golf Round
   db.prepare("UPDATE activity_types SET metric_label = 'Score' WHERE name = 'Golf Round' AND metric_label IS NULL AND user_id IS NULL").run();
