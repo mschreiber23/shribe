@@ -10,6 +10,7 @@ import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry, getActivi
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
+import { ActivityEditorModal } from '../components/ActivityEditor';
 
 export default function Schedule() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -17,6 +18,7 @@ export default function Schedule() {
   const [showAssign, setShowAssign] = useState(false);
   const [viewingEntry, setViewingEntry] = useState(null); // { type: 'workout'|'activity', planId?, activityTypeId? }
   const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editingActivityLog, setEditingActivityLog] = useState(null);
   const qc = useQueryClient();
 
   const monthStart = startOfMonth(currentMonth);
@@ -217,15 +219,15 @@ export default function Schedule() {
         </div>
       )}
 
-      {/* Workout editor for sessions opened from calendar */}
       {editingSessionId && (
-        <WorkoutEditorModal
-          open={!!editingSessionId}
-          sessionId={editingSessionId}
-          planName={sessionDetail?.plan_name}
-          onClose={() => setEditingSessionId(null)}
-        />
+        <WorkoutEditorModal open={!!editingSessionId} sessionId={editingSessionId} planName={sessionDetail?.plan_name} onClose={() => setEditingSessionId(null)} />
       )}
+      <ActivityEditorModal
+        open={!!editingActivityLog}
+        activity={editingActivityLog}
+        onClose={() => setEditingActivityLog(null)}
+        onSave={() => { qc.invalidateQueries({ queryKey: ['activityLogs', selectedDate] }); qc.invalidateQueries({ queryKey: ['schedule'] }); }}
+      />
 
       {/* Assign modal */}
       <Modal
@@ -279,7 +281,7 @@ export default function Schedule() {
                       {sessionDetail.logged_exercises?.length === 0 && (
                         <p className="text-sm text-center py-3" style={{ color: 'var(--color-text-muted)' }}>No sets logged</p>
                       )}
-                      <Button size="sm" variant="secondary" onClick={() => { setEditingSessionId(sessionForPlan?.id); }}>Edit Workout</Button>
+                      <Button size="sm" variant="secondary" onClick={() => setEditingSessionId(sessionForPlan?.id)}>Edit Workout</Button>
                     </>
                   )}
                 </div>
@@ -291,6 +293,7 @@ export default function Schedule() {
                   {!activityDetail && <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>Loading...</p>}
                   {activityDetail && (
                     <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--color-surface-3)' }}>
+                    
                       <div className="flex items-center gap-3">
                         <span className="text-3xl">{activityDetail.emoji}</span>
                         <div>
@@ -313,6 +316,7 @@ export default function Schedule() {
                       {activityDetail.notes && (
                         <div className="text-sm p-2 rounded-lg" style={{ backgroundColor: 'var(--color-surface-2)' }}>{activityDetail.notes}</div>
                       )}
+                      <Button size="sm" variant="secondary" onClick={() => setEditingActivityLog(activityDetail)}>Edit Activity</Button>
                     </div>
                   )}
                 </div>

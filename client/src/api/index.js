@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api' });
+export const api = axios.create({ baseURL: '/api' });
 
 // Attach auth token to every request from this instance
 api.interceptors.request.use(config => {

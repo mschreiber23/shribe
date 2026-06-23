@@ -64,11 +64,19 @@ router.post('/', (req, res) => {
 
 // PUT update activity log
 router.put('/:id', (req, res) => {
-  const { duration_mins, notes } = req.body;
+  const { duration_mins, metric_value, location, notes } = req.body;
   const log = db.prepare('SELECT * FROM activity_logs WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!log) return res.status(404).json({ error: 'Activity not found' });
-  db.prepare('UPDATE activity_logs SET duration_mins = ?, notes = ? WHERE id = ?').run(duration_mins ?? log.duration_mins, notes ?? log.notes, req.params.id);
-  const updated = db.prepare('SELECT al.*, at.name as type_name, at.emoji FROM activity_logs al JOIN activity_types at ON at.id = al.activity_type_id WHERE al.id = ?').get(req.params.id);
+  db.prepare('UPDATE activity_logs SET duration_mins = ?, metric_value = ?, location = ?, notes = ? WHERE id = ?')
+    .run(duration_mins !== undefined ? duration_mins : log.duration_mins,
+         metric_value !== undefined ? metric_value : log.metric_value,
+         location !== undefined ? location : log.location,
+         notes !== undefined ? notes : log.notes,
+         req.params.id);
+  const updated = db.prepare(`
+    SELECT al.*, at.name as type_name, at.emoji, at.metric_label, at.has_location, at.show_duration
+    FROM activity_logs al JOIN activity_types at ON at.id = al.activity_type_id WHERE al.id = ?
+  `).get(req.params.id);
   res.json(updated);
 });
 
