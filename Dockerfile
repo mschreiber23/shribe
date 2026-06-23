@@ -4,19 +4,17 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
+COPY package*.json ./
 COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
-RUN npm --prefix server install --production=false
-RUN npm --prefix client install --production=false
+RUN npm --prefix server install
+RUN npm --prefix client install
 
 COPY . .
 
-RUN npm --prefix client run build
-
-ENV NODE_ENV=production
-ENV PORT=3001
+RUN npm run build
 
 EXPOSE 3001
 
-CMD ["node", "server/src/index.js"]
+CMD ["npm", "--prefix", "server", "run", "start"]
