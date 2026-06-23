@@ -11,6 +11,9 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Health check for Railway
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 // Public auth routes (no token required)
 app.use('/api/auth', require('./routes/auth'));
 

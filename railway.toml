@@ -2,4 +2,6 @@
 builder = "dockerfile"
 
 [deploy]
-restartPolicyType = "on_failure"
+restartPolicyType = "always"
+healthcheckPath = "/health"
+healthcheckTimeout = 10
