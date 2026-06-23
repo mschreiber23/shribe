@@ -416,13 +416,16 @@ export default function Today() {
       { label: 'Strain', value: whoopDaily.strain_score != null ? `${Math.round(whoopDaily.strain_score * 10) / 10}` : '—', color: whoopDaily.strain_score >= 18 ? '#ef4444' : whoopDaily.strain_score >= 14 ? '#f59e0b' : '#6366f1' },
     ];
     return (
-      <div className="grid grid-cols-4 gap-2 mb-5">
+      <div className="mb-5">
+      <h2 className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-muted)' }}>Today at a Glance</h2>
+      <div className="grid grid-cols-4 gap-2">
         {metrics.map(m => (
           <div key={m.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
             <div className="text-lg font-bold" style={{ color: m.color }}>{m.value}</div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{m.label}</div>
           </div>
         ))}
+      </div>
       </div>
     );
   }
