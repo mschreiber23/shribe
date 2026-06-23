@@ -190,34 +190,71 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* This month's list */}
-      {scheduleEntries.filter(e => e.date >= format(monthStart, 'yyyy-MM-dd') && e.date <= format(monthEnd, 'yyyy-MM-dd')).length > 0 && (
-        <div className="mt-6 space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>This Month</h2>
-          {scheduleEntries
-            .filter(e => e.date >= format(monthStart, 'yyyy-MM-dd') && e.date <= format(monthEnd, 'yyyy-MM-dd'))
-            .map(entry => (
-              <div key={entry.id ?? `c-${entry.plan_id}-${entry.date}`} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-                {entry.is_recovery_day ? <span className="text-xl shrink-0">🔋</span> : entry.is_activity ? <span className="text-xl shrink-0">{entry.emoji}</span> : <div className="w-2 h-8 rounded-full shrink-0" style={{ backgroundColor: !!entry.is_completed ? '#4ade80' : planColorMap[entry.plan_id] || '#6366f1' }} />}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{entry.plan_name}</span>
-                    {!!entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ Done</span>}
-                    {entry.is_activity && !entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>Planned</span>}
-                  </div>
-                  <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {format(parseISO(entry.date), 'EEEE, MMMM d')}{!entry.is_activity && !entry.is_recovery_day ? ` · ${entry.exercise_count} exercises` : ''}
-                  </div>
+      {/* This month's summary — aggregated counts by category */}
+      {(() => {
+        const monthEntries = scheduleEntries.filter(e =>
+          e.date >= format(monthStart, 'yyyy-MM-dd') && e.date <= format(monthEnd, 'yyyy-MM-dd')
+        );
+        if (!monthEntries.length) return null;
+
+        // Aggregate completed and scheduled counts by category label
+        const completedCounts = {};
+        const scheduledCounts = {};
+
+        for (const e of monthEntries) {
+          if (e.is_recovery_day) continue;
+          const label = e.is_activity ? `${e.emoji} ${e.plan_name}` : `💪 Workouts`;
+          if (!!e.is_completed) {
+            completedCounts[label] = (completedCounts[label] || 0) + 1;
+          } else {
+            scheduledCounts[label] = (scheduledCounts[label] || 0) + 1;
+          }
+        }
+
+        const restCompleted = monthEntries.filter(e => e.is_recovery_day).length;
+        if (restCompleted > 0) completedCounts['🔋 Rest Days'] = restCompleted;
+
+        const completedEntries = Object.entries(completedCounts);
+        const scheduledEntries = Object.entries(scheduledCounts);
+
+        if (!completedEntries.length && !scheduledEntries.length) return null;
+
+        return (
+          <div className="mt-6 space-y-4">
+            {completedEntries.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>
+                  Completed This Month
+                </h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {completedEntries.map(([label, count]) => (
+                    <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-xl font-bold" style={{ color: '#4ade80' }}>{count}</span>
+                    </div>
+                  ))}
                 </div>
-                {entry.id && !entry.is_recovery_day && (
-                  <button onClick={() => unassign({ id: entry.id, isActivity: !!entry.is_activity })} className="p-1.5 rounded hover:bg-red-500/20 transition-colors">
-                    <X size={14} className="text-red-400" />
-                  </button>
-                )}
               </div>
-            ))}
-        </div>
-      )}
+            )}
+
+            {scheduledEntries.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>
+                  Scheduled This Month
+                </h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {scheduledEntries.map(([label, count]) => (
+                    <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-xl font-bold" style={{ color: '#a5b4fc' }}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {editingSessionId && (
         <WorkoutEditorModal open={!!editingSessionId} sessionId={editingSessionId} planName={sessionDetail?.plan_name} onClose={() => setEditingSessionId(null)} />
