@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
-import TeamCard from './TeamCard';
+import TeamRow from './TeamRow';
 import { searchTeams, SPORTS } from '../api/espn';
 
 export default function MyTeams() {
@@ -105,12 +105,12 @@ export default function MyTeams() {
         </div>
       )}
 
-      <div className="teams-grid">
+      <div className="teams-list">
         {favorites.teams.map(({ sport, team }) => {
           const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
           if (isHidden && !showHidden) return null;
           return (
-            <TeamCard
+            <TeamRow
               key={`${sport}-${team.id}`}
               sport={sport}
               team={team}
