@@ -51,7 +51,17 @@ const DEFAULT_FAVORITES = {
       },
     },
   ],
-  players: [],
+  players: [
+    {
+      id: '4918256',
+      displayName: 'James Wood',
+      position: 'CF',
+      headshot: 'https://a.espncdn.com/i/headshots/mlb/players/full/4918256.png',
+      sport: 'mlb',
+      teamId: '20',
+      teamName: 'Washington Nationals',
+    },
+  ],
 };
 
 export function FavoritesProvider({ children }) {
