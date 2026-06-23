@@ -102,27 +102,46 @@ router.delete('/avatar', (req, res) => {
   res.json({ success: true });
 });
 
-// GET feed
+// GET feed — workout sessions + activity logs combined
 router.get('/feed', (req, res) => {
   const { limit = 20, offset = 0 } = req.query;
 
   const sessions = db.prepare(`
-    SELECT ws.id, ws.date, ws.completed_at, ws.notes, wp.name as plan_name
+    SELECT ws.id, ws.date, ws.completed_at, ws.notes, wp.name as plan_name,
+           'workout' as feed_type, NULL as emoji, NULL as metric_label, NULL as metric_value, NULL as duration_mins
     FROM workout_sessions ws
     JOIN workout_plans wp ON wp.id = ws.plan_id
     WHERE ws.completed_at IS NOT NULL AND ws.user_id = ?
-    ORDER BY ws.completed_at DESC
-    LIMIT ? OFFSET ?
-  `).all(req.userId, Number(limit), Number(offset));
+  `).all(req.userId);
 
-  const posts = sessions.map(session => {
+  const activityLogs = db.prepare(`
+    SELECT al.id, al.date, al.created_at as completed_at, al.notes, at.name as plan_name,
+           'activity' as feed_type, at.emoji, at.metric_label, al.metric_value, al.duration_mins
+    FROM activity_logs al
+    JOIN activity_types at ON at.id = al.activity_type_id
+    WHERE al.user_id = ?
+  `).all(req.userId);
+
+  const all = [...sessions, ...activityLogs]
+    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+    .slice(Number(offset), Number(offset) + Number(limit));
+
+  const posts = all.map(item => {
+    if (item.feed_type === 'activity') {
+      return {
+        ...item,
+        sections: [],
+        stats: { total_sets: 0, total_reps: 0, total_volume: 0, exercise_count: 0 },
+      };
+    }
+
     const sets = db.prepare(`
       SELECT sl.*, e.name as exercise_name, e.section as section, e.order_index
       FROM set_logs sl
       JOIN exercises e ON e.id = sl.exercise_id
       WHERE sl.session_id = ?
       ORDER BY e.order_index ASC, sl.set_number ASC
-    `).all(session.id);
+    `).all(item.id);
 
     const sectionOrder = [];
     const sectionMap = {};
@@ -141,7 +160,7 @@ router.get('/feed', (req, res) => {
     const totalVolume = sets.reduce((s, r) => s + (r.weight && r.reps ? r.weight * r.reps : 0), 0);
 
     return {
-      ...session,
+      ...item,
       sections,
       stats: { total_sets: totalSets, total_reps: totalReps, total_volume: Math.round(totalVolume), exercise_count: new Set(sets.map(s => s.exercise_id)).size },
     };
