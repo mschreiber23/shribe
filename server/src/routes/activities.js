@@ -47,13 +47,13 @@ router.get('/', (req, res) => {
 
 // POST log an activity
 router.post('/', (req, res) => {
-  const { activity_type_id, date, duration_mins, metric_value, notes } = req.body;
+  const { activity_type_id, date, duration_mins, metric_value, location, notes } = req.body;
   if (!activity_type_id || !date) return res.status(400).json({ error: 'activity_type_id and date are required' });
 
   const type = db.prepare('SELECT * FROM activity_types WHERE id = ? AND (user_id IS NULL OR user_id = ?)').get(activity_type_id, req.userId);
   if (!type) return res.status(404).json({ error: 'Activity type not found' });
 
-  const result = db.prepare('INSERT INTO activity_logs (user_id, activity_type_id, date, duration_mins, metric_value, notes) VALUES (?, ?, ?, ?, ?, ?)').run(req.userId, activity_type_id, date, duration_mins || null, metric_value || null, notes || null);
+  const result = db.prepare('INSERT INTO activity_logs (user_id, activity_type_id, date, duration_mins, metric_value, location, notes) VALUES (?, ?, ?, ?, ?, ?, ?)').run(req.userId, activity_type_id, date, duration_mins || null, metric_value || null, location || null, notes || null);
   const log = db.prepare(`
     SELECT al.*, at.name as type_name, at.emoji, at.metric_label
     FROM activity_logs al JOIN activity_types at ON at.id = al.activity_type_id

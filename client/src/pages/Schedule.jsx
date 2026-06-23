@@ -298,6 +298,9 @@ export default function Schedule() {
                           <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{format(parseISO(activityDetail.date), 'MMMM d, yyyy')}</div>
                         </div>
                       </div>
+                      {activityDetail.location && (
+                        <div className="text-sm font-medium">📍 {activityDetail.location}</div>
+                      )}
                       {activityDetail.metric_label && activityDetail.metric_value && (
                         <div className="flex items-center gap-2 pt-1">
                           <span className="text-sm font-semibold">{activityDetail.metric_label}:</span>

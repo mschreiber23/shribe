@@ -93,6 +93,7 @@ db.exec(`
     date TEXT NOT NULL,
     duration_mins INTEGER,
     metric_value TEXT,
+    location TEXT,
     notes TEXT,
     completed_at TEXT NOT NULL DEFAULT (datetime('now')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -211,9 +212,16 @@ if (atCols.length > 0 && !atCols.find(c => c.name === 'show_duration')) {
   db.exec("ALTER TABLE activity_types ADD COLUMN show_duration INTEGER NOT NULL DEFAULT 1");
   db.exec("UPDATE activity_types SET show_duration = 0 WHERE name = 'Golf Round' AND user_id IS NULL");
 }
+if (atCols.length > 0 && !atCols.find(c => c.name === 'has_location')) {
+  db.exec("ALTER TABLE activity_types ADD COLUMN has_location INTEGER NOT NULL DEFAULT 0");
+  db.exec("UPDATE activity_types SET has_location = 1 WHERE name IN ('Golf Round', 'Golf Practice') AND user_id IS NULL");
+}
 const alCols = db.prepare("PRAGMA table_info(activity_logs)").all();
 if (alCols.length > 0 && !alCols.find(c => c.name === 'metric_value')) {
   db.exec("ALTER TABLE activity_logs ADD COLUMN metric_value TEXT");
+}
+if (alCols.length > 0 && !alCols.find(c => c.name === 'location')) {
+  db.exec("ALTER TABLE activity_logs ADD COLUMN location TEXT");
 }
 
 // Seed default global activity types
