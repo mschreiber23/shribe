@@ -1,23 +1,30 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
-import Today from './pages/Today';
-import Schedule from './pages/Schedule';
-import Plans from './pages/Plans';
-import History from './pages/History';
-import Profile from './pages/Profile';
-import People from './pages/People';
-import Whoop from './pages/Whoop';
-import Privacy from './pages/Privacy';
 import Auth from './pages/Auth';
+
+// Lazy-load all pages — keeps initial bundle tiny
+const Today    = lazy(() => import('./pages/Today'));
+const Schedule = lazy(() => import('./pages/Schedule'));
+const Plans    = lazy(() => import('./pages/Plans'));
+const Profile  = lazy(() => import('./pages/Profile'));
+const People   = lazy(() => import('./pages/People'));
+const Privacy  = lazy(() => import('./pages/Privacy'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30000, retry: 1 },
   },
 });
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 function AppRoutes() {
   const { token, loading } = useAuth();
@@ -36,17 +43,17 @@ function AppRoutes() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1 p-4 pb-24 md:pb-6 max-w-5xl mx-auto w-full">
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/plans" element={<Plans />} />
-          <Route path="/history" element={<History />} />
-              <Route path="/people" element={<People />} />
-              <Route path="/whoop" element={<Whoop />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"        element={<Today />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/plans"   element={<Plans />} />
+            <Route path="/people"  element={<People />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="*"        element={<Navigate to="/" />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );
