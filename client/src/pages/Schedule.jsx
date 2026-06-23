@@ -258,20 +258,26 @@ export default function Schedule() {
 
         if (!completedEntries.length && !scheduledEntries.length) return null;
 
-        // Build detail lookup: label → sorted list of entries
-        const detailMap = {};
+        // Build separate detail lookups for completed vs scheduled
+        const completedDetailMap = {};
+        const scheduledDetailMap = {};
         for (const e of monthEntries) {
           if (e.is_recovery_day) continue;
           const label = e.is_activity ? `${e.emoji} ${e.plan_name}` : `💪 Workouts`;
-          if (!detailMap[label]) detailMap[label] = [];
-          detailMap[label].push(e);
+          if (!!e.is_completed) {
+            if (!completedDetailMap[label]) completedDetailMap[label] = [];
+            completedDetailMap[label].push(e);
+          } else {
+            if (!scheduledDetailMap[label]) scheduledDetailMap[label] = [];
+            scheduledDetailMap[label].push(e);
+          }
         }
         const restList = monthEntries.filter(e => e.is_recovery_day);
-        if (restList.length > 0) detailMap['🔋 Rest Days'] = restList;
+        if (restList.length > 0) completedDetailMap['🔋 Rest Days'] = restList;
 
         // Sort each group by date
-        for (const k of Object.keys(detailMap)) {
-          detailMap[k].sort((a, b) => a.date < b.date ? -1 : 1);
+        for (const map of [completedDetailMap, scheduledDetailMap]) {
+          for (const k of Object.keys(map)) map[k].sort((a, b) => a.date < b.date ? -1 : 1);
         }
 
         return (
@@ -283,7 +289,7 @@ export default function Schedule() {
                 </h2>
                 <div className="space-y-2">
                   {completedEntries.map(([label, count]) => (
-                    <CategoryCard key={label} label={label} count={count} color="#4ade80" borderColor="rgba(34,197,94,0.2)" entries={detailMap[label] || []} />
+                    <CategoryCard key={label} label={label} count={count} color="#4ade80" borderColor="rgba(34,197,94,0.2)" entries={completedDetailMap[label] || []} />
                   ))}
                 </div>
               </div>
@@ -296,7 +302,7 @@ export default function Schedule() {
                 </h2>
                 <div className="space-y-2">
                   {scheduledEntries.map(([label, count]) => (
-                    <CategoryCard key={label} label={label} count={count} color="#a5b4fc" borderColor="var(--color-border)" entries={detailMap[label] || []} upcoming />
+                    <CategoryCard key={label} label={label} count={count} color="#a5b4fc" borderColor="var(--color-border)" entries={scheduledDetailMap[label] || []} upcoming />
                   ))}
                 </div>
               </div>
