@@ -11,15 +11,30 @@ const WHOOP_API = 'https://api.prod.whoop.com/developer';
 const WHOOP_AUTH = 'https://api.prod.whoop.com/oauth/oauth2';
 
 // GET /api/whoop/connect — redirect to Whoop OAuth
-// This route needs to pass the user's JWT so we can link back after callback
-router.get('/connect', requireAuth, (req, res) => {
+// Accepts token as query param since browser <a> tags can't send auth headers
+router.get('/connect', (req, res) => {
   if (!WHOOP_CLIENT_ID) return res.status(500).json({ error: 'Whoop integration not configured' });
+
+  // Verify JWT from query param
+  const jwt = require('jsonwebtoken');
+  const JWT_SECRET = process.env.JWT_SECRET || 'gymtrack-dev-secret-change-in-production';
+  const token = req.query.token;
+  if (!token) return res.status(401).json({ error: 'Not logged in' });
+
+  let userId;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    userId = decoded.userId;
+  } catch {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+
   const params = new URLSearchParams({
     client_id: WHOOP_CLIENT_ID,
     redirect_uri: WHOOP_REDIRECT_URI,
     response_type: 'code',
     scope: 'read:profile read:recovery read:sleep read:workout read:cycles read:body_measurement offline',
-    state: req.userId.toString(), // pass user ID through OAuth state
+    state: userId.toString(),
   });
   res.redirect(`${WHOOP_AUTH}/auth?${params}`);
 });

@@ -122,12 +122,13 @@ export default function Whoop() {
           <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: 'var(--color-text-muted)' }}>
             See your daily recovery score, HRV, resting heart rate, strain, and sleep data right here.
           </p>
-          <a href="/api/whoop/connect">
-            <Button size="lg">
-              <Link2 size={16} />
-              Connect Whoop Account
-            </Button>
-          </a>
+          <Button size="lg" onClick={() => {
+            const token = localStorage.getItem('gymtrack_token');
+            window.location.href = `/api/whoop/connect?token=${token}`;
+          }}>
+            <Link2 size={16} />
+            Connect Whoop Account
+          </Button>
           <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>
             Requires a Whoop membership. You'll be redirected to Whoop to authorize.
           </p>
