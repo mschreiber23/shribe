@@ -119,16 +119,16 @@ export default function Schedule() {
                       key={entry.id ?? `c-${i}`}
                       className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight flex items-center gap-0.5"
                       style={{
-                        backgroundColor: entry.is_completed
+                        backgroundColor: !!entry.is_completed
                           ? 'rgba(34,197,94,0.15)'
                           : `${planColorMap[entry.plan_id] || '#6366f1'}22`,
-                        color: entry.is_completed
+                        color: !!entry.is_completed
                           ? '#4ade80'
                           : planColorMap[entry.plan_id] || '#6366f1',
-                        border: `1px solid ${entry.is_completed ? 'rgba(74,222,128,0.3)' : `${planColorMap[entry.plan_id] || '#6366f1'}44`}`,
+                        border: `1px solid ${!!entry.is_completed ? 'rgba(74,222,128,0.3)' : `${planColorMap[entry.plan_id] || '#6366f1'}44`}`,
                       }}
                     >
-                      {entry.is_completed ? '✓ ' : ''}{entry.plan_name}
+                      {!!entry.is_completed ? '✓ ' : ''}{entry.plan_name}
                     </div>
                   ))}
                   {entries.length > 2 && (
@@ -153,7 +153,7 @@ export default function Schedule() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{entry.plan_name}</span>
-                    {entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ Done</span>}
+                    {!!entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ Done</span>}
                   </div>
                   <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                     {format(parseISO(entry.date), 'EEEE, MMMM d')} · {entry.exercise_count} exercises
