@@ -603,65 +603,118 @@ body {
 
 .team-card-game {
   border-top: 1px solid var(--border);
-  padding-top: 14px;
+  padding-top: 0;
 }
 
-.team-no-game {
+.tc-no-game {
   font-size: 13px;
   color: var(--text2);
   text-align: center;
-  padding: 8px 0;
+  padding: 16px 0;
 }
 
-.team-game-status { margin-bottom: 10px; }
+/* Clickable game button */
+.tc-game {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 14px 0 6px;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-.team-game-matchup {
+.tc-game:hover .tc-cta { opacity: 1; }
+.tc-game:hover { background: rgba(255,255,255,0.015); border-radius: 0 0 12px 12px; }
+
+.tc-status-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
 }
 
-.game-team {
-  display: flex;
+.tc-cta {
+  font-size: 11px;
+  color: var(--accent2);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Matchup row */
+.tc-matchup {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 8px;
-  flex: 1;
 }
 
-.game-team:last-child { flex-direction: row-reverse; text-align: right; }
+.tc-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-.game-team-mine .game-team-abbr { color: var(--team-accent, var(--accent)); font-weight: 800; }
-.game-team-winner .game-team-score { color: var(--live); }
+.tc-team-home { flex-direction: row-reverse; }
 
-.game-team-logo {
-  width: 28px;
-  height: 28px;
+.tc-team-logo {
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
-.game-team-abbr {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
+.tc-team-info { display: flex; flex-direction: column; }
+.tc-team-info-right { text-align: right; }
 
-.game-team-score {
-  font-size: 24px;
+.tc-team-abbr {
+  font-size: 15px;
   font-weight: 800;
   color: var(--text);
-  font-variant-numeric: tabular-nums;
-  margin-left: auto;
+  letter-spacing: -0.3px;
 }
 
-.game-team:last-child .game-team-score { margin-left: 0; margin-right: auto; }
+.tc-my-team { color: var(--team-accent, var(--accent)); }
 
-.vs-divider {
-  font-size: 12px;
+.tc-record {
+  font-size: 11px;
   color: var(--text2);
+  margin-top: 1px;
+}
+
+.tc-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   flex-shrink: 0;
-  padding: 0 4px;
+}
+
+.tc-score {
+  font-size: 28px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1;
+  min-width: 28px;
+  text-align: center;
+}
+
+.tc-score-win { color: var(--live); }
+
+.tc-score-sep {
+  font-size: 18px;
+  color: var(--text2);
+  font-weight: 300;
+}
+
+.tc-venue {
+  font-size: 11px;
+  color: var(--text2);
+  padding-top: 2px;
+  text-align: center;
 }
 
 /* ── Box Score Modal ── */
