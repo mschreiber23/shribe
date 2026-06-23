@@ -7,7 +7,9 @@ const requireAuth = require('../middleware/auth');
 const WHOOP_CLIENT_ID = process.env.WHOOP_CLIENT_ID;
 const WHOOP_CLIENT_SECRET = process.env.WHOOP_CLIENT_SECRET;
 const WHOOP_REDIRECT_URI = process.env.WHOOP_REDIRECT_URI || 'https://shribetrakr.com/api/whoop/callback';
-const WHOOP_API = 'https://api.prod.whoop.com/developer';
+const WHOOP_API_V1 = 'https://api.prod.whoop.com/developer/v1';
+const WHOOP_API_V2 = 'https://api.prod.whoop.com/developer/v2';
+const WHOOP_API = 'https://api.prod.whoop.com/developer'; // legacy
 const WHOOP_AUTH = 'https://api.prod.whoop.com/oauth/oauth2';
 
 // GET /api/whoop/connect — redirect to Whoop OAuth
@@ -125,19 +127,15 @@ router.get('/debug', requireAuth, async (req, res) => {
   try {
     const token = await getToken(req.userId);
     const headers = { Authorization: `Bearer ${token}` };
-    const [c, r, s, r2, s2] = await Promise.allSettled([
-      axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/recovery?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/sleep?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/activity/workout?limit=3`, { headers }),
+    const [c, r, s] = await Promise.allSettled([
+      axios.get(`${WHOOP_API_V1}/cycle?limit=3`, { headers }),
+      axios.get(`${WHOOP_API_V2}/recovery?limit=3`, { headers }),
+      axios.get(`${WHOOP_API_V2}/activity/sleep?limit=3`, { headers }),
     ]);
     res.json({
       cycles: c.status === 'fulfilled' ? c.value.data : c.reason?.response?.data,
-      recovery_v1: r.status === 'fulfilled' ? r.value.data : r.reason?.response?.data,
-      sleep_activity: s.status === 'fulfilled' ? s.value.data : s.reason?.response?.data,
-      sleep_v1: r2.status === 'fulfilled' ? r2.value.data : r2.reason?.response?.data,
-      workout_activity: s2.status === 'fulfilled' ? s2.value.data : s2.reason?.response?.data,
+      recovery: r.status === 'fulfilled' ? r.value.data : r.reason?.response?.data,
+      sleep: s.status === 'fulfilled' ? s.value.data : s.reason?.response?.data,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -152,13 +150,9 @@ router.get('/daily', requireAuth, async (req, res) => {
 
     // Fetch latest cycle (strain), recovery, and sleep in parallel
     const [cycleRes, recoveryRes, sleepRes] = await Promise.allSettled([
-      axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }),
-      axios.get(`${WHOOP_API}/v1/recovery?limit=3&next_token=`, { headers }).catch(() =>
-        axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }) // fallback: parse recovery from cycle
-      ),
-      axios.get(`${WHOOP_API}/v1/sleep?limit=3`, { headers }).catch(() =>
-        axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers })
-      ),
+      axios.get(`${WHOOP_API_V1}/cycle?limit=3`, { headers }),
+      axios.get(`${WHOOP_API_V2}/recovery?limit=3`, { headers }),
+      axios.get(`${WHOOP_API_V2}/activity/sleep?limit=3`, { headers }),
     ]);
 
     const cycles = cycleRes.status === 'fulfilled' ? cycleRes.value.data?.records || [] : [];
@@ -207,9 +201,9 @@ router.get('/history', requireAuth, async (req, res) => {
     const headers = { Authorization: `Bearer ${token}` };
 
     const [recoveryRes, sleepRes, cycleRes] = await Promise.allSettled([
-      axios.get(`${WHOOP_API}/v1/recovery?limit=${limit}`, { headers }),
-      axios.get(`${WHOOP_API}/v1/activity/sleep?limit=${limit}`, { headers }),
-      axios.get(`${WHOOP_API}/v1/cycle?limit=${limit}`, { headers }),
+      axios.get(`${WHOOP_API_V2}/recovery?limit=${limit}`, { headers }),
+      axios.get(`${WHOOP_API_V2}/activity/sleep?limit=${limit}`, { headers }),
+      axios.get(`${WHOOP_API_V1}/cycle?limit=${limit}`, { headers }),
     ]);
 
     const recoveries = recoveryRes.status === 'fulfilled' ? recoveryRes.value.data?.records || [] : [];
