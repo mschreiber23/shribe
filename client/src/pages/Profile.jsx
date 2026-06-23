@@ -21,6 +21,7 @@ import {
 import Button from '../components/Button';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
 import { WorkoutExportModal } from '../components/WorkoutExport';
+import { ActivityEditorModal } from '../components/ActivityEditor';
 
 const AVATAR_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
@@ -108,8 +109,9 @@ function EditProfileModal({ profile, onClose }) {
 }
 
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
-function WorkoutPost({ post }) {
+function WorkoutPost({ post, onRefresh }) {
   const [expanded, setExpanded] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
   const isActivity = post.feed_type === 'activity';
 
   return (
@@ -128,6 +130,11 @@ function WorkoutPost({ post }) {
               {isActivity && post.location && <> · <span className="font-medium" style={{ color: 'var(--color-text)' }}>{post.location}</span></>}
             </p>
           </div>
+          {isActivity && (
+            <button onClick={() => setEditingActivity(post)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0">
+              <Edit2 size={14} style={{ color: 'var(--color-text-muted)' }} />
+            </button>
+          )}
         </div>
 
         {/* Activity details */}
@@ -163,6 +170,13 @@ function WorkoutPost({ post }) {
           </div>
         )}
       </div>
+
+      <ActivityEditorModal
+        open={!!editingActivity}
+        activity={editingActivity}
+        onClose={() => setEditingActivity(null)}
+        onSave={() => onRefresh?.()}
+      />
 
       {/* Expand exercises for workouts only */}
       {!isActivity && post.sections.length > 0 && (
@@ -529,7 +543,7 @@ export default function Profile() {
               <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Complete your first workout and it'll show up here!</p>
             </div>
           )}
-          <div className="space-y-4">{feed.map(post => <WorkoutPost key={post.id} post={post} />)}</div>
+          <div className="space-y-4">{feed.map(post => <WorkoutPost key={post.id} post={post} onRefresh={() => qc.invalidateQueries({ queryKey: ['feed'] })} />)}</div>
           {feed.length >= feedLimit && <div className="text-center pt-4"><Button variant="secondary" onClick={() => setFeedLimit(l => l + 10)}>Load More</Button></div>}
         </div>
       )}

@@ -14,6 +14,7 @@ import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
 import { WorkoutExportModal } from '../components/WorkoutExport';
+import { ActivityEditorModal } from '../components/ActivityEditor';
 
 const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -365,6 +366,7 @@ export default function Today() {
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
   const [exportingSession, setExportingSession] = useState(null);
+  const [editingActivity, setEditingActivity] = useState(null);
   const qc = useQueryClient();
 
   const isCurrentDay = selectedDate === todayStr;
@@ -537,6 +539,7 @@ export default function Today() {
               {a.location ? <span className="font-medium" style={{ color: 'var(--color-text)' }}>{a.location}</span> : 'Completed'}{a.metric_label && a.metric_value ? ` · ${a.metric_label}: ${a.metric_value}` : ''}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
             </div>
           </div>
+          <button onClick={() => setEditingActivity(a)} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><Edit2 size={15} style={{ color: 'var(--color-text-muted)' }} /></button>
           <button onClick={() => removeActivity(a.id)} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
         </div>
       ))}
@@ -653,6 +656,14 @@ export default function Today() {
           Recovery Day?
         </button>
       )}
+
+      {/* Edit activity */}
+      <ActivityEditorModal
+        open={!!editingActivity}
+        activity={editingActivity}
+        onClose={() => setEditingActivity(null)}
+        onSave={() => refetchActivities()}
+      />
 
       {/* Export session as image */}
       <WorkoutExportModal
