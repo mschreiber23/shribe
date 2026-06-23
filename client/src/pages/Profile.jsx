@@ -15,7 +15,7 @@ import {
   getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar,
   getInbox, acceptShare, dismissShare, getFollowers,
   getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop,
-  getWhoopStats,
+  getWhoopStats, getWhoopWorkouts,
   getSessions, getSession, deleteSession,
 } from '../api';
 import Button from '../components/Button';
@@ -402,6 +402,110 @@ function WhoopTab() {
   );
 }
 
+// ─── Whoop Activities Tab ─────────────────────────────────────────────────────
+const WHOOP_SPORT_NAMES = {
+  0: 'Running', 1: 'Cycling', 16: 'Baseball', 17: 'Basketball', 18: 'Rowing',
+  19: 'Fencing', 20: 'Field Hockey', 21: 'Football', 22: 'Golf', 24: 'Ice Hockey',
+  25: 'Lacrosse', 27: 'Rugby', 28: 'Sailing', 29: 'Skiing', 30: 'Soccer',
+  31: 'Softball', 32: 'Squash', 33: 'Swimming', 34: 'Tennis', 35: 'Track',
+  36: 'Volleyball', 37: 'Water Polo', 38: 'Wrestling', 39: 'Boxing',
+  42: 'Weightlifting', 43: 'Cross Country Skiing', 44: 'Functional Fitness',
+  45: 'Duathlon', 46: 'Gymnastics', 47: 'Hiking', 48: 'Horseback Riding',
+  50: 'Martial Arts', 51: 'Mountain Biking', 52: 'Powerlifting', 53: 'Rock Climbing',
+  55: 'Spinning', 56: 'Stairmaster', 57: 'Surfing', 58: 'Swimming',
+  59: 'Trail Running', 60: 'Triathlon', 61: 'Walking', 62: 'Yoga',
+  63: 'Activity', 64: 'CrossFit', 65: 'Elliptical', 66: 'Pilates',
+  67: 'Skateboarding', 68: 'Paddle Tennis', 69: 'Barre', 70: 'Stage Performance',
+  71: 'High Stress Work', 72: 'Pickleball', 73: 'Padel',
+};
+
+function WhoopActivitiesTab() {
+  const [limit, setLimit] = useState(20);
+  const { data: whoopStatus } = useQuery({ queryKey: ['whoopStatus'], queryFn: getWhoopStatus });
+  const { data: workouts = [], isLoading } = useQuery({
+    queryKey: ['whoopWorkouts', limit],
+    queryFn: () => getWhoopWorkouts(limit),
+    enabled: !!whoopStatus?.connected,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (!whoopStatus?.connected) {
+    return (
+      <div className="rounded-xl p-10 text-center" style={{ border: '1px dashed var(--color-border)' }}>
+        <Heart size={36} className="mx-auto mb-3 text-indigo-400 opacity-50" />
+        <p className="font-medium mb-1">Connect Whoop to see your activities</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Go to the Whoop tab to connect your account.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) return <div className="text-center py-12" style={{ color: 'var(--color-text-muted)' }}>Loading Whoop activities...</div>;
+
+  if (!workouts.length) return <div className="text-center py-12" style={{ color: 'var(--color-text-muted)' }}>No Whoop activities found.</div>;
+
+  // Group by month
+  const grouped = {};
+  for (const w of workouts) {
+    const month = format(parseISO(w.start), 'MMMM yyyy');
+    if (!grouped[month]) grouped[month] = [];
+    grouped[month].push(w);
+  }
+
+  const strainColor = s => s >= 18 ? '#ef4444' : s >= 14 ? '#f59e0b' : s >= 10 ? '#6366f1' : '#22c55e';
+
+  return (
+    <div className="space-y-6">
+      {Object.entries(grouped).map(([month, items]) => (
+        <div key={month}>
+          <h2 className="text-sm font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--color-text-muted)' }}>{month}</h2>
+          <div className="space-y-2">
+            {items.map(w => {
+              const sportName = w.sport_name || WHOOP_SPORT_NAMES[w.sport_id] || `Activity (${w.sport_id})`;
+              const strain = w.score?.strain;
+              const avgHR = w.score?.average_heart_rate;
+              const maxHR = w.score?.max_heart_rate;
+              const kj = w.score?.kilojoule;
+              const durationMins = w.start && w.end ? Math.round((new Date(w.end) - new Date(w.start)) / 60000) : null;
+
+              return (
+                <div key={w.id} className="rounded-xl p-4" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold">{sportName}</div>
+                      <div className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                        {format(parseISO(w.start), 'EEEE, MMMM d')}
+                        {durationMins && ` · ${Math.floor(durationMins / 60)}h ${durationMins % 60}m`}
+                      </div>
+                    </div>
+                    {strain != null && (
+                      <div className="text-center shrink-0">
+                        <div className="text-2xl font-bold" style={{ color: strainColor(strain) }}>{Math.round(strain * 10) / 10}</div>
+                        <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Strain</div>
+                      </div>
+                    )}
+                  </div>
+                  {(avgHR || maxHR || kj) && (
+                    <div className="flex gap-4 mt-3">
+                      {avgHR && <div><span className="text-sm font-semibold">{Math.round(avgHR)}</span> <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>avg bpm</span></div>}
+                      {maxHR && <div><span className="text-sm font-semibold">{Math.round(maxHR)}</span> <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>max bpm</span></div>}
+                      {kj && <div><span className="text-sm font-semibold">{Math.round(kj / 4.184)}</span> <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>cal</span></div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      {workouts.length >= limit && (
+        <div className="text-center pt-2">
+          <Button variant="secondary" onClick={() => setLimit(l => l + 20)}>Load More</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Profile Page ────────────────────────────────────────────────────────
 export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
@@ -436,6 +540,7 @@ export default function Profile() {
     { id: 'feed', label: 'Feed' },
     { id: 'history', label: 'History' },
     { id: 'whoop', label: 'Whoop' },
+    { id: 'whoop-activities', label: 'Whoop Activities' },
   ];
 
   return (
@@ -550,6 +655,7 @@ export default function Profile() {
 
       {activeTab === 'history' && <HistoryTab />}
       {activeTab === 'whoop' && <WhoopTab />}
+      {activeTab === 'whoop-activities' && <WhoopActivitiesTab />}
 
       {editOpen && <EditProfileModal profile={profile} onClose={() => setEditOpen(false)} />}
     </div>

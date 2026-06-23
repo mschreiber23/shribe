@@ -122,6 +122,20 @@ router.delete('/disconnect', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// GET /api/whoop/workouts — workout activities logged in Whoop
+router.get('/workouts', requireAuth, async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 30, 90);
+  try {
+    const token = await getToken(req.userId);
+    const headers = { Authorization: `Bearer ${token}` };
+    const records = await fetchAllPages(`${WHOOP_API_V2}/activity/workout?limit=25`, headers, limit);
+    res.json(records);
+  } catch (err) {
+    if (err.message === 'Not connected to Whoop') return res.status(401).json({ error: 'Not connected' });
+    res.status(500).json({ error: 'Failed to fetch Whoop workouts' });
+  }
+});
+
 // GET /api/whoop/stats — computed stats (highest HRV, avg recovery 30d)
 router.get('/stats', requireAuth, async (req, res) => {
   try {
