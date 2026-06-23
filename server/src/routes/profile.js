@@ -128,7 +128,7 @@ router.get('/feed', (req, res) => {
 
   const activityLogs = db.prepare(`
     SELECT al.id, al.date, al.created_at as completed_at, al.notes, at.name as plan_name,
-           'activity' as feed_type, at.emoji, at.metric_label, al.metric_value, al.duration_mins
+           'activity' as feed_type, at.emoji, at.metric_label, al.metric_value, al.duration_mins, al.location
     FROM activity_logs al
     JOIN activity_types at ON at.id = al.activity_type_id
     WHERE al.user_id = ?

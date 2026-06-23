@@ -123,7 +123,10 @@ function WorkoutPost({ post }) {
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="font-bold text-base">{post.plan_name}</span>
             </div>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{format(parseISO(post.date), 'EEEE, MMMM d, yyyy')}</p>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+              {format(parseISO(post.date), 'EEEE, MMMM d, yyyy')}
+              {isActivity && post.location && <> · <span className="font-medium" style={{ color: 'var(--color-text)' }}>{post.location}</span></>}
+            </p>
           </div>
         </div>
 

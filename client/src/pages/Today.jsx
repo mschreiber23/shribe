@@ -392,13 +392,14 @@ export default function Today() {
   const [loggingActivity, setLoggingActivity] = useState(null);
   const [activityDuration, setActivityDuration] = useState('');
   const [activityMetric, setActivityMetric] = useState('');
+  const [activityLocation, setActivityLocation] = useState('');
   const [activityNotes, setActivityNotes] = useState('');
 
   const { mutate: submitActivity, isPending: submittingActivity } = useMutation({
-    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: selectedDate, duration_mins: activityDuration ? Number(activityDuration) : null, metric_value: activityMetric || null, notes: activityNotes || null }),
+    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: selectedDate, duration_mins: activityDuration ? Number(activityDuration) : null, metric_value: activityMetric || null, location: activityLocation || null, notes: activityNotes || null }),
     onSuccess: () => {
       refetchActivities();
-      setLoggingActivity(null); setActivityDuration(''); setActivityMetric(''); setActivityNotes('');
+      setLoggingActivity(null); setActivityDuration(''); setActivityMetric(''); setActivityLocation(''); setActivityNotes('');
       setShowPlanPicker(false);
       toast.success(`${loggingActivity.emoji} ${loggingActivity.name} logged!`);
     },
@@ -533,7 +534,7 @@ export default function Today() {
           <div className="flex-1">
             <div className="font-semibold">{a.type_name}</div>
             <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Completed{a.metric_label && a.metric_value ? ` · ${a.metric_label}: ${a.metric_value}` : ''}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
+              {a.location ? <span className="font-medium" style={{ color: 'var(--color-text)' }}>{a.location}</span> : 'Completed'}{a.metric_label && a.metric_value ? ` · ${a.metric_label}: ${a.metric_value}` : ''}{a.duration_mins ? ` · ${a.duration_mins} min` : ''}{a.notes ? ` · ${a.notes}` : ''}
             </div>
           </div>
           <button onClick={() => removeActivity(a.id)} className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={15} className="text-red-400" /></button>
@@ -677,6 +678,12 @@ export default function Today() {
               <span className="text-2xl">{loggingActivity.emoji}</span>
               <span className="font-semibold">{loggingActivity.name}</span>
             </div>
+            {loggingActivity.has_location && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Course / Location</label>
+                <input value={activityLocation} onChange={e => setActivityLocation(e.target.value)} placeholder="e.g. Pebble Beach Golf Links" />
+              </div>
+            )}
             {loggingActivity.metric_label && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{loggingActivity.metric_label}</label>
