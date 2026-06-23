@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Dumbbell } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -42,12 +41,7 @@ export default function Auth() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            <Dumbbell size={32} className="text-white" />
-          </div>
+          <img src="/favicon.png" alt="ShribeTRAKR" className="w-20 h-20 rounded-2xl mx-auto mb-4" />
           <h1 className="text-3xl font-bold">ShribeTRAKR</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
             {mode === 'login' ? 'Sign in to your account' : 'Create your account'}
