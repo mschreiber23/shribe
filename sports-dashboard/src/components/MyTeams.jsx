@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
 import TeamCard from './TeamCard';
 import { searchTeams, SPORTS } from '../api/espn';
@@ -10,6 +10,14 @@ export default function MyTeams() {
   const [query, setQuery] = useState('');
   const [teams, setTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
+  const [hiddenTeams, setHiddenTeams] = useState({}); // { "teamId-sport": true }
+  const [showHidden, setShowHidden] = useState(false);
+
+  const handleHiddenChange = useCallback((teamId, sport, isHidden) => {
+    setHiddenTeams((prev) => ({ ...prev, [`${teamId}-${sport}`]: isHidden }));
+  }, []);
+
+  const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
 
   useEffect(() => {
     if (!showPicker) return;
@@ -98,10 +106,27 @@ export default function MyTeams() {
       )}
 
       <div className="teams-grid">
-        {favorites.teams.map(({ sport, team }) => (
-          <TeamCard key={`${sport}-${team.id}`} sport={sport} team={team} />
-        ))}
+        {favorites.teams.map(({ sport, team }) => {
+          const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
+          if (isHidden && !showHidden) return null;
+          return (
+            <TeamCard
+              key={`${sport}-${team.id}`}
+              sport={sport}
+              team={team}
+              onHiddenChange={handleHiddenChange}
+            />
+          );
+        })}
       </div>
+
+      {hiddenCount > 0 && (
+        <button className="hidden-teams-toggle" onClick={() => setShowHidden((v) => !v)}>
+          {showHidden
+            ? `▲ Hide ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`
+            : `▼ Show ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`}
+        </button>
+      )}
     </section>
   );
 }

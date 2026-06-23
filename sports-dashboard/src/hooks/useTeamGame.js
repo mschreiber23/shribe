@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getScoreboard } from '../api/espn';
+import { getScoreboard, getTeamSchedule } from '../api/espn';
 
 export default function useTeamGame(sport, teamId, refreshInterval = 30000) {
   const [game, setGame] = useState(null);
+  const [nextGame, setNextGame] = useState(undefined); // undefined = not yet checked
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetch = useCallback(async () => {
+  const fetchScoreboard = useCallback(async () => {
     try {
       const events = await getScoreboard(sport);
       const found = events.find((e) =>
@@ -21,13 +22,33 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000) {
     }
   }, [sport, teamId]);
 
+  // Check for any game in the next 7 days (runs once on mount)
+  useEffect(() => {
+    if (!teamId) return;
+    const now = new Date();
+    const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    getTeamSchedule(sport, teamId)
+      .then((events) => {
+        const upcoming = events.filter((e) => {
+          const d = new Date(e.date);
+          return d >= now && d <= weekOut;
+        });
+        setNextGame(upcoming[0] || null);
+      })
+      .catch(() => setNextGame(null));
+  }, [sport, teamId]);
+
   useEffect(() => {
     setLoading(true);
     setGame(null);
-    fetch();
-    const id = setInterval(fetch, refreshInterval);
+    fetchScoreboard();
+    const id = setInterval(fetchScoreboard, refreshInterval);
     return () => clearInterval(id);
-  }, [fetch, refreshInterval]);
+  }, [fetchScoreboard, refreshInterval]);
 
-  return { game, loading, error };
+  // hasUpcomingGame: true = yes, false = no games this week, undefined = still loading
+  const hasUpcomingGame = nextGame === undefined ? undefined : nextGame !== null;
+
+  return { game, loading, error, hasUpcomingGame, nextGame };
 }

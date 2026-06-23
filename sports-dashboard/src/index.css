@@ -717,6 +717,20 @@ body {
   text-align: center;
 }
 
+/* ── Hidden teams toggle ── */
+.hidden-teams-toggle {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text2);
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s;
+}
+.hidden-teams-toggle:hover { border-color: var(--accent2); color: var(--text); }
+
 /* ── Box Score Modal ── */
 .bsm-overlay {
   position: fixed;

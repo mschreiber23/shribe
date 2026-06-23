@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useTeamGame from '../hooks/useTeamGame';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS } from '../api/espn';
@@ -92,12 +92,23 @@ function GameMatchup({ game, teamId, onOpen, sport }) {
   );
 }
 
-export default function TeamCard({ sport, team }) {
+export default function TeamCard({ sport, team, onHiddenChange }) {
   const { removeTeam } = useFavorites();
-  const { game, loading } = useTeamGame(sport, team.id);
+  const { game, loading, hasUpcomingGame, nextGame } = useTeamGame(sport, team.id);
   const [showBoxScore, setShowBoxScore] = useState(false);
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
   const accentColor = `#${team.color || '7c3aed'}`;
+
+  // Notify parent when hidden status is known
+  useEffect(() => {
+    if (hasUpcomingGame !== undefined) {
+      onHiddenChange?.(team.id, sport, !hasUpcomingGame);
+    }
+  }, [hasUpcomingGame]);
+
+  const nextGameDate = nextGame
+    ? new Date(nextGame.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    : null;
 
   return (
     <>
@@ -105,7 +116,6 @@ export default function TeamCard({ sport, team }) {
         className="team-card"
         style={{ '--team-accent': accentColor, '--team-alt': `#${team.alternateColor || 'ffffff'}` }}
       >
-        {/* Card header */}
         <div className="team-card-header">
           <div className="team-card-identity">
             {team.logo && (
@@ -119,7 +129,6 @@ export default function TeamCard({ sport, team }) {
           <button className="remove-btn" onClick={() => removeTeam(team.id, sport)} title="Remove team">×</button>
         </div>
 
-        {/* Game section */}
         <div className="team-card-game">
           {loading ? (
             <div className="tc-no-game">Loading…</div>
