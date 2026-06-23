@@ -157,7 +157,7 @@ export default function Whoop() {
             onClick={async () => {
               try {
                 const data = await getWhoopDebug();
-                alert('recovery_v1: ' + JSON.stringify(data.recovery_v1).slice(0,200) + '\n\nsleep_activity: ' + JSON.stringify(data.sleep_activity).slice(0,200) + '\n\nsleep_v1: ' + JSON.stringify(data.sleep_v1).slice(0,200));
+                alert('CYCLE[0]: ' + JSON.stringify(data.cycles?.records?.[0]).slice(0,500));
               } catch(e) {
                 alert('Error: ' + e.message);
               }
