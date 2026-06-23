@@ -5,11 +5,11 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const links = [
   { to: '/', label: 'Today', icon: Dumbbell },
-  { to: '/schedule', label: 'Schedule', icon: CalendarDays },
-  { to: '/plans', label: 'Plans', icon: ClipboardList },
-  { to: '/history', label: 'History', icon: BarChart2 },
-  { to: '/people', label: 'People', icon: Users },
-  { to: '/profile', label: 'Profile', icon: UserCircle },
+  { to: '/schedule', label: 'Plan', icon: CalendarDays },
+  { to: '/plans', label: 'Workouts', icon: ClipboardList },
+  { to: '/history', label: 'My History', icon: BarChart2 },
+  { to: '/people', label: 'Users', icon: Users },
+  { to: '/profile', label: 'Me', icon: UserCircle },
 ];
 
 export default function Navbar() {
