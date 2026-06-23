@@ -6,7 +6,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry } from '../api';
+import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry, getActivityTypes, scheduleActivity, deleteScheduledActivity } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 
@@ -28,11 +28,8 @@ export default function Schedule() {
     queryFn: () => getSchedule(startStr, endStr),
   });
 
-  const { data: plans } = useQuery({
-    queryKey: ['plans'],
-    queryFn: getPlans,
-    enabled: showAssign,
-  });
+  const { data: plans } = useQuery({ queryKey: ['plans'], queryFn: getPlans, enabled: showAssign });
+  const { data: activityTypes = [] } = useQuery({ queryKey: ['activityTypes'], queryFn: getActivityTypes, enabled: showAssign });
 
   // Group entries by date → array of entries
   const scheduleMap = {};
@@ -53,7 +50,7 @@ export default function Schedule() {
   });
 
   const { mutate: unassign } = useMutation({
-    mutationFn: (id) => deleteScheduleEntry(id),
+    mutationFn: ({ id, isActivity }) => isActivity ? deleteScheduledActivity(id) : deleteScheduleEntry(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['schedule'] });
       qc.invalidateQueries({ queryKey: ['today'] });
@@ -61,8 +58,17 @@ export default function Schedule() {
     },
   });
 
+  const { mutate: assignActivity, isPending: assigningActivity } = useMutation({
+    mutationFn: (activityTypeId) => scheduleActivity({ date: selectedDate, activity_type_id: activityTypeId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['schedule'] });
+      toast.success('Activity scheduled!');
+    },
+  });
+
   const selectedEntries = selectedDate ? (scheduleMap[selectedDate] || []) : [];
-  const assignedPlanIds = new Set(selectedEntries.map(e => e.plan_id));
+  const assignedPlanIds = new Set(selectedEntries.filter(e => !e.is_activity).map(e => e.plan_id));
+  const assignedActivityTypeIds = new Set(selectedEntries.filter(e => e.is_activity).map(e => e.activity_type_id));
 
   const planColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444'];
   const planColorMap = {};
@@ -119,6 +125,10 @@ export default function Schedule() {
                       <div key={`r-${i}`} className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight" style={{ backgroundColor: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>
                         🔋 Rest
                       </div>
+                    ) : entry.is_activity ? (
+                      <div key={`a-${i}`} className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                        {entry.emoji} {entry.plan_name}
+                      </div>
                     ) : (
                       <div
                         key={entry.id ?? `c-${i}`}
@@ -151,18 +161,18 @@ export default function Schedule() {
             .filter(e => e.date >= format(monthStart, 'yyyy-MM-dd') && e.date <= format(monthEnd, 'yyyy-MM-dd'))
             .map(entry => (
               <div key={entry.id ?? `c-${entry.plan_id}-${entry.date}`} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-                <div className="w-2 h-8 rounded-full shrink-0" style={{ backgroundColor: entry.is_completed ? '#4ade80' : planColorMap[entry.plan_id] || '#6366f1' }} />
+                {entry.is_recovery_day ? <span className="text-xl shrink-0">🔋</span> : entry.is_activity ? <span className="text-xl shrink-0">{entry.emoji}</span> : <div className="w-2 h-8 rounded-full shrink-0" style={{ backgroundColor: !!entry.is_completed ? '#4ade80' : planColorMap[entry.plan_id] || '#6366f1' }} />}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{entry.plan_name}</span>
                     {!!entry.is_completed && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>✓ Done</span>}
                   </div>
                   <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {format(parseISO(entry.date), 'EEEE, MMMM d')} · {entry.exercise_count} exercises
+                    {format(parseISO(entry.date), 'EEEE, MMMM d')}{!entry.is_activity && !entry.is_recovery_day ? ` · ${entry.exercise_count} exercises` : ''}
                   </div>
                 </div>
-                {entry.id && (
-                  <button onClick={() => unassign(entry.id)} className="p-1.5 rounded hover:bg-red-500/20 transition-colors">
+                {entry.id && !entry.is_recovery_day && (
+                  <button onClick={() => unassign({ id: entry.id, isActivity: !!entry.is_activity })} className="p-1.5 rounded hover:bg-red-500/20 transition-colors">
                     <X size={14} className="text-red-400" />
                   </button>
                 )}
@@ -189,31 +199,35 @@ export default function Schedule() {
             </div>
           )}
 
-          <p className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            <Plus size={14} className="inline mr-1" />
-            Add a workout:
-          </p>
-          <div className="space-y-2">
-            {plans?.filter(p => !assignedPlanIds.has(p.id)).length === 0 && (
-              <p className="text-center py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                {plans?.length === 0 ? 'No plans yet — create one first!' : 'All plans already scheduled for this day.'}
-              </p>
-            )}
-            {plans?.filter(p => !assignedPlanIds.has(p.id)).map(plan => (
-              <button
-                key={plan.id}
-                onClick={() => assign(plan.id)}
-                disabled={assigning}
-                className="w-full text-left p-4 rounded-xl transition-colors hover:bg-white/5"
-                style={{ border: '1px solid var(--color-border)' }}
-              >
-                <div className="font-medium">{plan.name}</div>
-                <div className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                  {plan.exercise_count} exercises{plan.description && ` · ${plan.description}`}
-                </div>
-              </button>
-            ))}
-          </div>
+          {/* Workout Plans */}
+          {plans?.filter(p => !assignedPlanIds.has(p.id)).length > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Workout Plans</p>
+              <div className="space-y-2">
+                {plans.filter(p => !assignedPlanIds.has(p.id)).map(plan => (
+                  <button key={plan.id} onClick={() => assign(plan.id)} disabled={assigning} className="w-full text-left p-3 rounded-xl transition-colors hover:bg-white/5" style={{ border: '1px solid var(--color-border)' }}>
+                    <div className="font-medium text-sm">💪 {plan.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{plan.exercise_count} exercises{plan.description && ` · ${plan.description}`}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Other Activities */}
+          {activityTypes.filter(t => !assignedActivityTypeIds.has(t.id)).length > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Other Activities</p>
+              <div className="grid grid-cols-2 gap-2">
+                {activityTypes.filter(t => !assignedActivityTypeIds.has(t.id)).map(type => (
+                  <button key={type.id} onClick={() => assignActivity(type.id)} disabled={assigningActivity} className="flex items-center gap-2 p-3 rounded-xl text-left transition-colors hover:bg-white/5" style={{ border: '1px solid var(--color-border)' }}>
+                    <span className="text-xl shrink-0">{type.emoji}</span>
+                    <span className="font-medium text-sm truncate">{type.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

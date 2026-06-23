@@ -47,6 +47,21 @@ router.get('/', (req, res) => {
     GROUP BY ws.plan_id, ws.date
   `).all(req.userId, ...dateParams);
 
+  // Also include scheduled activities (non-workout)
+  let saQuery = `
+    SELECT sa.id, sa.date, NULL as plan_id, at.name as plan_name, NULL as plan_description,
+           0 as exercise_count, 0 as is_completed, 0 as is_recovery_day, 1 as is_activity,
+           at.emoji, sa.activity_type_id
+    FROM scheduled_activities sa
+    JOIN activity_types at ON at.id = sa.activity_type_id
+    WHERE sa.user_id = ?
+  `;
+  const saParams = [req.userId];
+  if (start && end) { saQuery += ' AND sa.date BETWEEN ? AND ?'; saParams.push(start, end); }
+  else if (start) { saQuery += ' AND sa.date >= ?'; saParams.push(start); }
+  else if (end) { saQuery += ' AND sa.date <= ?'; saParams.push(end); }
+  const scheduledActivities = db.prepare(saQuery).all(...saParams);
+
   // Also include recovery days in the range
   let recoveryQuery = 'SELECT date, NULL as id, NULL as plan_id, NULL as plan_name, NULL as plan_description, 0 as exercise_count, 0 as is_completed, 1 as is_recovery_day FROM recovery_days WHERE user_id = ?';
   const recoveryParams = [req.userId];
@@ -55,7 +70,7 @@ router.get('/', (req, res) => {
   else if (end) { recoveryQuery += ' AND date <= ?'; recoveryParams.push(end); }
 
   const recoveryDays = db.prepare(recoveryQuery).all(...recoveryParams);
-  const all = [...scheduled, ...completed, ...recoveryDays].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const all = [...scheduled, ...completed, ...scheduledActivities, ...recoveryDays].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   res.json(all);
 });
 
@@ -94,6 +109,21 @@ router.get('/date/:date', (req, res) => {
   });
 
   res.json(result);
+});
+
+// POST schedule a non-workout activity on a date
+router.post('/activity', (req, res) => {
+  const { date, activity_type_id } = req.body;
+  if (!date || !activity_type_id) return res.status(400).json({ error: 'date and activity_type_id are required' });
+  db.prepare('INSERT OR IGNORE INTO scheduled_activities (user_id, activity_type_id, date) VALUES (?, ?, ?)').run(req.userId, activity_type_id, date);
+  const entry = db.prepare('SELECT sa.*, at.name as type_name, at.emoji FROM scheduled_activities sa JOIN activity_types at ON at.id = sa.activity_type_id WHERE sa.user_id = ? AND sa.date = ? AND sa.activity_type_id = ?').get(req.userId, date, activity_type_id);
+  res.status(201).json(entry);
+});
+
+// DELETE scheduled activity
+router.delete('/activity/:id', (req, res) => {
+  db.prepare('DELETE FROM scheduled_activities WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+  res.json({ success: true });
 });
 
 // POST add a plan to a date (allows multiple per day)

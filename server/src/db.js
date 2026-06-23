@@ -95,6 +95,15 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS scheduled_activities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_type_id INTEGER NOT NULL REFERENCES activity_types(id),
+    date TEXT NOT NULL,
+    notes TEXT,
+    UNIQUE(user_id, date, activity_type_id)
+  );
+
   CREATE TABLE IF NOT EXISTS recovery_days (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
