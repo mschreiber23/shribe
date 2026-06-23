@@ -47,7 +47,7 @@ router.get('/', (req, res) => {
     GROUP BY ws.plan_id, ws.date
   `).all(req.userId, ...dateParams);
 
-  // Also include scheduled activities (non-workout)
+  // Scheduled activities (pre-planned)
   let saQuery = `
     SELECT sa.id, sa.date, NULL as plan_id, at.name as plan_name, NULL as plan_description,
            0 as exercise_count, 0 as is_completed, 0 as is_recovery_day, 1 as is_activity,
@@ -62,6 +62,25 @@ router.get('/', (req, res) => {
   else if (end) { saQuery += ' AND sa.date <= ?'; saParams.push(end); }
   const scheduledActivities = db.prepare(saQuery).all(...saParams);
 
+  // Completed activity logs not already covered by scheduled_activities
+  let alQuery = `
+    SELECT al.id, al.date, NULL as plan_id, at.name as plan_name, NULL as plan_description,
+           0 as exercise_count, 1 as is_completed, 0 as is_recovery_day, 1 as is_activity,
+           at.emoji, al.activity_type_id
+    FROM activity_logs al
+    JOIN activity_types at ON at.id = al.activity_type_id
+    WHERE al.user_id = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM scheduled_activities sa2
+        WHERE sa2.user_id = al.user_id AND sa2.date = al.date AND sa2.activity_type_id = al.activity_type_id
+      )
+  `;
+  const alParams = [req.userId];
+  if (start && end) { alQuery += ' AND al.date BETWEEN ? AND ?'; alParams.push(start, end); }
+  else if (start) { alQuery += ' AND al.date >= ?'; alParams.push(start); }
+  else if (end) { alQuery += ' AND al.date <= ?'; alParams.push(end); }
+  const completedActivities = db.prepare(alQuery).all(...alParams);
+
   // Also include recovery days in the range
   let recoveryQuery = 'SELECT date, NULL as id, NULL as plan_id, NULL as plan_name, NULL as plan_description, 0 as exercise_count, 0 as is_completed, 1 as is_recovery_day FROM recovery_days WHERE user_id = ?';
   const recoveryParams = [req.userId];
@@ -70,7 +89,7 @@ router.get('/', (req, res) => {
   else if (end) { recoveryQuery += ' AND date <= ?'; recoveryParams.push(end); }
 
   const recoveryDays = db.prepare(recoveryQuery).all(...recoveryParams);
-  const all = [...scheduled, ...completed, ...scheduledActivities, ...recoveryDays].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const all = [...scheduled, ...completed, ...scheduledActivities, ...completedActivities, ...recoveryDays].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   res.json(all);
 });
 
