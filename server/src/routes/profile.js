@@ -51,7 +51,18 @@ router.get('/', (req, res) => {
     WHERE ws.completed_at IS NOT NULL AND ws.user_id = ?
   `).get(req.userId);
 
-  res.json({ ...profile, stats, streak: getStreak(req.userId) });
+  // Activity counts by type name
+  const activityCounts = db.prepare(`
+    SELECT at.name, COUNT(*) as count
+    FROM activity_logs al
+    JOIN activity_types at ON at.id = al.activity_type_id
+    WHERE al.user_id = ?
+    GROUP BY at.name
+  `).all(req.userId);
+  const activityMap = {};
+  for (const row of activityCounts) activityMap[row.name] = row.count;
+
+  res.json({ ...profile, stats: { ...stats, activity_counts: activityMap }, streak: getStreak(req.userId) });
 });
 
 // PUT update profile
