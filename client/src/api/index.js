@@ -45,6 +45,11 @@ export const getInboxUnread = () => api.get('/social/inbox/unread').then(r => r.
 export const acceptShare = (shareId) => api.post(`/social/inbox/${shareId}/accept`).then(r => r.data);
 export const dismissShare = (shareId) => api.delete(`/social/inbox/${shareId}`).then(r => r.data);
 
+// Recovery days
+export const getRecoveryDay = (date) => api.get(`/recovery/${date}`).then(r => r.data);
+export const logRecoveryDay = (date, notes) => api.post('/recovery', { date, notes }).then(r => r.data);
+export const removeRecoveryDay = (date) => api.delete(`/recovery/${date}`).then(r => r.data);
+
 // Whoop
 export const getWhoopStatus = () => api.get('/whoop/status').then(r => r.data);
 export const getWhoopDebug = () => api.get('/whoop/debug').then(r => r.data);

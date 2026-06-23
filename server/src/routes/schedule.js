@@ -47,7 +47,15 @@ router.get('/', (req, res) => {
     GROUP BY ws.plan_id, ws.date
   `).all(req.userId, ...dateParams);
 
-  const all = [...scheduled, ...completed].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  // Also include recovery days in the range
+  let recoveryQuery = 'SELECT date, NULL as id, NULL as plan_id, NULL as plan_name, NULL as plan_description, 0 as exercise_count, 0 as is_completed, 1 as is_recovery_day FROM recovery_days WHERE user_id = ?';
+  const recoveryParams = [req.userId];
+  if (start && end) { recoveryQuery += ' AND date BETWEEN ? AND ?'; recoveryParams.push(start, end); }
+  else if (start) { recoveryQuery += ' AND date >= ?'; recoveryParams.push(start); }
+  else if (end) { recoveryQuery += ' AND date <= ?'; recoveryParams.push(end); }
+
+  const recoveryDays = db.prepare(recoveryQuery).all(...recoveryParams);
+  const all = [...scheduled, ...completed, ...recoveryDays].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   res.json(all);
 });
 
