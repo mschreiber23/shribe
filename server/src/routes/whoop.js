@@ -120,6 +120,26 @@ router.delete('/disconnect', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// GET /api/whoop/debug — raw API response for debugging
+router.get('/debug', requireAuth, async (req, res) => {
+  try {
+    const token = await getToken(req.userId);
+    const headers = { Authorization: `Bearer ${token}` };
+    const [c, r, s] = await Promise.allSettled([
+      axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/recovery?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers }),
+    ]);
+    res.json({
+      cycles: c.status === 'fulfilled' ? c.value.data : c.reason?.response?.data,
+      recovery: r.status === 'fulfilled' ? r.value.data : r.reason?.response?.data,
+      sleep: s.status === 'fulfilled' ? s.value.data : s.reason?.response?.data,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/whoop/daily — today's recovery, strain, sleep, HRV, RHR
 router.get('/daily', requireAuth, async (req, res) => {
   try {
