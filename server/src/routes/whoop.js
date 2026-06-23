@@ -193,6 +193,20 @@ router.get('/daily', requireAuth, async (req, res) => {
   }
 });
 
+// Helper: fetch all pages from a paginated Whoop endpoint up to maxRecords
+async function fetchAllPages(baseUrl, headers, maxRecords = 90) {
+  const records = [];
+  let nextToken = null;
+  do {
+    const url = nextToken ? `${baseUrl}&nextToken=${nextToken}` : baseUrl;
+    const res = await axios.get(url, { headers });
+    const data = res.data;
+    records.push(...(data.records || []));
+    nextToken = data.next_token || null;
+  } while (nextToken && records.length < maxRecords);
+  return records.slice(0, maxRecords);
+}
+
 // GET /api/whoop/history — last N days of metrics
 router.get('/history', requireAuth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 30, 90);
@@ -201,14 +215,14 @@ router.get('/history', requireAuth, async (req, res) => {
     const headers = { Authorization: `Bearer ${token}` };
 
     const [recoveryRes, sleepRes, cycleRes] = await Promise.allSettled([
-      axios.get(`${WHOOP_API_V2}/recovery?limit=${limit}`, { headers }),
-      axios.get(`${WHOOP_API_V2}/activity/sleep?limit=${limit}`, { headers }),
-      axios.get(`${WHOOP_API_V1}/cycle?limit=${limit}`, { headers }),
+      fetchAllPages(`${WHOOP_API_V2}/recovery?limit=25`, headers, limit),
+      fetchAllPages(`${WHOOP_API_V2}/activity/sleep?limit=25`, headers, limit),
+      fetchAllPages(`${WHOOP_API_V1}/cycle?limit=25`, headers, limit),
     ]);
 
-    const recoveries = recoveryRes.status === 'fulfilled' ? recoveryRes.value.data?.records || [] : [];
-    const sleeps = sleepRes.status === 'fulfilled' ? sleepRes.value.data?.records || [] : [];
-    const cycles = cycleRes.status === 'fulfilled' ? cycleRes.value.data?.records || [] : [];
+    const recoveries = recoveryRes.status === 'fulfilled' ? recoveryRes.value : [];
+    const sleeps = sleepRes.status === 'fulfilled' ? sleepRes.value : [];
+    const cycles = cycleRes.status === 'fulfilled' ? cycleRes.value : [];
 
     // Map cycles by date
     const cycleByDate = {};
