@@ -161,7 +161,7 @@ function WorkoutPost({ post, onRefresh }) {
         {/* Workout stats */}
         {!isActivity && (
           <div className="flex gap-4 mt-3 flex-wrap">
-            {[{ label: 'Exercises', value: post.stats.exercise_count }, { label: 'Sets', value: post.stats.total_sets }, { label: 'Reps', value: post.stats.total_reps }, ...(post.stats.total_volume > 0 ? [{ label: 'Volume', value: `${post.stats.total_volume.toLocaleString()} lbs` }] : [])].map(stat => (
+            {[{ label: 'Exercises', value: post.stats.exercise_count }, { label: 'Sets', value: post.stats.total_sets }, { label: 'Reps', value: post.stats.total_reps }].map(stat => (
               <div key={stat.label} className="text-center">
                 <div className="text-lg font-bold leading-tight">{stat.value}</div>
                 <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</div>
