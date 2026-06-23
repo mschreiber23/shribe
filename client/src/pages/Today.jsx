@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download, BatteryCharging } from 'lucide-react';
+import { format, addDays, subDays, isToday, isFuture, parseISO } from 'date-fns';
+import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download, BatteryCharging, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
@@ -15,7 +15,7 @@ import Modal from '../components/Modal';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
 import { WorkoutExportModal } from '../components/WorkoutExport';
 
-const today = format(new Date(), 'yyyy-MM-dd');
+const todayStr = format(new Date(), 'yyyy-MM-dd');
 
 function SetRow({ set, sessionId, onDelete }) {
   const [editing, setEditing] = useState(false);
@@ -360,32 +360,41 @@ function ActiveSession({ sessionId, onComplete }) {
 }
 
 export default function Today() {
+  const [selectedDate, setSelectedDate] = useState(todayStr);
   const [sessionId, setSessionId] = useState(null);
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
   const [exportingSession, setExportingSession] = useState(null);
   const qc = useQueryClient();
 
+  const isCurrentDay = selectedDate === todayStr;
+  const isPastDay = selectedDate < todayStr;
+  const isFutureDay = selectedDate > todayStr;
+
+  const goToDate = (date) => { setSelectedDate(date); setSessionId(null); };
+  const goBack = () => goToDate(format(subDays(parseISO(selectedDate), 1), 'yyyy-MM-dd'));
+  const goForward = () => goToDate(format(addDays(parseISO(selectedDate), 1), 'yyyy-MM-dd'));
+
   const { data: scheduledEntries = [] } = useQuery({
-    queryKey: ['today', today],
-    queryFn: () => getScheduleByDate(today),
+    queryKey: ['today', selectedDate],
+    queryFn: () => getScheduleByDate(selectedDate),
   });
   const scheduled = scheduledEntries?.[0] ?? null;
 
   const { data: existingSessions } = useQuery({
-    queryKey: ['sessions', today],
-    queryFn: () => getSessions({ date: today }),
+    queryKey: ['sessions', selectedDate],
+    queryFn: () => getSessions({ date: selectedDate }),
   });
 
   const { data: plans } = useQuery({ queryKey: ['plans'], queryFn: getPlans, enabled: showPlanPicker });
   const { data: activityTypes = [] } = useQuery({ queryKey: ['activityTypes'], queryFn: getActivityTypes, enabled: showPlanPicker });
-  const { data: todayActivities = [], refetch: refetchActivities } = useQuery({ queryKey: ['activityLogs', today], queryFn: () => getActivityLogs({ date: today }) });
-  const [loggingActivity, setLoggingActivity] = useState(null); // { type }
+  const { data: todayActivities = [], refetch: refetchActivities } = useQuery({ queryKey: ['activityLogs', selectedDate], queryFn: () => getActivityLogs({ date: selectedDate }) });
+  const [loggingActivity, setLoggingActivity] = useState(null);
   const [activityDuration, setActivityDuration] = useState('');
   const [activityNotes, setActivityNotes] = useState('');
 
   const { mutate: submitActivity, isPending: submittingActivity } = useMutation({
-    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: today, duration_mins: activityDuration ? Number(activityDuration) : null, notes: activityNotes || null }),
+    mutationFn: () => logActivity({ activity_type_id: loggingActivity.id, date: selectedDate, duration_mins: activityDuration ? Number(activityDuration) : null, notes: activityNotes || null }),
     onSuccess: () => {
       refetchActivities();
       setLoggingActivity(null); setActivityDuration(''); setActivityNotes('');
@@ -398,12 +407,23 @@ export default function Today() {
     onSuccess: () => { refetchActivities(); toast.success('Activity removed'); },
   });
 
+  const { data: recoveryDay, refetch: refetchRecovery } = useQuery({ queryKey: ['recoveryDay', selectedDate], queryFn: () => getRecoveryDay(selectedDate) });
+
+  const { mutate: markRecovery, isPending: markingRecovery } = useMutation({
+    mutationFn: () => logRecoveryDay(selectedDate),
+    onSuccess: () => { refetchRecovery(); qc.invalidateQueries({ queryKey: ['schedule'] }); toast.success('Recovery day logged!'); },
+  });
+  const { mutate: unmarkRecovery } = useMutation({
+    mutationFn: () => removeRecoveryDay(selectedDate),
+    onSuccess: () => { refetchRecovery(); toast.success('Recovery day removed'); },
+  });
+
   const activeSession = existingSessions?.find(s => !s.completed_at);
 
   const { mutate: startSession, isPending: starting } = useMutation({
     mutationFn: (planId) => createSession({
       plan_id: planId,
-      date: today,
+      date: selectedDate,
       schedule_entry_id: scheduled?.id || null,
     }),
     onSuccess: (data) => {
@@ -416,18 +436,7 @@ export default function Today() {
 
   const currentSessionId = sessionId || activeSession?.id;
 
-  const dateLabel = format(new Date(), 'EEEE, MMMM d');
-
-  const { data: recoveryDay, refetch: refetchRecovery } = useQuery({ queryKey: ['recoveryDay', today], queryFn: () => getRecoveryDay(today) });
-
-  const { mutate: markRecovery, isPending: markingRecovery } = useMutation({
-    mutationFn: () => logRecoveryDay(today),
-    onSuccess: () => { refetchRecovery(); qc.invalidateQueries({ queryKey: ['schedule'] }); toast.success('Recovery day logged!'); },
-  });
-  const { mutate: unmarkRecovery } = useMutation({
-    mutationFn: () => removeRecoveryDay(today),
-    onSuccess: () => { refetchRecovery(); toast.success('Recovery day removed'); },
-  });
+  const dateLabel = isCurrentDay ? format(new Date(), 'EEEE, MMMM d') : format(parseISO(selectedDate), 'EEEE, MMMM d, yyyy');
 
   const { data: whoopStatus } = useQuery({ queryKey: ['whoopStatus'], queryFn: getWhoopStatus });
   const { data: whoopDaily } = useQuery({ queryKey: ['whoopDaily'], queryFn: getWhoopDaily, enabled: !!whoopStatus?.connected, staleTime: 5 * 60 * 1000 });
@@ -435,7 +444,7 @@ export default function Today() {
   const recoveryColor = (s) => s >= 67 ? '#22c55e' : s >= 34 ? '#f59e0b' : s != null ? '#ef4444' : '#6366f1';
 
   function WhoopStrip() {
-    if (!whoopStatus?.connected || !whoopDaily) return null;
+    if (!isCurrentDay || !whoopStatus?.connected || !whoopDaily) return null;
     const metrics = [
       { label: 'Recovery', value: whoopDaily.recovery_score != null ? `${Math.round(whoopDaily.recovery_score)}%` : '—', color: recoveryColor(whoopDaily.recovery_score) },
       { label: 'HRV', value: whoopDaily.hrv_rmssd != null ? `${Math.round(whoopDaily.hrv_rmssd)} ms` : '—', color: '#a78bfa' },
@@ -457,9 +466,27 @@ export default function Today() {
     );
   }
 
+  function DateNav() {
+    return (
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={goBack} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><ChevronLeft size={18} /></button>
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-sm">{isCurrentDay ? 'Today' : format(parseISO(selectedDate), 'MMM d, yyyy')}</span>
+          {!isCurrentDay && (
+            <button onClick={() => goToDate(todayStr)} className="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors" style={{ backgroundColor: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
+              Today
+            </button>
+          )}
+        </div>
+        <button onClick={goForward} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><ChevronRight size={18} /></button>
+      </div>
+    );
+  }
+
   if (currentSessionId) {
     return (
       <div className="max-w-2xl mx-auto">
+        <DateNav />
         <WhoopStrip />
         <div className="flex items-center gap-3 mb-6">
           <div
@@ -483,6 +510,7 @@ export default function Today() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <DateNav />
       <WhoopStrip />
       <div className="flex items-center gap-3 mb-6">
         <div
@@ -492,7 +520,7 @@ export default function Today() {
           <Dumbbell size={20} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Today's Activity</h1>
+          <h1 className="text-xl font-bold">{isCurrentDay ? "Today's Activity" : isFutureDay ? "Scheduled Activity" : "Past Activity"}</h1>
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{dateLabel}</p>
         </div>
       </div>
@@ -583,9 +611,9 @@ export default function Today() {
           style={{ backgroundColor: 'var(--color-surface-2)', border: '1px dashed var(--color-border)' }}
         >
           <Calendar size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium mb-1">No activity scheduled today</p>
+          <p className="text-lg font-medium mb-1">{isFutureDay ? 'Nothing planned yet' : isCurrentDay ? 'No activity scheduled today' : 'No activity logged this day'}</p>
           <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-            Choose an activity to get started
+            {isFutureDay ? 'Plan an activity for this day' : isPastDay ? 'Log what you did' : 'Choose an activity to get started'}
           </p>
         </div>
       )}
