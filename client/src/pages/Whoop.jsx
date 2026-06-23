@@ -157,7 +157,7 @@ export default function Whoop() {
             onClick={async () => {
               const data = await getWhoopDebug();
               console.log('Whoop debug:', JSON.stringify(data, null, 2));
-              alert('Debug data logged to browser console (F12 → Console tab). Also check: recovery records=' + data.recovery?.records?.length + ', sleep records=' + data.sleep?.records?.length + ', cycles=' + data.cycles?.records?.length);
+              alert('RECOVERY: ' + JSON.stringify(data.recovery).slice(0, 300) + '\n\nSLEEP: ' + JSON.stringify(data.sleep).slice(0, 300));
             }}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors text-xs"
             title="Debug"
