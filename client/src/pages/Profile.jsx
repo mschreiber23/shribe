@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { groupBySection as sortSections } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
   Edit2, Flame, Dumbbell, BarChart2, Hash, ChevronDown, ChevronUp,
   Check, X, Camera, Users, Bell, Heart, Clock, Trash2, Download, Pencil,
@@ -110,7 +110,6 @@ function EditProfileModal({ profile, onClose }) {
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
 function WorkoutPost({ post }) {
   const [expanded, setExpanded] = useState(false);
-  const timeAgo = formatDistanceToNow(parseISO(post.completed_at), { addSuffix: true });
   const isActivity = post.feed_type === 'activity';
 
   return (
@@ -123,7 +122,6 @@ function WorkoutPost({ post }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="font-bold text-base">{post.plan_name}</span>
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{timeAgo}</span>
             </div>
             <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{format(parseISO(post.date), 'EEEE, MMMM d, yyyy')}</p>
           </div>

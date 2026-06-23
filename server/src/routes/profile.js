@@ -123,7 +123,11 @@ router.get('/feed', (req, res) => {
   `).all(req.userId);
 
   const all = [...sessions, ...activityLogs]
-    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+    .sort((a, b) => {
+      // Sort by date desc, then by completed_at desc for same-day tiebreak
+      if (b.date !== a.date) return b.date < a.date ? -1 : 1;
+      return new Date(b.completed_at) - new Date(a.completed_at);
+    })
     .slice(Number(offset), Number(offset) + Number(limit));
 
   const posts = all.map(item => {
