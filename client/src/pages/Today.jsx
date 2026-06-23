@@ -453,7 +453,7 @@ export default function Today() {
             <Dumbbell size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Today's Workout</h1>
+            <h1 className="text-xl font-bold">Today's Activity</h1>
             <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{dateLabel}</p>
           </div>
         </div>
@@ -476,7 +476,7 @@ export default function Today() {
           <Dumbbell size={20} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Today's Workout</h1>
+          <h1 className="text-xl font-bold">Today's Activity</h1>
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{dateLabel}</p>
         </div>
       </div>
@@ -553,9 +553,9 @@ export default function Today() {
           style={{ backgroundColor: 'var(--color-surface-2)', border: '1px dashed var(--color-border)' }}
         >
           <Calendar size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-lg font-medium mb-1">No workout scheduled today</p>
+          <p className="text-lg font-medium mb-1">No activity scheduled today</p>
           <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-            Choose a plan to get started
+            Choose an activity to get started
           </p>
         </div>
       )}
@@ -566,7 +566,7 @@ export default function Today() {
         onClick={() => setShowPlanPicker(true)}
       >
         <Plus size={16} />
-        {scheduled ? 'Start a Different Workout' : 'Choose a Workout'}
+        {scheduled ? 'Start a Different Activity' : 'Choose an Activity'}
       </Button>
 
       {/* Recovery Day */}
@@ -611,7 +611,7 @@ export default function Today() {
       />
 
       {/* Plan picker modal */}
-      <Modal open={showPlanPicker} onClose={() => setShowPlanPicker(false)} title="Choose a Workout">
+      <Modal open={showPlanPicker} onClose={() => setShowPlanPicker(false)} title="Choose an Activity">
         <div className="space-y-2">
           {plans?.length === 0 && (
             <p className="text-center py-6" style={{ color: 'var(--color-text-muted)' }}>
