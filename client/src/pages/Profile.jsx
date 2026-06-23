@@ -429,28 +429,43 @@ export default function Profile() {
           <div className="flex items-center gap-4">
             <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && quickUpload(e.target.files[0])} />
             <Avatar name={profile.name} color={profile.avatar_color} avatarUrl={profile.avatar_url} size={64} onClick={() => avatarFileRef.current?.click()} />
-            <div>
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold">{profile.name}</h1>
               <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>@{profile.username}</p>
               {profile.bio && <p className="text-sm mt-1">{profile.bio}</p>}
+              {/* Stat tags */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {whoopStats?.highest_hrv != null && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(167,139,250,0.15)', color: '#a78bfa' }}>
+                    📈 Best HRV: {whoopStats.highest_hrv} ms
+                  </span>
+                )}
+                {whoopStats?.avg_recovery_30d != null && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(34,197,94,0.12)', color: '#4ade80' }}>
+                    🫀 Avg Recovery: {whoopStats.avg_recovery_30d}%
+                  </span>
+                )}
+                {profile.stats.best_golf_score != null && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#a5b4fc' }}>
+                    ⛳ Best Round: {profile.stats.best_golf_score}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button onClick={() => setEditOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"><Edit2 size={16} style={{ color: 'var(--color-text-muted)' }} /></button>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className="grid grid-cols-4 gap-2 mt-5">
           {[
             { emoji: '💪', label: 'Workouts', value: profile.stats.total_workouts },
-            { emoji: '⛳', label: 'Golf Rounds', value: profile.stats.activity_counts?.['Golf Round'] ?? 0 },
+            { emoji: '⛳', label: 'Golf', value: profile.stats.activity_counts?.['Golf Round'] ?? 0 },
             { emoji: '🎾', label: 'Tennis', value: profile.stats.activity_counts?.['Tennis'] ?? 0 },
             { emoji: '🏓', label: 'Pickleball', value: profile.stats.activity_counts?.['Pickleball'] ?? 0 },
-            { emoji: '🫀', label: 'Avg Recovery', value: whoopStats?.avg_recovery_30d != null ? `${whoopStats.avg_recovery_30d}%` : '—', sub: '30 day avg' },
-            { emoji: '📈', label: 'Best HRV', value: whoopStats?.highest_hrv != null ? `${whoopStats.highest_hrv} ms` : '—', sub: 'all time high' },
-          ].map(({ emoji, label, value, sub }) => (
+          ].map(({ emoji, label, value }) => (
             <div key={label} className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)' }}>
               <div className="text-lg mb-0.5">{emoji}</div>
               <div className="text-xl font-bold leading-tight">{value}</div>
               <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
-              {sub && <div className="text-xs" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>{sub}</div>}
             </div>
           ))}
         </div>
