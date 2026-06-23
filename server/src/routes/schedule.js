@@ -47,10 +47,15 @@ router.get('/', (req, res) => {
     GROUP BY ws.plan_id, ws.date
   `).all(req.userId, ...dateParams);
 
-  // Scheduled activities (pre-planned)
+  // Scheduled activities (pre-planned), marked completed if an activity_log exists for same date+type
   let saQuery = `
     SELECT sa.id, sa.date, NULL as plan_id, at.name as plan_name, NULL as plan_description,
-           0 as exercise_count, 0 as is_completed, 0 as is_recovery_day, 1 as is_activity,
+           0 as exercise_count,
+           CASE WHEN EXISTS (
+             SELECT 1 FROM activity_logs al2
+             WHERE al2.user_id = sa.user_id AND al2.date = sa.date AND al2.activity_type_id = sa.activity_type_id
+           ) THEN 1 ELSE 0 END as is_completed,
+           0 as is_recovery_day, 1 as is_activity,
            at.emoji, sa.activity_type_id
     FROM scheduled_activities sa
     JOIN activity_types at ON at.id = sa.activity_type_id
