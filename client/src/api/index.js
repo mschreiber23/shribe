@@ -45,6 +45,12 @@ export const getInboxUnread = () => api.get('/social/inbox/unread').then(r => r.
 export const acceptShare = (shareId) => api.post(`/social/inbox/${shareId}/accept`).then(r => r.data);
 export const dismissShare = (shareId) => api.delete(`/social/inbox/${shareId}`).then(r => r.data);
 
+// Whoop
+export const getWhoopStatus = () => api.get('/whoop/status').then(r => r.data);
+export const getWhoopDaily = () => api.get('/whoop/daily').then(r => r.data);
+export const getWhoopHistory = (limit) => api.get('/whoop/history', { params: { limit } }).then(r => r.data);
+export const disconnectWhoop = () => api.delete('/whoop/disconnect').then(r => r.data);
+
 export const uploadAvatar = (file) => {
   const form = new FormData();
   form.append('avatar', file);
