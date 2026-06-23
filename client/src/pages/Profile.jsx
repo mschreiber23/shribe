@@ -572,6 +572,11 @@ export default function Profile() {
                     ⛳ Best Round: {profile.stats.best_golf_score}
                   </span>
                 )}
+                {whoopStats?.activities_this_year != null && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>
+                    ⚡ {whoopStats.activities_this_year} Whoop Activities {new Date().getFullYear()}
+                  </span>
+                )}
               </div>
             </div>
           </div>
