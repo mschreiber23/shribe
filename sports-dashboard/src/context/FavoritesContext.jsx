@@ -2,15 +2,56 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const FavoritesContext = createContext(null);
 
-const STORAGE_KEY = 'sports_dashboard_favorites';
+const STORAGE_KEY = 'sports_dashboard_favorites_v2';
 
 const DEFAULT_FAVORITES = {
-  sport: 'nba',
-  team: { id: '13', displayName: 'Los Angeles Lakers', abbreviation: 'LAL', color: '552583', alternateColor: 'FDB927' },
-  players: [
-    { id: '3945274', displayName: 'LeBron James', position: 'SF', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/1966.png' },
-    { id: '4066261', displayName: "Anthony Davis", position: 'PF/C', headshot: 'https://a.espncdn.com/i/headshots/nba/players/full/6583.png' },
+  teams: [
+    {
+      sport: 'mlb',
+      team: {
+        id: '20',
+        displayName: 'Washington Nationals',
+        abbreviation: 'WSH',
+        color: 'ab0003',
+        alternateColor: '11225b',
+        logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png',
+      },
+    },
+    {
+      sport: 'nba',
+      team: {
+        id: '27',
+        displayName: 'Washington Wizards',
+        abbreviation: 'WSH',
+        color: 'e31837',
+        alternateColor: '002b5c',
+        logo: 'https://a.espncdn.com/i/teamlogos/nba/500/wsh.png',
+      },
+    },
+    {
+      sport: 'nhl',
+      team: {
+        id: '23',
+        displayName: 'Washington Capitals',
+        abbreviation: 'WSH',
+        color: 'd71830',
+        alternateColor: '00214e',
+        logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png',
+      },
+    },
+    {
+      sport: 'nfl',
+      team: {
+        id: '21',
+        displayName: 'Philadelphia Eagles',
+        abbreviation: 'PHI',
+        color: '06424d',
+        alternateColor: 'acc0c6',
+        logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png',
+      },
+    },
   ],
+  players: [],
 };
 
 export function FavoritesProvider({ children }) {
@@ -27,10 +68,17 @@ export function FavoritesProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
   }, [favorites]);
 
-  const setSport = (sport) =>
-    setFavorites((f) => ({ ...f, sport, team: null, players: [] }));
+  const addTeam = (sport, team) =>
+    setFavorites((f) => {
+      if (f.teams.some((t) => t.team.id === team.id && t.sport === sport)) return f;
+      return { ...f, teams: [...f.teams, { sport, team }] };
+    });
 
-  const setTeam = (team) => setFavorites((f) => ({ ...f, team }));
+  const removeTeam = (teamId, sport) =>
+    setFavorites((f) => ({
+      ...f,
+      teams: f.teams.filter((t) => !(t.team.id === teamId && t.sport === sport)),
+    }));
 
   const addPlayer = (player) =>
     setFavorites((f) => {
@@ -46,7 +94,7 @@ export function FavoritesProvider({ children }) {
 
   return (
     <FavoritesContext.Provider
-      value={{ favorites, setSport, setTeam, addPlayer, removePlayer }}
+      value={{ favorites, addTeam, removeTeam, addPlayer, removePlayer }}
     >
       {children}
     </FavoritesContext.Provider>

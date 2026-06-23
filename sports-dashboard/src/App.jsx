@@ -1,6 +1,6 @@
 import { FavoritesProvider } from './context/FavoritesContext';
 import Header from './components/Header';
-import ScoreBoard from './components/ScoreBoard';
+import MyTeams from './components/MyTeams';
 import PlayerRoster from './components/PlayerRoster';
 import './index.css';
 
@@ -10,7 +10,7 @@ export default function App() {
       <div className="app">
         <Header />
         <main className="main">
-          <ScoreBoard />
+          <MyTeams />
           <PlayerRoster />
         </main>
         <footer className="footer">
