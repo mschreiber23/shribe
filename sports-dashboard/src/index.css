@@ -664,6 +664,257 @@ body {
   padding: 0 4px;
 }
 
+/* ── Box Score Modal ── */
+.bsm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.bsm-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 900px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: auto;
+}
+
+.bsm-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bsm-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.bsm-close {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.bsm-close:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+.bsm-game-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+
+.bsm-competitors {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bsm-competitor {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.bsm-competitor:last-child { flex-direction: row-reverse; text-align: right; }
+
+.bsm-winner .bsm-comp-score { color: var(--live); }
+
+.bsm-comp-logo { width: 52px; height: 52px; object-fit: contain; }
+
+.bsm-comp-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bsm-comp-record {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.bsm-comp-score {
+  font-size: 36px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.bsm-competitor:last-child .bsm-comp-score { margin-left: 0; margin-right: auto; }
+
+.bsm-status { text-align: center; }
+
+.bsm-body {
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-height: 65vh;
+}
+
+.bsm-loading { padding: 20px; }
+
+.bsm-team-section { display: flex; flex-direction: column; gap: 16px; }
+
+.bsm-team-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bsm-team-logo { width: 32px; height: 32px; object-fit: contain; }
+
+.bsm-team-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.bsm-stat-group {}
+
+.bsm-group-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text2);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.bsm-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.bsm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.bsm-th {
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.bsm-th-player { text-align: left; min-width: 160px; }
+
+.bsm-tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.bsm-tr:last-child { border-bottom: none; }
+.bsm-tr:hover { background: var(--bg3); }
+
+.bsm-dnp { opacity: 0.45; }
+
+.bsm-td {
+  padding: 9px 12px;
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bsm-td-player { text-align: left; }
+
+.bsm-stat-highlight {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bsm-dnp-cell {
+  font-size: 12px;
+  color: var(--text2);
+  font-style: italic;
+  text-align: left;
+}
+
+.bsm-totals-row { background: var(--bg3); }
+.bsm-totals-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.bsm-player-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bsm-player-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  flex-shrink: 0;
+  background: var(--bg3);
+}
+
+.bsm-player-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bsm-player-pos {
+  font-size: 11px;
+  color: var(--text2);
+}
+
+/* Game clickable styles */
+.team-game {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.team-game:hover .team-game-cta { opacity: 1; }
+
+.team-game-cta {
+  font-size: 11px;
+  color: var(--accent2);
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-left: auto;
+  float: right;
+}
+
 /* ── Footer ── */
 .footer {
   margin-top: auto;
