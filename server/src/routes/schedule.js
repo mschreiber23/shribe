@@ -56,7 +56,10 @@ router.get('/', (req, res) => {
              WHERE al2.user_id = sa.user_id AND al2.date = sa.date AND al2.activity_type_id = sa.activity_type_id
            ) THEN 1 ELSE 0 END as is_completed,
            0 as is_recovery_day, 1 as is_activity,
-           at.emoji, sa.activity_type_id
+           at.emoji, sa.activity_type_id,
+           (SELECT al3.metric_value FROM activity_logs al3 WHERE al3.user_id = sa.user_id AND al3.date = sa.date AND al3.activity_type_id = sa.activity_type_id LIMIT 1) as metric_value,
+           (SELECT at2.metric_label FROM activity_types at2 WHERE at2.id = sa.activity_type_id) as metric_label_val,
+           (SELECT al3.location FROM activity_logs al3 WHERE al3.user_id = sa.user_id AND al3.date = sa.date AND al3.activity_type_id = sa.activity_type_id LIMIT 1) as location
     FROM scheduled_activities sa
     JOIN activity_types at ON at.id = sa.activity_type_id
     WHERE sa.user_id = ?
@@ -71,7 +74,8 @@ router.get('/', (req, res) => {
   let alQuery = `
     SELECT al.id, al.date, NULL as plan_id, at.name as plan_name, NULL as plan_description,
            0 as exercise_count, 1 as is_completed, 0 as is_recovery_day, 1 as is_activity,
-           at.emoji, al.activity_type_id
+           at.emoji, al.activity_type_id, al.metric_value, al.metric_label as metric_label_val,
+           al.location, al.duration_mins
     FROM activity_logs al
     JOIN activity_types at ON at.id = al.activity_type_id
     WHERE al.user_id = ?
