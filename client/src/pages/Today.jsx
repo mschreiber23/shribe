@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2 } from 'lucide-react';
+import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
@@ -11,6 +11,7 @@ import {
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
+import { WorkoutExportModal } from '../components/WorkoutExport';
 
 const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -359,7 +360,8 @@ function ActiveSession({ sessionId, onComplete }) {
 export default function Today() {
   const [sessionId, setSessionId] = useState(null);
   const [showPlanPicker, setShowPlanPicker] = useState(false);
-  const [editingSession, setEditingSession] = useState(null); // { id, plan_name }
+  const [editingSession, setEditingSession] = useState(null);
+  const [exportingSession, setExportingSession] = useState(null);
   const qc = useQueryClient();
 
   const { data: scheduledEntries = [] } = useQuery({
@@ -452,6 +454,13 @@ export default function Today() {
             </div>
           </div>
           <button
+            onClick={() => setExportingSession({ id: s.id, plan_name: s.plan_name })}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            title="Export as image"
+          >
+            <Download size={15} style={{ color: 'var(--color-text-muted)' }} />
+          </button>
+          <button
             onClick={() => setEditingSession({ id: s.id, plan_name: s.plan_name })}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
@@ -517,6 +526,14 @@ export default function Today() {
         <Plus size={16} />
         {scheduled ? 'Start a Different Plan' : 'Choose a Plan'}
       </Button>
+
+      {/* Export session as image */}
+      <WorkoutExportModal
+        open={!!exportingSession}
+        sessionId={exportingSession?.id}
+        planName={exportingSession?.plan_name}
+        onClose={() => setExportingSession(null)}
+      />
 
       {/* Edit completed session modal */}
       <WorkoutEditorModal
