@@ -128,14 +128,28 @@ router.get('/daily', requireAuth, async (req, res) => {
 
     // Fetch latest cycle (strain), recovery, and sleep in parallel
     const [cycleRes, recoveryRes, sleepRes] = await Promise.allSettled([
-      axios.get(`${WHOOP_API}/v1/cycle?limit=1`, { headers }),
-      axios.get(`${WHOOP_API}/v1/recovery?limit=1`, { headers }),
-      axios.get(`${WHOOP_API}/v1/activity/sleep?limit=1`, { headers }),
+      axios.get(`${WHOOP_API}/v1/cycle?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/recovery?limit=3`, { headers }),
+      axios.get(`${WHOOP_API}/v1/activity/sleep?limit=3`, { headers }),
     ]);
 
-    const cycle = cycleRes.status === 'fulfilled' ? cycleRes.value.data?.records?.[0] : null;
-    const recovery = recoveryRes.status === 'fulfilled' ? recoveryRes.value.data?.records?.[0] : null;
-    const sleep = sleepRes.status === 'fulfilled' ? sleepRes.value.data?.records?.[0] : null;
+    const cycles = cycleRes.status === 'fulfilled' ? cycleRes.value.data?.records || [] : [];
+    const recoveries = recoveryRes.status === 'fulfilled' ? recoveryRes.value.data?.records || [] : [];
+    const sleeps = sleepRes.status === 'fulfilled' ? sleepRes.value.data?.records || [] : [];
+
+    // Use most recent record that has actual score data
+    const cycle = cycles.find(c => c.score?.strain != null) || cycles[0];
+    const recovery = recoveries.find(r => r.score?.recovery_score != null) || recoveries[0];
+    const sleep = sleeps.find(s => s.score?.sleep_performance_percentage != null) || sleeps[0];
+
+    console.log('Whoop daily data:', {
+      cycles: cycles.length, recoveries: recoveries.length, sleeps: sleeps.length,
+      recovery_score: recovery?.score?.recovery_score,
+      hrv: recovery?.score?.hrv_rmssd_milli,
+      rhr: recovery?.score?.resting_heart_rate,
+      strain: cycle?.score?.strain,
+      sleep_perf: sleep?.score?.sleep_performance_percentage,
+    });
 
     res.json({
       recovery_score: recovery?.score?.recovery_score ?? null,
