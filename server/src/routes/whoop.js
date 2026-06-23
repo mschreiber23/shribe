@@ -122,6 +122,27 @@ router.delete('/disconnect', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// GET /api/whoop/stats — computed stats (highest HRV, avg recovery 30d)
+router.get('/stats', requireAuth, async (req, res) => {
+  try {
+    const token = await getToken(req.userId);
+    const headers = { Authorization: `Bearer ${token}` };
+    const [recoveryRes] = await Promise.allSettled([
+      fetchAllPages(`${WHOOP_API_V2}/recovery?limit=25`, headers, 30),
+    ]);
+    const recoveries = recoveryRes.status === 'fulfilled' ? recoveryRes.value : [];
+    const scores = recoveries.map(r => r.score?.recovery_score).filter(s => s != null);
+    const hrvs = recoveries.map(r => r.score?.hrv_rmssd_milli).filter(h => h != null);
+    res.json({
+      avg_recovery_30d: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null,
+      highest_hrv: hrvs.length ? Math.round(Math.max(...hrvs)) : null,
+    });
+  } catch (err) {
+    if (err.message === 'Not connected to Whoop') return res.json({ avg_recovery_30d: null, highest_hrv: null });
+    res.json({ avg_recovery_30d: null, highest_hrv: null });
+  }
+});
+
 // GET /api/whoop/debug — raw API response for debugging
 router.get('/debug', requireAuth, async (req, res) => {
   try {

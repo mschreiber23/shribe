@@ -15,6 +15,7 @@ import {
   getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar,
   getInbox, acceptShare, dismissShare, getFollowers,
   getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop,
+  getWhoopStats,
   getSessions, getSession, deleteSession,
 } from '../api';
 import Button from '../components/Button';
@@ -362,6 +363,7 @@ export default function Profile() {
   const { data: profile, isLoading: profileLoading } = useQuery({ queryKey: ['profile'], queryFn: getProfile });
   const { data: feed = [], isLoading: feedLoading } = useQuery({ queryKey: ['feed', feedLimit], queryFn: () => getFeed({ limit: feedLimit }) });
   const { data: followersData } = useQuery({ queryKey: ['followers'], queryFn: getFollowers });
+  const { data: whoopStats } = useQuery({ queryKey: ['whoopStats'], queryFn: getWhoopStats });
   const { data: inbox = [] } = useQuery({ queryKey: ['inbox'], queryFn: getInbox });
   const unreadInbox = inbox.filter(s => !s.accepted);
 
@@ -402,17 +404,20 @@ export default function Profile() {
           </div>
           <button onClick={() => setEditOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"><Edit2 size={16} style={{ color: 'var(--color-text-muted)' }} /></button>
         </div>
-        <div className="grid grid-cols-4 gap-3 mt-5">
+        <div className="grid grid-cols-3 gap-2 mt-5">
           {[
-            { icon: Dumbbell, label: 'Workouts', value: profile.stats.total_workouts },
-            { icon: Hash, label: 'Sets', value: profile.stats.total_sets.toLocaleString() },
-            { icon: Users, label: 'Followers', value: followersData?.length ?? '—' },
-            { icon: Flame, label: 'Streak', value: `${profile.streak}d` },
-          ].map(({ icon: Icon, label, value }) => (
+            { emoji: '💪', label: 'Workouts', value: profile.stats.total_workouts },
+            { emoji: '⛳', label: 'Golf Rounds', value: profile.stats.activity_counts?.['Golf Round'] ?? 0 },
+            { emoji: '🎾', label: 'Tennis', value: profile.stats.activity_counts?.['Tennis'] ?? 0 },
+            { emoji: '🏓', label: 'Pickleball', value: profile.stats.activity_counts?.['Pickleball'] ?? 0 },
+            { emoji: '🫀', label: 'Avg Recovery', value: whoopStats?.avg_recovery_30d != null ? `${whoopStats.avg_recovery_30d}%` : '—', sub: '30 day avg' },
+            { emoji: '📈', label: 'Best HRV', value: whoopStats?.highest_hrv != null ? `${whoopStats.highest_hrv} ms` : '—', sub: 'all time high' },
+          ].map(({ emoji, label, value, sub }) => (
             <div key={label} className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)' }}>
-              <Icon size={16} className="mx-auto mb-1 text-indigo-400" />
-              <div className="text-xl font-bold">{value}</div>
+              <div className="text-lg mb-0.5">{emoji}</div>
+              <div className="text-xl font-bold leading-tight">{value}</div>
               <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
+              {sub && <div className="text-xs" style={{ color: 'var(--color-text-muted)', opacity: 0.6 }}>{sub}</div>}
             </div>
           ))}
         </div>

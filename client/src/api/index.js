@@ -60,6 +60,7 @@ export const removeRecoveryDay = (date) => api.delete(`/recovery/${date}`).then(
 
 // Whoop
 export const getWhoopStatus = () => api.get('/whoop/status').then(r => r.data);
+export const getWhoopStats = () => api.get('/whoop/stats').then(r => r.data);
 export const getWhoopDebug = () => api.get('/whoop/debug').then(r => r.data);
 export const getWhoopDaily = () => api.get('/whoop/daily').then(r => r.data);
 export const getWhoopHistory = (limit) => api.get('/whoop/history', { params: { limit } }).then(r => r.data);
