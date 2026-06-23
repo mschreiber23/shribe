@@ -566,7 +566,7 @@ export default function Today() {
         onClick={() => setShowPlanPicker(true)}
       >
         <Plus size={16} />
-        {scheduled ? 'Start a Different Plan' : 'Choose a Plan'}
+        {scheduled ? 'Start a Different Workout' : 'Choose a Workout'}
       </Button>
 
       {/* Recovery Day */}
@@ -611,7 +611,7 @@ export default function Today() {
       />
 
       {/* Plan picker modal */}
-      <Modal open={showPlanPicker} onClose={() => setShowPlanPicker(false)} title="Choose a Plan">
+      <Modal open={showPlanPicker} onClose={() => setShowPlanPicker(false)} title="Choose a Workout">
         <div className="space-y-2">
           {plans?.length === 0 && (
             <p className="text-center py-6" style={{ color: 'var(--color-text-muted)' }}>
