@@ -6,7 +6,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry, getActivityTypes, scheduleActivity, deleteScheduledActivity } from '../api';
+import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry, getActivityTypes, scheduleActivity, deleteScheduledActivity, logRecoveryDay, deleteScheduleByDate } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 
@@ -60,9 +60,18 @@ export default function Schedule() {
 
   const { mutate: assignActivity, isPending: assigningActivity } = useMutation({
     mutationFn: (activityTypeId) => scheduleActivity({ date: selectedDate, activity_type_id: activityTypeId }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['schedule'] }); toast.success('Activity scheduled!'); },
+  });
+
+  const selectedIsRestDay = scheduleEntries.some(e => e.date === selectedDate && e.is_recovery_day);
+  const { mutate: toggleRestDay } = useMutation({
+    mutationFn: () => selectedIsRestDay
+      ? fetch(`/api/recovery/${selectedDate}`, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('gymtrack_token')}` } })
+      : logRecoveryDay(selectedDate),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['schedule'] });
-      toast.success('Activity scheduled!');
+      qc.invalidateQueries({ queryKey: ['recoveryDay', selectedDate] });
+      toast.success(selectedIsRestDay ? 'Rest day removed' : 'Rest day scheduled!');
     },
   });
 
@@ -213,6 +222,23 @@ export default function Schedule() {
               </div>
             </>
           )}
+
+          {/* Rest Day */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>Rest</p>
+            <button
+              onClick={() => toggleRestDay()}
+              className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-white/5"
+              style={{ border: `1px solid ${selectedIsRestDay ? 'rgba(34,197,94,0.4)' : 'var(--color-border)'}`, backgroundColor: selectedIsRestDay ? 'rgba(34,197,94,0.08)' : undefined }}
+            >
+              <span className="text-xl">🔋</span>
+              <div className="flex-1">
+                <div className="font-medium text-sm">Rest Day</div>
+                <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{selectedIsRestDay ? 'Scheduled — tap to remove' : 'Mark this as a rest day'}</div>
+              </div>
+              {selectedIsRestDay && <span className="text-xs font-semibold" style={{ color: '#4ade80' }}>✓</span>}
+            </button>
+          </div>
 
           {/* Other Activities */}
           {activityTypes.filter(t => !assignedActivityTypeIds.has(t.id)).length > 0 && (
