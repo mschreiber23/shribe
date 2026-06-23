@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download } from 'lucide-react';
+import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download, BatteryCharging } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
   logSet, updateSet, deleteSet, updateSession, getSession, getPreviousSession,
-  getWhoopStatus, getWhoopDaily,
+  getWhoopStatus, getWhoopDaily, getRecoveryDay, logRecoveryDay, removeRecoveryDay,
 } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -402,6 +402,17 @@ export default function Today() {
 
   const dateLabel = format(new Date(), 'EEEE, MMMM d');
 
+  const { data: recoveryDay, refetch: refetchRecovery } = useQuery({ queryKey: ['recoveryDay', today], queryFn: () => getRecoveryDay(today) });
+
+  const { mutate: markRecovery, isPending: markingRecovery } = useMutation({
+    mutationFn: () => logRecoveryDay(today),
+    onSuccess: () => { refetchRecovery(); qc.invalidateQueries({ queryKey: ['schedule'] }); toast.success('Recovery day logged!'); },
+  });
+  const { mutate: unmarkRecovery } = useMutation({
+    mutationFn: () => removeRecoveryDay(today),
+    onSuccess: () => { refetchRecovery(); toast.success('Recovery day removed'); },
+  });
+
   const { data: whoopStatus } = useQuery({ queryKey: ['whoopStatus'], queryFn: getWhoopStatus });
   const { data: whoopDaily } = useQuery({ queryKey: ['whoopDaily'], queryFn: getWhoopDaily, enabled: !!whoopStatus?.connected, staleTime: 5 * 60 * 1000 });
 
@@ -557,6 +568,31 @@ export default function Today() {
         <Plus size={16} />
         {scheduled ? 'Start a Different Plan' : 'Choose a Plan'}
       </Button>
+
+      {/* Recovery Day */}
+      {recoveryDay ? (
+        <div
+          className="rounded-xl p-4 flex items-center gap-3 mt-3"
+          style={{ backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)' }}
+        >
+          <BatteryCharging size={20} className="text-green-400 shrink-0" />
+          <div className="flex-1">
+            <div className="font-semibold text-green-400">Recovery Day</div>
+            <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Rest up — you logged this as a recovery day</div>
+          </div>
+          <button onClick={() => unmarkRecovery()} className="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors" style={{ color: 'var(--color-text-muted)' }}>Undo</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => markRecovery()}
+          disabled={markingRecovery}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-colors hover:bg-white/5 mt-3"
+          style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-muted)' }}
+        >
+          <BatteryCharging size={16} />
+          Recovery Day?
+        </button>
+      )}
 
       {/* Export session as image */}
       <WorkoutExportModal

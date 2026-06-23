@@ -115,21 +115,23 @@ export default function Schedule() {
                 </span>
                 <div className="mt-0.5 space-y-0.5">
                   {entries.slice(0, 2).map((entry, i) => (
-                    <div
-                      key={entry.id ?? `c-${i}`}
-                      className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight flex items-center gap-0.5"
-                      style={{
-                        backgroundColor: !!entry.is_completed
-                          ? 'rgba(34,197,94,0.15)'
-                          : `${planColorMap[entry.plan_id] || '#6366f1'}22`,
-                        color: !!entry.is_completed
-                          ? '#4ade80'
-                          : planColorMap[entry.plan_id] || '#6366f1',
-                        border: `1px solid ${!!entry.is_completed ? 'rgba(74,222,128,0.3)' : `${planColorMap[entry.plan_id] || '#6366f1'}44`}`,
-                      }}
-                    >
-                      {!!entry.is_completed ? '✓ ' : ''}{entry.plan_name}
-                    </div>
+                    entry.is_recovery_day ? (
+                      <div key={`r-${i}`} className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight" style={{ backgroundColor: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>
+                        🔋 Rest
+                      </div>
+                    ) : (
+                      <div
+                        key={entry.id ?? `c-${i}`}
+                        className="text-xs px-1 py-0.5 rounded truncate font-medium leading-tight flex items-center gap-0.5"
+                        style={{
+                          backgroundColor: !!entry.is_completed ? 'rgba(34,197,94,0.15)' : `${planColorMap[entry.plan_id] || '#6366f1'}22`,
+                          color: !!entry.is_completed ? '#4ade80' : planColorMap[entry.plan_id] || '#6366f1',
+                          border: `1px solid ${!!entry.is_completed ? 'rgba(74,222,128,0.3)' : `${planColorMap[entry.plan_id] || '#6366f1'}44`}`,
+                        }}
+                      >
+                        {!!entry.is_completed ? '✓ ' : ''}{entry.plan_name}
+                      </div>
+                    )
                   ))}
                   {entries.length > 2 && (
                     <div className="text-xs px-1" style={{ color: 'var(--color-text-muted)' }}>+{entries.length - 2} more</div>

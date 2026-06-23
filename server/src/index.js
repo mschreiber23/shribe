@@ -30,6 +30,7 @@ app.use('/api/schedule', requireAuth, require('./routes/schedule'));
 app.use('/api/sessions', requireAuth, require('./routes/sessions'));
 app.use('/api/profile', requireAuth, require('./routes/profile'));
 app.use('/api/social', requireAuth, require('./routes/social'));
+app.use('/api/recovery', requireAuth, require('./routes/recovery'));
 app.use('/api/whoop', require('./routes/whoop')); // has mixed auth (callback is public)
 
 // Serve built client in production
