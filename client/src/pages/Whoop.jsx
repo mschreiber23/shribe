@@ -85,6 +85,11 @@ export default function Whoop() {
   const [historyDays, setHistoryDays] = useState(30);
   const qc = useQueryClient();
 
+  // Check for error/success from OAuth callback
+  const urlParams = new URLSearchParams(window.location.search);
+  const whoopError = urlParams.get('whoop') === 'error' ? urlParams.get('reason') : null;
+  const whoopSuccess = urlParams.get('whoop') === 'connected';
+
   const { data: status } = useQuery({ queryKey: ['whoopStatus'], queryFn: getWhoopStatus });
   const { data: daily, isLoading: loadingDaily, refetch } = useQuery({
     queryKey: ['whoopDaily'],
@@ -124,7 +129,8 @@ export default function Whoop() {
           </p>
           <Button size="lg" onClick={() => {
             const token = localStorage.getItem('gymtrack_token');
-            window.location.href = `/api/whoop/connect?token=${token}`;
+            if (!token) { alert('Please log in first'); return; }
+            window.location.href = `/api/whoop/connect?token=${encodeURIComponent(token)}`;
           }}>
             <Link2 size={16} />
             Connect Whoop Account
