@@ -62,7 +62,19 @@ router.get('/', (req, res) => {
   const activityMap = {};
   for (const row of activityCounts) activityMap[row.name] = row.count;
 
-  res.json({ ...profile, stats: { ...stats, activity_counts: activityMap }, streak: getStreak(req.userId) });
+  // Best golf score (lowest score wins in golf)
+  const bestGolf = db.prepare(`
+    SELECT MIN(CAST(al.metric_value AS REAL)) as best_score
+    FROM activity_logs al
+    JOIN activity_types at ON at.id = al.activity_type_id
+    WHERE al.user_id = ? AND at.name = 'Golf Round' AND al.metric_value IS NOT NULL
+  `).get(req.userId);
+
+  res.json({
+    ...profile,
+    stats: { ...stats, activity_counts: activityMap, best_golf_score: bestGolf?.best_score ?? null },
+    streak: getStreak(req.userId),
+  });
 });
 
 // PUT update profile
