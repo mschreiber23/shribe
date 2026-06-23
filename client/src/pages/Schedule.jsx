@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -219,6 +219,61 @@ export default function Schedule() {
 
         if (!completedEntries.length && !scheduledEntries.length) return null;
 
+        // Build detail lookup: label → sorted list of entries
+        const detailMap = {};
+        for (const e of monthEntries) {
+          if (e.is_recovery_day) continue;
+          const label = e.is_activity ? `${e.emoji} ${e.plan_name}` : `💪 Workouts`;
+          if (!detailMap[label]) detailMap[label] = [];
+          detailMap[label].push(e);
+        }
+        const restList = monthEntries.filter(e => e.is_recovery_day);
+        if (restList.length > 0) detailMap['🔋 Rest Days'] = restList;
+
+        // Sort each group by date
+        for (const k of Object.keys(detailMap)) {
+          detailMap[k].sort((a, b) => a.date < b.date ? -1 : 1);
+        }
+
+        const CategoryCard = ({ label, count, color, borderColor, entries, upcoming }) => {
+          const [open, setOpen] = useState(false);
+          const sorted = upcoming
+            ? [...entries].sort((a, b) => a.date < b.date ? -1 : 1)
+            : entries;
+          return (
+            <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, backgroundColor: 'var(--color-surface-2)' }}>
+              <button
+                onClick={() => setOpen(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+              >
+                <span className="text-sm font-medium">{label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold" style={{ color }}>{count}</span>
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{open ? '▲' : '▼'}</span>
+                </div>
+              </button>
+              {open && (
+                <div className="border-t divide-y" style={{ borderColor: 'var(--color-border)' }}>
+                  {sorted.map((e, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                      <span className="text-xs font-mono w-24 shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                        {format(parseISO(e.date), 'MMM d, yyyy')}
+                      </span>
+                      <span className="flex-1 font-medium truncate">{e.plan_name}</span>
+                      {e.metric_value && (
+                        <span className="font-bold text-indigo-400">{e.metric_label_val}: {e.metric_value}</span>
+                      )}
+                      {e.location && !e.metric_value && (
+                        <span style={{ color: 'var(--color-text-muted)' }} className="truncate">{e.location}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        };
+
         return (
           <div className="mt-6 space-y-4">
             {completedEntries.length > 0 && (
@@ -226,12 +281,9 @@ export default function Schedule() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>
                   Completed This Month
                 </h2>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   {completedEntries.map(([label, count]) => (
-                    <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                      <span className="text-sm font-medium">{label}</span>
-                      <span className="text-xl font-bold" style={{ color: '#4ade80' }}>{count}</span>
-                    </div>
+                    <CategoryCard key={label} label={label} count={count} color="#4ade80" borderColor="rgba(34,197,94,0.2)" entries={detailMap[label] || []} />
                   ))}
                 </div>
               </div>
@@ -242,12 +294,9 @@ export default function Schedule() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--color-text-muted)' }}>
                   Scheduled This Month
                 </h2>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   {scheduledEntries.map(([label, count]) => (
-                    <div key={label} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-                      <span className="text-sm font-medium">{label}</span>
-                      <span className="text-xl font-bold" style={{ color: '#a5b4fc' }}>{count}</span>
-                    </div>
+                    <CategoryCard key={label} label={label} count={count} color="#a5b4fc" borderColor="var(--color-border)" entries={detailMap[label] || []} upcoming />
                   ))}
                 </div>
               </div>
