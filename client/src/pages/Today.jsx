@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
   logSet, updateSet, deleteSet, updateSession, getSession, getPreviousSession,
+  getWhoopStatus, getWhoopDaily,
 } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -401,9 +402,35 @@ export default function Today() {
 
   const dateLabel = format(new Date(), 'EEEE, MMMM d');
 
+  const { data: whoopStatus } = useQuery({ queryKey: ['whoopStatus'], queryFn: getWhoopStatus });
+  const { data: whoopDaily } = useQuery({ queryKey: ['whoopDaily'], queryFn: getWhoopDaily, enabled: !!whoopStatus?.connected, staleTime: 5 * 60 * 1000 });
+
+  const recoveryColor = (s) => s >= 67 ? '#22c55e' : s >= 34 ? '#f59e0b' : s != null ? '#ef4444' : '#6366f1';
+
+  function WhoopStrip() {
+    if (!whoopStatus?.connected || !whoopDaily) return null;
+    const metrics = [
+      { label: 'Recovery', value: whoopDaily.recovery_score != null ? `${Math.round(whoopDaily.recovery_score)}%` : '—', color: recoveryColor(whoopDaily.recovery_score) },
+      { label: 'HRV', value: whoopDaily.hrv_rmssd != null ? `${Math.round(whoopDaily.hrv_rmssd)} ms` : '—', color: '#a78bfa' },
+      { label: 'Resting HR', value: whoopDaily.resting_heart_rate != null ? `${Math.round(whoopDaily.resting_heart_rate)} bpm` : '—', color: '#f472b6' },
+      { label: 'Strain', value: whoopDaily.strain_score != null ? `${Math.round(whoopDaily.strain_score * 10) / 10}` : '—', color: whoopDaily.strain_score >= 18 ? '#ef4444' : whoopDaily.strain_score >= 14 ? '#f59e0b' : '#6366f1' },
+    ];
+    return (
+      <div className="grid grid-cols-4 gap-2 mb-5">
+        {metrics.map(m => (
+          <div key={m.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
+            <div className="text-lg font-bold" style={{ color: m.color }}>{m.value}</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{m.label}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (currentSessionId) {
     return (
       <div className="max-w-2xl mx-auto">
+        <WhoopStrip />
         <div className="flex items-center gap-3 mb-6">
           <div
             className="p-2 rounded-lg"
@@ -426,6 +453,7 @@ export default function Today() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <WhoopStrip />
       <div className="flex items-center gap-3 mb-6">
         <div
           className="p-2 rounded-lg"
