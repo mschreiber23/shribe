@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -11,6 +11,45 @@ import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
 import { ActivityEditorModal } from '../components/ActivityEditor';
+
+function CategoryCard({ label, count, color, borderColor, entries, upcoming }) {
+  const [open, setOpen] = useState(false);
+  const sorted = upcoming
+    ? [...entries].sort((a, b) => a.date < b.date ? -1 : 1)
+    : entries;
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, backgroundColor: 'var(--color-surface-2)' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+      >
+        <span className="text-sm font-medium">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-bold" style={{ color }}>{count}</span>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+      {open && (
+        <div className="border-t divide-y" style={{ borderColor: 'var(--color-border)' }}>
+          {sorted.map((e, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+              <span className="text-xs font-mono w-24 shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                {format(parseISO(e.date), 'MMM d, yyyy')}
+              </span>
+              <span className="flex-1 font-medium truncate">{e.plan_name}</span>
+              {e.metric_value && (
+                <span className="font-bold text-indigo-400">{e.metric_label_val}: {e.metric_value}</span>
+              )}
+              {e.location && !e.metric_value && (
+                <span style={{ color: 'var(--color-text-muted)' }} className="truncate">{e.location}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Schedule() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -234,45 +273,6 @@ export default function Schedule() {
         for (const k of Object.keys(detailMap)) {
           detailMap[k].sort((a, b) => a.date < b.date ? -1 : 1);
         }
-
-        const CategoryCard = ({ label, count, color, borderColor, entries, upcoming }) => {
-          const [open, setOpen] = useState(false);
-          const sorted = upcoming
-            ? [...entries].sort((a, b) => a.date < b.date ? -1 : 1)
-            : entries;
-          return (
-            <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${borderColor}`, backgroundColor: 'var(--color-surface-2)' }}>
-              <button
-                onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
-              >
-                <span className="text-sm font-medium">{label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold" style={{ color }}>{count}</span>
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{open ? '▲' : '▼'}</span>
-                </div>
-              </button>
-              {open && (
-                <div className="border-t divide-y" style={{ borderColor: 'var(--color-border)' }}>
-                  {sorted.map((e, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                      <span className="text-xs font-mono w-24 shrink-0" style={{ color: 'var(--color-text-muted)' }}>
-                        {format(parseISO(e.date), 'MMM d, yyyy')}
-                      </span>
-                      <span className="flex-1 font-medium truncate">{e.plan_name}</span>
-                      {e.metric_value && (
-                        <span className="font-bold text-indigo-400">{e.metric_label_val}: {e.metric_value}</span>
-                      )}
-                      {e.location && !e.metric_value && (
-                        <span style={{ color: 'var(--color-text-muted)' }} className="truncate">{e.location}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        };
 
         return (
           <div className="mt-6 space-y-4">
