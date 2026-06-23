@@ -21,6 +21,7 @@ export const toggleGlobalPlan = (id) => api.put(`/plans/${id}/global`).then(r =>
 export const addExercise = (planId, data) => api.post(`/plans/${planId}/exercises`, data).then(r => r.data);
 export const updateExercise = (planId, exId, data) => api.put(`/plans/${planId}/exercises/${exId}`, data).then(r => r.data);
 export const deleteExercise = (planId, exId) => api.delete(`/plans/${planId}/exercises/${exId}`).then(r => r.data);
+export const getExerciseHistory = (planId, exId) => api.get(`/plans/${planId}/exercises/${exId}/history`).then(r => r.data);
 
 export const importCSV = (file) => {
   const form = new FormData();
