@@ -153,4 +153,40 @@ router.post('/import/csv', upload.single('file'), (req, res) => {
   }
 });
 
+// GET exercise history — all sets ever logged for this exercise by this user
+router.get('/:planId/exercises/:exId/history', (req, res) => {
+  const plan = db.prepare('SELECT id FROM workout_plans WHERE id = ? AND (user_id = ? OR is_global = 1)').get(req.params.planId, req.userId);
+  if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+  const exercise = db.prepare('SELECT * FROM exercises WHERE id = ? AND plan_id = ?').get(req.params.exId, req.params.planId);
+  if (!exercise) return res.status(404).json({ error: 'Exercise not found' });
+
+  const sets = db.prepare(`
+    SELECT sl.*, ws.date, ws.id as session_id
+    FROM set_logs sl
+    JOIN workout_sessions ws ON ws.id = sl.session_id
+    WHERE sl.exercise_id = ? AND ws.user_id = ? AND ws.completed_at IS NOT NULL
+    ORDER BY ws.date DESC, ws.id DESC, sl.set_number ASC
+  `).all(req.params.exId, req.userId);
+
+  // Group by session date
+  const sessionMap = {};
+  const sessionOrder = [];
+  for (const s of sets) {
+    const key = `${s.date}_${s.session_id}`;
+    if (!sessionMap[key]) { sessionMap[key] = { date: s.date, session_id: s.session_id, sets: [] }; sessionOrder.push(key); }
+    sessionMap[key].sets.push({ set_number: s.set_number, reps: s.reps, weight: s.weight, unit: s.unit });
+  }
+
+  const maxWeight = sets.reduce((max, s) => s.weight != null && s.weight > max ? s.weight : max, 0);
+  const maxUnit = sets.find(s => s.weight === maxWeight)?.unit || 'lbs';
+
+  res.json({
+    exercise,
+    max_weight: maxWeight || null,
+    max_weight_unit: maxUnit,
+    sessions: sessionOrder.map(k => sessionMap[k]),
+  });
+});
+
 module.exports = router;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { groupBySection } from '../utils/sections';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, addDays, subDays, isToday, isFuture, parseISO } from 'date-fns';
-import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download, BatteryCharging, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, CheckCircle, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Calendar, Edit2, Download, BatteryCharging, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   getScheduleByDate, getPlans, createSession, getSessions,
@@ -15,6 +15,7 @@ import Modal from '../components/Modal';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
 import { WorkoutExportModal } from '../components/WorkoutExport';
 import { ActivityEditorModal } from '../components/ActivityEditor';
+import { ExerciseHistoryModal } from '../components/ExerciseHistory';
 
 const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -110,6 +111,7 @@ function SetRow({ set, sessionId, onDelete }) {
 
 function ExerciseLogger({ exercise, sessionId, loggedSets = [], previousSets = [] }) {
   const [open, setOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [reps, setReps] = useState('');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState('lbs');
@@ -140,13 +142,21 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [], previousSets = [
         onClick={() => setOpen(v => !v)}
       >
         <div className="flex-1 min-w-0">
-          <div className="font-semibold flex items-center gap-2">
-            {exercise.name}
+          <div className="font-semibold flex items-center gap-2 flex-wrap">
+            <button
+              onClick={e => { e.stopPropagation(); setShowHistory(true); }}
+              className="hover:text-indigo-400 transition-colors text-left"
+            >
+              {exercise.name}
+            </button>
             {loggedSets.length > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-600/20 text-indigo-400">
                 {loggedSets.length} {loggedSets.length === 1 ? 'set' : 'sets'}
               </span>
             )}
+            <button onClick={e => { e.stopPropagation(); setShowHistory(true); }} className="p-0.5 rounded hover:bg-white/10 transition-colors" title="View history">
+              <History size={12} style={{ color: 'var(--color-text-muted)' }} />
+            </button>
           </div>
           {exercise.notes && (
             <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>{exercise.notes}</p>
@@ -262,6 +272,13 @@ function ExerciseLogger({ exercise, sessionId, loggedSets = [], previousSets = [
           </div>
         </div>
       )}
+      <ExerciseHistoryModal
+        open={showHistory}
+        planId={exercise.plan_id}
+        exerciseId={exercise.id}
+        exerciseName={exercise.name}
+        onClose={() => setShowHistory(false)}
+      />
     </div>
   );
 }
