@@ -4,16 +4,19 @@ import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, parseISO,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry, getActivityTypes, scheduleActivity, deleteScheduledActivity, logRecoveryDay, deleteScheduleByDate } from '../api';
+import { getSchedule, getPlans, setScheduleEntry, deleteScheduleEntry, getActivityTypes, scheduleActivity, deleteScheduledActivity, logRecoveryDay, deleteScheduleByDate, getSessions, getSession, getActivityLogs } from '../api';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { WorkoutEditorModal } from '../components/WorkoutEditor';
 
 export default function Schedule() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAssign, setShowAssign] = useState(false);
+  const [viewingEntry, setViewingEntry] = useState(null); // { type: 'workout'|'activity', planId?, activityTypeId? }
+  const [editingSessionId, setEditingSessionId] = useState(null);
   const qc = useQueryClient();
 
   const monthStart = startOfMonth(currentMonth);
@@ -62,6 +65,25 @@ export default function Schedule() {
     mutationFn: (activityTypeId) => scheduleActivity({ date: selectedDate, activity_type_id: activityTypeId }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['schedule'] }); toast.success('Activity scheduled!'); },
   });
+
+  // Detail view data
+  const { data: dateSessions } = useQuery({
+    queryKey: ['sessions', selectedDate],
+    queryFn: () => getSessions({ date: selectedDate }),
+    enabled: !!selectedDate && viewingEntry?.type === 'workout',
+  });
+  const sessionForPlan = dateSessions?.find(s => s.plan_id === viewingEntry?.planId);
+  const { data: sessionDetail } = useQuery({
+    queryKey: ['session', sessionForPlan?.id],
+    queryFn: () => getSession(sessionForPlan.id),
+    enabled: !!sessionForPlan?.id,
+  });
+  const { data: dateActivityLogs } = useQuery({
+    queryKey: ['activityLogs', selectedDate],
+    queryFn: () => getActivityLogs({ date: selectedDate }),
+    enabled: !!selectedDate && viewingEntry?.type === 'activity',
+  });
+  const activityDetail = dateActivityLogs?.find(a => a.activity_type_id === viewingEntry?.activityTypeId);
 
   const selectedIsRestDay = scheduleEntries.some(e => e.date === selectedDate && e.is_recovery_day);
   const { mutate: toggleRestDay } = useMutation({
@@ -195,19 +217,135 @@ export default function Schedule() {
         </div>
       )}
 
+      {/* Workout editor for sessions opened from calendar */}
+      {editingSessionId && (
+        <WorkoutEditorModal
+          open={!!editingSessionId}
+          sessionId={editingSessionId}
+          planName={sessionDetail?.plan_name}
+          onClose={() => setEditingSessionId(null)}
+        />
+      )}
+
       {/* Assign modal */}
-      <Modal open={showAssign} onClose={() => setShowAssign(false)} title={selectedDate ? format(parseISO(selectedDate), 'EEEE, MMMM d') : ''}>
+      <Modal
+        open={showAssign}
+        onClose={() => { setShowAssign(false); setViewingEntry(null); }}
+        title={viewingEntry
+          ? (viewingEntry.type === 'workout' ? sessionDetail?.plan_name || '...' : activityDetail?.type_name || '...')
+          : (selectedDate ? format(parseISO(selectedDate), 'EEEE, MMMM d') : '')}
+      >
         <div className="space-y-4">
+
+          {/* ── DETAIL VIEW ─────────────────────────────── */}
+          {viewingEntry && (
+            <div>
+              <button onClick={() => setViewingEntry(null)} className="flex items-center gap-1.5 text-sm mb-4 hover:opacity-80 transition-opacity" style={{ color: 'var(--color-text-muted)' }}>
+                <ArrowLeft size={14} /> Back
+              </button>
+
+              {/* Workout session detail */}
+              {viewingEntry.type === 'workout' && (
+                <div className="space-y-3">
+                  {!sessionDetail && <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>Loading...</p>}
+                  {sessionDetail && (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: 'Exercises', value: sessionDetail.logged_exercises?.length || 0 },
+                          { label: 'Sets', value: sessionDetail.logged_exercises?.reduce((s, le) => s + le.sets.length, 0) || 0 },
+                          { label: 'Reps', value: sessionDetail.logged_exercises?.reduce((s, le) => s + le.sets.reduce((r, set) => r + (set.reps || 0), 0), 0) || 0 },
+                        ].map(stat => (
+                          <div key={stat.label} className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)' }}>
+                            <div className="text-2xl font-bold">{stat.value}</div>
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {sessionDetail.logged_exercises?.map(le => (
+                        <div key={le.exercise_id}>
+                          <h4 className="font-semibold text-sm mb-1.5">{le.exercise_name}</h4>
+                          <div className="space-y-1">
+                            {le.sets.map((set, i) => (
+                              <div key={i} className="flex items-center gap-4 px-3 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--color-surface-3)' }}>
+                                <span className="w-12 text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>Set {set.set_number}</span>
+                                <span className="flex-1">{set.reps != null ? <><strong>{set.reps}</strong> reps</> : '—'}</span>
+                                <span>{set.weight != null ? <><strong>{set.weight}</strong> <span style={{ color: 'var(--color-text-muted)' }}>{set.unit}</span></> : 'bodyweight'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      {sessionDetail.logged_exercises?.length === 0 && (
+                        <p className="text-sm text-center py-3" style={{ color: 'var(--color-text-muted)' }}>No sets logged</p>
+                      )}
+                      <Button size="sm" variant="secondary" onClick={() => { setEditingSessionId(sessionForPlan?.id); }}>Edit Workout</Button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Activity detail */}
+              {viewingEntry.type === 'activity' && (
+                <div className="space-y-3">
+                  {!activityDetail && <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>Loading...</p>}
+                  {activityDetail && (
+                    <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: 'var(--color-surface-3)' }}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">{activityDetail.emoji}</span>
+                        <div>
+                          <div className="font-bold text-lg">{activityDetail.type_name}</div>
+                          <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{format(parseISO(activityDetail.date), 'MMMM d, yyyy')}</div>
+                        </div>
+                      </div>
+                      {activityDetail.metric_label && activityDetail.metric_value && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-sm font-semibold">{activityDetail.metric_label}:</span>
+                          <span className="text-2xl font-bold text-indigo-400">{activityDetail.metric_value}</span>
+                        </div>
+                      )}
+                      {activityDetail.duration_mins && (
+                        <div className="text-sm">⏱ {activityDetail.duration_mins} minutes</div>
+                      )}
+                      {activityDetail.notes && (
+                        <div className="text-sm p-2 rounded-lg" style={{ backgroundColor: 'var(--color-surface-2)' }}>{activityDetail.notes}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── DAY VIEW ─────────────────────────────────── */}
+          {!viewingEntry && <>
           {/* Current entries for this day */}
           {selectedEntries.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>Scheduled</p>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>This Day</p>
               {selectedEntries.map(entry => (
-                <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)', border: '1px solid var(--color-border)' }}>
-                  <div className="flex-1 font-medium text-sm">{entry.plan_name}</div>
-                  <button onClick={() => unassign(entry.id)} className="p-1 rounded hover:bg-red-500/20 transition-colors">
-                    <X size={14} className="text-red-400" />
+                <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--color-surface-3)', border: `1px solid ${!!entry.is_completed ? 'rgba(34,197,94,0.3)' : 'var(--color-border)'}` }}>
+                  {entry.is_activity && <span className="text-lg shrink-0">{entry.emoji}</span>}
+                  <button
+                    className="flex-1 text-left"
+                    onClick={() => !!entry.is_completed && setViewingEntry(entry.is_activity ? { type: 'activity', activityTypeId: entry.activity_type_id } : { type: 'workout', planId: entry.plan_id })}
+                  >
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      {entry.plan_name}
+                      {!!entry.is_completed && <span className="text-xs" style={{ color: '#4ade80' }}>✓ Done</span>}
+                    </div>
                   </button>
+                  {!!entry.is_completed && (
+                    <button onClick={() => setViewingEntry(entry.is_activity ? { type: 'activity', activityTypeId: entry.activity_type_id } : { type: 'workout', planId: entry.plan_id })}
+                      className="text-xs px-2 py-1 rounded-lg hover:bg-white/10 transition-colors shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                      View
+                    </button>
+                  )}
+                  {!entry.is_recovery_day && (
+                    <button onClick={() => unassign({ id: entry.id, isActivity: !!entry.is_activity })} className="p-1 rounded hover:bg-red-500/20 transition-colors shrink-0">
+                      <X size={14} className="text-red-400" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -259,6 +397,7 @@ export default function Schedule() {
               </div>
             </>
           )}
+          </>}
         </div>
       </Modal>
     </div>
