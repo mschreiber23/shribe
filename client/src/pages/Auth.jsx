@@ -41,7 +41,9 @@ export default function Auth() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/icon.svg" alt="ShribeTRAKR" className="mx-auto mb-4" style={{ width: '72px', height: '72px', borderRadius: '18px' }} />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 mx-auto" style={{ backgroundColor: 'var(--color-primary)' }}>
+            <span className="text-2xl font-black text-white">S</span>
+          </div>
           <h1 className="text-3xl font-bold">ShribeTRAKR</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
             {mode === 'login' ? 'Sign in to your account' : 'Create your account'}

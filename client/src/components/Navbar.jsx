@@ -50,8 +50,7 @@ export default function Navbar() {
       {/* Desktop */}
       <div className="hidden md:flex items-center gap-1 px-4 py-3 max-w-5xl mx-auto">
         <div className="flex items-center gap-2 mr-6">
-          <img src="/icon.svg" alt="" style={{ height: '28px', width: '28px', borderRadius: '6px' }} />
-          <span className="font-bold text-base tracking-tight">Shribe<span style={{ color: '#6366f1' }}>TRAKR</span></span>
+          <span className="font-bold text-lg">ShribeTRAKR</span>
         </div>
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
