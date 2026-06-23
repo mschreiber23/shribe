@@ -155,9 +155,12 @@ export default function Whoop() {
         <div className="flex gap-2">
           <button
             onClick={async () => {
-              const data = await getWhoopDebug();
-              console.log('Whoop debug:', JSON.stringify(data, null, 2));
-              alert('RECOVERY: ' + JSON.stringify(data.recovery).slice(0, 300) + '\n\nSLEEP: ' + JSON.stringify(data.sleep).slice(0, 300));
+              try {
+                const data = await getWhoopDebug();
+                alert('recovery_v1: ' + JSON.stringify(data.recovery_v1).slice(0,200) + '\n\nsleep_activity: ' + JSON.stringify(data.sleep_activity).slice(0,200) + '\n\nsleep_v1: ' + JSON.stringify(data.sleep_v1).slice(0,200));
+              } catch(e) {
+                alert('Error: ' + e.message);
+              }
             }}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors text-xs"
             title="Debug"
