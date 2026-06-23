@@ -18,7 +18,7 @@ router.get('/connect', (req, res) => {
   // Verify JWT from query param
   const jwt = require('jsonwebtoken');
   const JWT_SECRET = process.env.JWT_SECRET || 'gymtrack-dev-secret-change-in-production';
-  const token = req.query.token;
+  const token = req.query.token ? decodeURIComponent(req.query.token) : null;
   if (!token) return res.status(401).json({ error: 'Not logged in' });
 
   let userId;
@@ -41,8 +41,9 @@ router.get('/connect', (req, res) => {
 
 // GET /api/whoop/callback — Whoop redirects here after auth
 router.get('/callback', async (req, res) => {
-  const { code, state, error } = req.query;
-  if (error || !code) return res.redirect('/?whoop=error');
+  const { code, state, error, error_description } = req.query;
+  console.log('Whoop callback:', { code: !!code, state, error, error_description });
+  if (error || !code) return res.redirect(`/?whoop=error&reason=${encodeURIComponent(error_description || error || 'unknown')}`);
 
   const userId = parseInt(state);
   if (!userId) return res.redirect('/?whoop=error');
