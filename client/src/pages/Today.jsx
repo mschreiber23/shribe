@@ -638,7 +638,6 @@ export default function Today() {
           </div>
         );
       })()}
-      )}
 
       <Button
         variant="secondary"
