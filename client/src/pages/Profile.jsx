@@ -111,11 +111,15 @@ function EditProfileModal({ profile, onClose }) {
 function WorkoutPost({ post }) {
   const [expanded, setExpanded] = useState(false);
   const timeAgo = formatDistanceToNow(parseISO(post.completed_at), { addSuffix: true });
+  const isActivity = post.feed_type === 'activity';
+
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface-2)' }}>
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg shrink-0 mt-0.5" style={{ backgroundColor: 'rgba(99,102,241,0.15)' }}><Dumbbell size={16} className="text-indigo-400" /></div>
+          <div className="p-2 rounded-lg shrink-0 mt-0.5" style={{ backgroundColor: isActivity ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.15)' }}>
+            {isActivity ? <span className="text-lg leading-none">{post.emoji}</span> : <Dumbbell size={16} className="text-indigo-400" />}
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="font-bold text-base">{post.plan_name}</span>
@@ -124,45 +128,76 @@ function WorkoutPost({ post }) {
             <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{format(parseISO(post.date), 'EEEE, MMMM d, yyyy')}</p>
           </div>
         </div>
-        <div className="flex gap-4 mt-3 flex-wrap">
-          {[{ label: 'Exercises', value: post.stats.exercise_count }, { label: 'Sets', value: post.stats.total_sets }, { label: 'Reps', value: post.stats.total_reps }, ...(post.stats.total_volume > 0 ? [{ label: 'Volume', value: `${post.stats.total_volume.toLocaleString()} lbs` }] : [])].map(stat => (
-            <div key={stat.label} className="text-center">
-              <div className="text-lg font-bold leading-tight">{stat.value}</div>
-              <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
+
+        {/* Activity details */}
+        {isActivity && (
+          <div className="flex gap-4 mt-3 flex-wrap items-end">
+            {post.metric_label && post.metric_value && (
+              <div>
+                <div className="text-2xl font-bold text-indigo-400">{post.metric_value}</div>
+                <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{post.metric_label}</div>
+              </div>
+            )}
+            {post.duration_mins && (
+              <div>
+                <div className="text-lg font-bold">{post.duration_mins}<span className="text-sm font-normal ml-0.5">min</span></div>
+                <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Duration</div>
+              </div>
+            )}
+            {post.notes && (
+              <p className="text-sm w-full mt-1" style={{ color: 'var(--color-text-muted)' }}>{post.notes}</p>
+            )}
+          </div>
+        )}
+
+        {/* Workout stats */}
+        {!isActivity && (
+          <div className="flex gap-4 mt-3 flex-wrap">
+            {[{ label: 'Exercises', value: post.stats.exercise_count }, { label: 'Sets', value: post.stats.total_sets }, { label: 'Reps', value: post.stats.total_reps }, ...(post.stats.total_volume > 0 ? [{ label: 'Volume', value: `${post.stats.total_volume.toLocaleString()} lbs` }] : [])].map(stat => (
+              <div key={stat.label} className="text-center">
+                <div className="text-lg font-bold leading-tight">{stat.value}</div>
+                <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors hover:bg-white/5 border-t" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-        {expanded ? <><ChevronUp size={14} /> Hide</> : <><ChevronDown size={14} /> Show exercises</>}
-      </button>
-      {expanded && (
-        <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
-          {sortSections(post.sections.flatMap(s => s.exercises.map(e => ({ ...e, section: s.section })))).map(({ section, exercises }) => (
-            <div key={section} className="pt-3">
-              {post.sections.length > 1 && (
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded" style={{ backgroundColor: section.toLowerCase().includes('warm') ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)', color: section.toLowerCase().includes('warm') ? '#fbbf24' : '#a5b4fc' }}>{section}</span>
-                  <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
-                </div>
-              )}
-              {exercises.map(ex => (
-                <div key={ex.exercise_id} className="mb-3">
-                  <p className="text-sm font-semibold mb-1.5">{ex.exercise_name}</p>
-                  <div className="space-y-1">
-                    {ex.sets.map((set, i) => (
-                      <div key={i} className="flex items-center gap-4 px-3 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--color-surface-3)' }}>
-                        <span className="w-12 text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>Set {set.set_number}</span>
-                        <span className="flex-1">{set.reps != null ? <><strong>{set.reps}</strong> reps</> : '—'}</span>
-                        <span>{set.weight != null ? <><strong>{set.weight}</strong> <span style={{ color: 'var(--color-text-muted)' }}>{set.unit}</span></> : 'bodyweight'}</span>
+
+      {/* Expand exercises for workouts only */}
+      {!isActivity && post.sections.length > 0 && (
+        <>
+          <button onClick={() => setExpanded(v => !v)} className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors hover:bg-white/5 border-t" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+            {expanded ? <><ChevronUp size={14} /> Hide</> : <><ChevronDown size={14} /> Show exercises</>}
+          </button>
+          {expanded && (
+            <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+              {sortSections(post.sections.flatMap(s => s.exercises.map(e => ({ ...e, section: s.section })))).map(({ section, exercises }) => (
+                <div key={section} className="pt-3">
+                  {post.sections.length > 1 && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded" style={{ backgroundColor: section.toLowerCase().includes('warm') ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)', color: section.toLowerCase().includes('warm') ? '#fbbf24' : '#a5b4fc' }}>{section}</span>
+                      <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+                    </div>
+                  )}
+                  {exercises.map(ex => (
+                    <div key={ex.exercise_id} className="mb-3">
+                      <p className="text-sm font-semibold mb-1.5">{ex.exercise_name}</p>
+                      <div className="space-y-1">
+                        {ex.sets.map((set, i) => (
+                          <div key={i} className="flex items-center gap-4 px-3 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--color-surface-3)' }}>
+                            <span className="w-12 text-xs font-mono" style={{ color: 'var(--color-text-muted)' }}>Set {set.set_number}</span>
+                            <span className="flex-1">{set.reps != null ? <><strong>{set.reps}</strong> reps</> : '—'}</span>
+                            <span>{set.weight != null ? <><strong>{set.weight}</strong> <span style={{ color: 'var(--color-text-muted)' }}>{set.unit}</span></> : 'bodyweight'}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );
