@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const FavoritesContext = createContext(null);
 
-const STORAGE_KEY = 'sports_dashboard_favorites_v2';
+const STORAGE_KEY = 'sports_dashboard_favorites_v3';
 
 const DEFAULT_FAVORITES = {
   teams: [
