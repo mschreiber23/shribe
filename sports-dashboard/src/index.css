@@ -1371,7 +1371,149 @@ body {
 }
 .hidden-teams-toggle:hover { border-color: var(--accent2); color: var(--text); }
 
-/* ── Box Score Modal ── */
+/* ── Box Score Modal v2 ── */
+.bsm2-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+
+.bsm2-panel {
+  background: var(--bg2);
+  border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 700px;
+  max-height: 93vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+}
+
+.bsm2-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 10px;
+  flex-shrink: 0;
+}
+.bsm2-title { font-size: 15px; font-weight: 700; }
+
+.bsm2-scroll { overflow-y: auto; flex: 1; }
+
+/* Header */
+.bsm2-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+  border-bottom: 1px solid var(--border);
+}
+.bsm2-team-side { display: flex; align-items: center; gap: 10px; flex: 1; }
+.bsm2-team-side-right { flex-direction: row-reverse; }
+.bsm2-team-logo { width: 48px; height: 48px; object-fit: contain; }
+.bsm2-score { font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+.bsm2-center-info {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0; padding: 0 8px;
+}
+.bsm2-detail { font-size: 12px; color: var(--text2); }
+
+/* Line score */
+.bsm2-linescore-wrap { overflow-x: auto; border-bottom: 1px solid var(--border); }
+.bsm2-linescore { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
+.bsm2-ls-th {
+  background: var(--bg3); color: var(--text2);
+  font-size: 11px; font-weight: 700;
+  padding: 7px 8px; text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.bsm2-ls-team { text-align: left; padding-left: 14px; min-width: 80px; }
+.bsm2-ls-rhe { border-left: 1px solid var(--border); color: var(--text); }
+.bsm2-ls-td { padding: 9px 8px; text-align: center; color: var(--text2); font-variant-numeric: tabular-nums; }
+.bsm2-ls-team.bsm2-ls-td { text-align: left; padding-left: 14px; display: flex; align-items: center; gap: 7px; }
+.bsm2-ls-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.bsm2-ls-abbr { font-weight: 700; font-size: 13px; color: var(--text); }
+.bsm2-ls-inning { color: var(--text2); }
+.bsm2-ls-rhe.bsm2-ls-td { border-left: 1px solid var(--border); }
+.bsm2-ls-bold { font-weight: 800; color: var(--text); }
+
+/* Situation */
+.bsm2-situation {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  flex-wrap: wrap;
+}
+.bsm2-sit-player { min-width: 120px; }
+.bsm2-sit-role { font-size: 10px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.bsm2-sit-name { font-size: 13px; font-weight: 700; color: var(--accent2); }
+.bsm2-sit-jersey { color: var(--text2); font-weight: 400; }
+.bsm2-sit-count { display: flex; flex-direction: column; gap: 4px; margin-left: auto; }
+.bsm2-sit-count-row { display: flex; align-items: center; gap: 5px; }
+.bsm2-sit-count-label { font-size: 10px; color: var(--text2); font-weight: 700; width: 10px; }
+.bsm2-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bg2); border: 1.5px solid rgba(255,255,255,0.15); }
+.bsm2-dot-green  { background: var(--live);    border-color: var(--live); }
+.bsm2-dot-yellow { background: #f59e0b;        border-color: #f59e0b; }
+.bsm2-dot-red    { background: var(--danger);  border-color: var(--danger); }
+
+/* Team tabs */
+.bsm2-tabs {
+  display: flex; gap: 0;
+  margin: 14px 16px 0;
+  background: var(--bg3);
+  border-radius: 10px;
+  padding: 3px;
+}
+.bsm2-tab {
+  flex: 1; background: transparent; border: none;
+  color: var(--text2); padding: 8px; border-radius: 8px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all 0.15s;
+}
+.bsm2-tab-active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+
+/* Body */
+.bsm2-body { padding: 14px 16px 24px; }
+
+.bsm2-team-stats { display: flex; flex-direction: column; gap: 4px; }
+
+.bsm2-stats-heading {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Stats table */
+.bsm2-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+.bsm2-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+.bsm2-th {
+  background: var(--bg3); color: var(--text2);
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  padding: 7px 10px; text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.bsm2-th-player { text-align: left; min-width: 130px; }
+.bsm2-tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.bsm2-tr:last-child { border-bottom: none; }
+.bsm2-tr:hover { background: rgba(255,255,255,0.03); }
+.bsm2-dnp { opacity: 0.4; }
+.bsm2-td { padding: 8px 10px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; font-size: 13px; }
+.bsm2-td-player { text-align: left; }
+.bsm2-hl { font-weight: 800; color: var(--text); }
+.bsm2-totals { background: var(--bg3); }
+.bsm2-player-cell { display: flex; align-items: center; gap: 7px; }
+.bsm2-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
+.bsm2-player-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.bsm2-player-pos { font-size: 11px; color: var(--text2); }
+
+/* Game clickable — keep old class for TeamRow/TeamCard */
+.team-game {
+  width: 100%; background: transparent; border: none;
+  padding: 0; cursor: pointer; text-align: left; color: inherit;
+}
+.team-game:hover .team-game-cta { opacity: 1; }
+.team-game-cta { font-size: 11px; color: var(--accent2); opacity: 0; transition: opacity 0.15s; margin-left: auto; float: right; }
+
+/* ── Old Box Score Modal (keep .bsm-close reused) ── */
 .bsm-overlay {
   position: fixed;
   inset: 0;
