@@ -208,7 +208,6 @@ export default function MyTeams() {
           <button
             className="mt-date-btn"
             onClick={() => shiftDate(1)}
-            disabled={isToday}
           >→</button>
           {!isToday && (
             <button className="mt-date-today" onClick={() => setSelectedDate(todayMidnight())}>
