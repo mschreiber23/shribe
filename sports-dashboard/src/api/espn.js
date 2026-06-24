@@ -63,12 +63,23 @@ export async function getPlayerStats(sport, playerId) {
 
 export async function searchTeams(sport, query) {
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(`${BASE}/${league}/teams?limit=100`);
-  const teams = data.sports?.[0]?.leagues?.[0]?.teams || [];
-  if (!query) return teams.map((t) => t.team);
-  return teams
-    .map((t) => t.team)
-    .filter((t) => t.displayName.toLowerCase().includes(query.toLowerCase()));
+  // Use standings endpoint — has CORS headers unlike the teams endpoint
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/v2/sports/${league}/standings`
+  );
+  const teams = [];
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    const entries = node.standings?.entries || node.entries;
+    if (Array.isArray(entries)) {
+      entries.forEach((e) => { if (e.team?.id) teams.push(e.team); });
+    }
+    (node.children || []).forEach(walk);
+  };
+  walk(data);
+  const unique = Array.from(new Map(teams.map((t) => [t.id, t])).values());
+  if (!query) return unique;
+  return unique.filter((t) => t.displayName.toLowerCase().includes(query.toLowerCase()));
 }
 
 export async function getTeamSchedule(sport, teamId) {
