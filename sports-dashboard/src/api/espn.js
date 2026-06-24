@@ -24,8 +24,9 @@ export async function getTeamRoster(sport, teamId) {
 export async function getPlayerStats(sport, playerId) {
   const { league } = SPORTS[sport];
   const year = new Date().getFullYear();
+  // Core API v2 returns actual current-season stats (not career totals)
   const { data } = await axios.get(
-    `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/stats?season=${year}`
+    `https://sports.core.api.espn.com/v2/sports/${league}/seasons/${year}/types/2/athletes/${playerId}/statistics/0`
   );
   return data;
 }
