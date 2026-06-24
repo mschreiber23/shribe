@@ -2,33 +2,101 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog } from '../api/espn';
 
-const STAT_COLS = [
-  { key: 'GP',  label: 'GP',  title: 'Games Played' },
-  { key: 'AB',  label: 'AB',  title: 'At Bats' },
-  { key: 'AVG', label: 'AVG', title: 'Batting Average', hl: true },
-  { key: 'OBP', label: 'OBP', title: 'On Base Pct', hl: true },
-  { key: 'SLG', label: 'SLG', title: 'Slugging', hl: true },
-  { key: 'OPS', label: 'OPS', title: 'OPS', hl: true },
-  { key: 'R',   label: 'R',   title: 'Runs' },
-  { key: 'H',   label: 'H',   title: 'Hits' },
-  { key: '2B',  label: '2B',  title: 'Doubles' },
-  { key: '3B',  label: '3B',  title: 'Triples' },
-  { key: 'HR',  label: 'HR',  title: 'Home Runs', hl: true },
-  { key: 'RBI', label: 'RBI', title: 'RBI', hl: true },
-  { key: 'BB',  label: 'BB',  title: 'Walks' },
-  { key: 'HBP', label: 'HBP', title: 'Hit by Pitch' },
-  { key: 'SO',  label: 'SO',  title: 'Strikeouts' },
-  { key: 'SB',  label: 'SB',  title: 'Stolen Bases' },
-  { key: 'CS',  label: 'CS',  title: 'Caught Stealing' },
-  { key: 'WAR', label: 'WAR', title: 'WAR' },
-];
+/* ── Sport-specific career table columns ─────────────── */
+const CAREER_COLS = {
+  mlb: [
+    { key: 'GP', label: 'GP' }, { key: 'AB', label: 'AB' },
+    { key: 'AVG', label: 'AVG', hl: true }, { key: 'OBP', label: 'OBP', hl: true },
+    { key: 'SLG', label: 'SLG', hl: true }, { key: 'OPS', label: 'OPS', hl: true },
+    { key: 'R', label: 'R' }, { key: 'H', label: 'H' },
+    { key: '2B', label: '2B' }, { key: '3B', label: '3B' },
+    { key: 'HR', label: 'HR', hl: true }, { key: 'RBI', label: 'RBI', hl: true },
+    { key: 'BB', label: 'BB' }, { key: 'HBP', label: 'HBP' },
+    { key: 'SO', label: 'SO' }, { key: 'SB', label: 'SB' },
+    { key: 'CS', label: 'CS' }, { key: 'WAR', label: 'WAR' },
+  ],
+  nba: [
+    { key: 'GP', label: 'GP' }, { key: 'MIN', label: 'MIN' },
+    { key: 'PTS', label: 'PTS', hl: true }, { key: 'REB', label: 'REB', hl: true },
+    { key: 'AST', label: 'AST', hl: true }, { key: 'STL', label: 'STL' },
+    { key: 'BLK', label: 'BLK' }, { key: 'FG%', label: 'FG%', hl: true },
+    { key: '3P%', label: '3P%' }, { key: 'FT%', label: 'FT%' },
+    { key: 'TO', label: 'TO' }, { key: '+/-', label: '+/-' },
+  ],
+  nfl: [
+    // QB / passing
+    { key: 'GP', label: 'GP' }, { key: 'CMP', label: 'CMP' },
+    { key: 'ATT', label: 'ATT' }, { key: 'YDS', label: 'YDS', hl: true },
+    { key: 'TD', label: 'TD', hl: true }, { key: 'INT', label: 'INT' },
+    { key: 'RTG', label: 'RTG' }, { key: 'CAR', label: 'CAR' },
+    { key: 'REC', label: 'REC' }, { key: 'AVG', label: 'AVG' },
+  ],
+  nhl: [
+    { key: 'GP', label: 'GP' }, { key: 'G', label: 'G', hl: true },
+    { key: 'A', label: 'A', hl: true }, { key: 'PTS', label: 'PTS', hl: true },
+    { key: '+/-', label: '+/-' }, { key: 'PIM', label: 'PIM' },
+    { key: 'SOG', label: 'SOG' }, { key: 'W', label: 'W' },
+    { key: 'L', label: 'L' }, { key: 'GAA', label: 'GAA' },
+    { key: 'SV%', label: 'SV%' },
+  ],
+};
 
-function getStats(data) {
+const CAREER_TITLE = {
+  mlb: 'Career Batting',
+  nba: 'Career Stats',
+  nfl: 'Career Stats',
+  nhl: 'Career Stats',
+};
+
+/* ── Game log columns per sport ──────────────────────── */
+const GAMELOG_COLS = {
+  mlb: ['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'],
+  nba: ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','FT','TO'],
+  nfl: ['CMP','ATT','YDS','TD','INT','CAR','REC'],
+  nhl: ['G','A','PTS','+/-','SOG','TOI'],
+};
+
+/* ── Extract stats from core API response ────────────── */
+function getStats(data, sport) {
   if (!data) return {};
   const cats = data.splits?.categories || [];
-  const batting = cats.find((c) => c.name === 'batting') || cats[0];
+
+  if (sport === 'mlb') {
+    const batting = cats.find((c) => c.name === 'batting') || cats[0];
+    const result = {};
+    (batting?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    return result;
+  }
+
+  if (sport === 'nba') {
+    // Merge offensive + general per-game stats
+    const result = {};
+    for (const cat of cats) {
+      (cat.stats || []).forEach((s) => {
+        if (!result[s.abbreviation]) result[s.abbreviation] = s.displayValue;
+      });
+    }
+    return result;
+  }
+
+  if (sport === 'nfl') {
+    const result = {};
+    for (const cat of cats) {
+      (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    }
+    return result;
+  }
+
+  if (sport === 'nhl') {
+    const result = {};
+    for (const cat of cats) {
+      (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    }
+    return result;
+  }
+
   const result = {};
-  (batting?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+  (cats[0]?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
   return result;
 }
 
@@ -39,6 +107,10 @@ export default function PlayerPage() {
   const [seasons, setSeasons] = useState([]);
   const [gamelog, setGamelog] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const cols = CAREER_COLS[sport] || CAREER_COLS.mlb;
+  const glCols = GAMELOG_COLS[sport] || GAMELOG_COLS.mlb;
+  const careerTitle = CAREER_TITLE[sport] || 'Career Stats';
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
@@ -59,10 +131,6 @@ export default function PlayerPage() {
               opponent: info.opponent?.abbreviation || '',
               atVs: info.atVs || '',
               result: info.gameResult || '',
-              homeScore: info.homeTeamScore,
-              awayScore: info.awayTeamScore,
-              homeTeamId: info.homeTeamId,
-              awayTeamId: info.awayTeamId,
               stats: Object.fromEntries(labels.map((l, i) => [l, ev.stats?.[i] ?? ''])),
             });
           }
@@ -79,8 +147,8 @@ export default function PlayerPage() {
           .filter((r) => r.status === 'fulfilled')
           .map((r) => r.value)
           .filter((r) => {
-            const stats = getStats(r.data);
-            return stats['GP'] && stats['GP'] !== '0';
+            const s = getStats(r.data, sport);
+            return s['GP'] && s['GP'] !== '0';
           });
         setSeasons(valid);
       })
@@ -91,20 +159,21 @@ export default function PlayerPage() {
   const summary = athlete.statsSummary?.statistics || [];
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
 
-  // Career totals (numeric sum of seasons)
   const careerTotals = (() => {
-    const numericKeys = ['GP','AB','R','H','2B','3B','HR','RBI','BB','HBP','SO','SB','CS'];
+    const numericKeys = cols.filter((c) => !['AVG','OBP','SLG','OPS','FG%','3P%','FT%','GAA','SV%','RTG'].includes(c.key)).map((c) => c.key);
     const totals = {};
     seasons.forEach(({ data }) => {
-      const s = getStats(data);
+      const s = getStats(data, sport);
       numericKeys.forEach((k) => {
         const v = parseFloat(s[k]);
         if (!isNaN(v)) totals[k] = (totals[k] || 0) + v;
       });
     });
-    // Calculate AVG, OBP, OPS from last season (career averages would need AB weighting)
-    const lastStats = seasons.length ? getStats(seasons[seasons.length - 1].data) : {};
-    return { ...totals, AVG: lastStats.AVG, OBP: lastStats.OBP, SLG: lastStats.SLG, OPS: lastStats.OPS, WAR: '—' };
+    const lastStats = seasons.length ? getStats(seasons[seasons.length - 1].data, sport) : {};
+    ['AVG','OBP','SLG','OPS','FG%','3P%','FT%','GAA','SV%','RTG','+/-'].forEach((k) => {
+      if (lastStats[k]) totals[k] = lastStats[k];
+    });
+    return totals;
   })();
 
   return (
@@ -115,7 +184,6 @@ export default function PlayerPage() {
 
       {!loading && athlete.displayName && (
         <>
-          {/* Bio Header */}
           <div className="pp-header">
             <div className="pp-hero">
               {athlete.headshot?.href && (
@@ -149,10 +217,9 @@ export default function PlayerPage() {
               </div>
             </div>
 
-            {/* Season stat highlights */}
             {summary.length > 0 && (
               <div className="pp-stat-highlights">
-                <div className="pp-highlights-label">{athlete.statsSummary?.displayName || '2026 Season Stats'}</div>
+                <div className="pp-highlights-label">{athlete.statsSummary?.displayName || 'Season Stats'}</div>
                 <div className="pp-highlights-grid">
                   {summary.map((s) => (
                     <div key={s.abbreviation} className="pp-highlight-pill">
@@ -168,25 +235,23 @@ export default function PlayerPage() {
 
           {/* Career stats table */}
           <div className="pp-stats-section">
-            <div className="pp-stats-title">Career Batting</div>
+            <div className="pp-stats-title">{careerTitle}</div>
             <div className="pp-table-wrap">
               <table className="pp-table">
                 <thead>
                   <tr>
                     <th className="pp-th pp-th-season">SEASON</th>
-                    {STAT_COLS.map((c) => (
-                      <th key={c.key} className="pp-th" title={c.title}>{c.label}</th>
-                    ))}
+                    {cols.map((c) => <th key={c.key} className="pp-th">{c.label}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {seasons.map(({ year, data }) => {
-                    const s = getStats(data);
+                    const s = getStats(data, sport);
                     const isCurrent = year === new Date().getFullYear();
                     return (
                       <tr key={year} className={`pp-tr ${isCurrent ? 'pp-tr-current' : ''}`}>
                         <td className="pp-td pp-td-season">{year}</td>
-                        {STAT_COLS.map((c) => (
+                        {cols.map((c) => (
                           <td key={c.key} className={`pp-td ${c.hl ? 'pp-td-hl' : ''}`}>
                             {s[c.key] ?? '—'}
                           </td>
@@ -197,13 +262,9 @@ export default function PlayerPage() {
                   {seasons.length > 1 && (
                     <tr className="pp-tr-career">
                       <td className="pp-td pp-td-season pp-career-label">Career</td>
-                      {STAT_COLS.map((c) => (
+                      {cols.map((c) => (
                         <td key={c.key} className={`pp-td ${c.hl ? 'pp-td-hl' : ''}`}>
-                          {careerTotals[c.key] !== undefined
-                            ? (typeof careerTotals[c.key] === 'number'
-                              ? careerTotals[c.key]
-                              : careerTotals[c.key])
-                            : '—'}
+                          {careerTotals[c.key] !== undefined ? careerTotals[c.key] : '—'}
                         </td>
                       ))}
                     </tr>
@@ -212,6 +273,7 @@ export default function PlayerPage() {
               </table>
             </div>
           </div>
+
           {/* Game Log */}
           {gamelog.length > 0 && (
             <div className="pp-stats-section">
@@ -223,9 +285,7 @@ export default function PlayerPage() {
                       <th className="pp-th pp-th-season">DATE</th>
                       <th className="pp-th pp-th-season">OPP</th>
                       <th className="pp-th pp-th-season">RESULT</th>
-                      {['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'].map((c) => (
-                        <th key={c} className="pp-th">{c}</th>
-                      ))}
+                      {glCols.map((c) => <th key={c} className="pp-th">{c}</th>)}
                     </tr>
                   </thead>
                   <tbody>
@@ -235,7 +295,6 @@ export default function PlayerPage() {
                         ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                         : '—';
                       const isWin = g.result === 'W';
-                      const isHR = parseInt(g.stats['HR']) > 0;
                       return (
                         <tr key={i} className="pp-tr">
                           <td className="pp-td pp-td-season">{dateStr}</td>
@@ -247,8 +306,8 @@ export default function PlayerPage() {
                               {g.result}
                             </span>
                           </td>
-                          {['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'].map((c) => (
-                            <td key={c} className={`pp-td ${c === 'HR' && isHR ? 'pp-td-hl' : c === 'AVG' || c === 'OPS' ? 'pp-td-hl' : ''}`}>
+                          {glCols.map((c) => (
+                            <td key={c} className={`pp-td ${c === 'PTS' || c === 'HR' ? 'pp-td-hl' : ''}`}>
                               {g.stats[c] || '0'}
                             </td>
                           ))}
