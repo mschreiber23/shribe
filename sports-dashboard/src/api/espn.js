@@ -9,9 +9,12 @@ export const SPORTS = {
   nhl: { league: 'hockey/nhl', label: 'NHL' },
 };
 
-export async function getScoreboard(sport) {
+export async function getScoreboard(sport, dateStr) {
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(`${BASE}/${league}/scoreboard`);
+  const url = dateStr
+    ? `${BASE}/${league}/scoreboard?dates=${dateStr}`
+    : `${BASE}/${league}/scoreboard`;
+  const { data } = await axios.get(url);
   return data.events || [];
 }
 

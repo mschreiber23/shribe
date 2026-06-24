@@ -3,10 +3,37 @@ import { useFavorites } from '../context/FavoritesContext';
 import TeamRow from './TeamRow';
 import { searchTeams, SPORTS } from '../api/espn';
 
+function toDateStr(date) {
+  return date.toISOString().slice(0, 10).replace(/-/g, '');
+}
+function formatDisplay(date) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === -1) return 'Yesterday';
+  if (diff === 1) return 'Tomorrow';
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 export default function MyTeams() {
   const { favorites, addTeam, removeTeam, reorderTeam } = useFavorites();
   const [showPicker, setShowPicker] = useState(false);
   const [editMode, setEditMode] = useState(false);
+
+  // Date navigation
+  const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+  const [selectedDate, setSelectedDate] = useState(todayMidnight);
+  const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
+  const dateStr = isToday ? null : toDateStr(selectedDate); // null = use live scoreboard
+
+  const shiftDate = (days) => setSelectedDate((d) => {
+    const next = new Date(d);
+    next.setDate(next.getDate() + days);
+    return next;
+  });
   const [pickerSport, setPickerSport] = useState('nba');
   const [query, setQuery] = useState('');
   const [allTeams, setAllTeams] = useState([]);
@@ -41,7 +68,7 @@ export default function MyTeams() {
       <div className="section-header">
         <div>
           <h2 className="section-title">My Teams</h2>
-          <p className="section-sub">Today's games · updates every 30s</p>
+          <p className="section-sub">{isToday ? "Today's games · updates every 30s" : formatDisplay(selectedDate)}</p>
         </div>
         <div className="header-actions">
           {favorites.teams.length > 0 && (
@@ -162,6 +189,35 @@ export default function MyTeams() {
         </div>
       )}
 
+      {/* Date navigation */}
+      {!editMode && !showPicker && (
+        <div className="mt-date-nav">
+          <button className="mt-date-btn" onClick={() => shiftDate(-1)}>←</button>
+          <label className="mt-date-display">
+            {formatDisplay(selectedDate)}
+            <input
+              type="date"
+              className="mt-date-input"
+              value={selectedDate.toISOString().slice(0, 10)}
+              onChange={(e) => {
+                const d = new Date(e.target.value + 'T12:00:00');
+                setSelectedDate(d);
+              }}
+            />
+          </label>
+          <button
+            className="mt-date-btn"
+            onClick={() => shiftDate(1)}
+            disabled={isToday}
+          >→</button>
+          {!isToday && (
+            <button className="mt-date-today" onClick={() => setSelectedDate(todayMidnight())}>
+              Today
+            </button>
+          )}
+        </div>
+      )}
+
       {favorites.teams.length === 0 && !showPicker && !editMode && (
         <div className="empty-state">
           <div className="empty-icon">🏆</div>
@@ -180,6 +236,7 @@ export default function MyTeams() {
                   key={`${sport}-${team.id}`}
                   sport={sport}
                   team={team}
+                  dateStr={dateStr}
                   onHiddenChange={handleHiddenChange}
                 />
               );

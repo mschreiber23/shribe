@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getScoreboard, getTeamSchedule } from '../api/espn';
 
-export default function useTeamGame(sport, teamId, refreshInterval = 30000) {
+export default function useTeamGame(sport, teamId, refreshInterval = 30000, dateStr = null) {
   const [game, setGame] = useState(null);
-  const [nextGame, setNextGame] = useState(undefined); // undefined = not yet checked
+  const [nextGame, setNextGame] = useState(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchScoreboard = useCallback(async () => {
     try {
-      const events = await getScoreboard(sport);
+      const events = await getScoreboard(sport, dateStr);
       const found = events.find((e) =>
         e.competitions?.[0]?.competitors?.some((c) => c.team?.id === String(teamId))
       );
@@ -20,14 +20,13 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000) {
     } finally {
       setLoading(false);
     }
-  }, [sport, teamId]);
+  }, [sport, teamId, dateStr]);
 
-  // Check for any game in the next 7 days (runs once on mount)
+  // Only check upcoming games when viewing today (no dateStr)
   useEffect(() => {
-    if (!teamId) return;
+    if (!teamId || dateStr) return;
     const now = new Date();
     const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
     getTeamSchedule(sport, teamId)
       .then((events) => {
         const upcoming = events.filter((e) => {
@@ -37,18 +36,18 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000) {
         setNextGame(upcoming[0] || null);
       })
       .catch(() => setNextGame(null));
-  }, [sport, teamId]);
+  }, [sport, teamId, dateStr]);
 
   useEffect(() => {
     setLoading(true);
     setGame(null);
     fetchScoreboard();
+    // Only auto-refresh when viewing today
+    if (dateStr) return;
     const id = setInterval(fetchScoreboard, refreshInterval);
     return () => clearInterval(id);
-  }, [fetchScoreboard, refreshInterval]);
+  }, [fetchScoreboard, refreshInterval, dateStr]);
 
-  // hasUpcomingGame: true = yes, false = no games this week, undefined = still loading
   const hasUpcomingGame = nextGame === undefined ? undefined : nextGame !== null;
-
   return { game, loading, error, hasUpcomingGame, nextGame };
 }

@@ -226,9 +226,9 @@ function GameRow({ game, teamId, sport, onBoxScore }) {
 }
 
 /* ── Main TeamRow ──────────────────────────────────── */
-export default function TeamRow({ sport, team, onHiddenChange }) {
+export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const { removeTeam } = useFavorites();
-  const { game, loading, hasUpcomingGame } = useTeamGame(sport, team.id);
+  const { game, loading, hasUpcomingGame } = useTeamGame(sport, team.id, 30000, dateStr);
   const navigate = useNavigate();
 
   const isLive = game?.competitions?.[0]?.status?.type?.state === 'in';
