@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 
@@ -162,6 +162,7 @@ function getColKey(sport, type) {
 }
 
 function StatsTable({ statGroup, sport }) {
+  const navigate = useNavigate();
   const labels = statGroup.labels || [];
   const athletes = statGroup.athletes || [];
   const totals = statGroup.totals || [];
@@ -187,8 +188,13 @@ function StatsTable({ statGroup, sport }) {
             const player = a.athlete || {};
             const stats = a.stats || [];
             const dnp = a.didNotPlay || !stats.length;
+            const playerId = player.id;
             return (
-              <tr key={i} className={`bsp-tr ${dnp ? 'bsp-dnp' : ''}`}>
+              <tr
+                key={i}
+                className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${playerId ? 'bsp-tr-clickable' : ''}`}
+                onClick={() => playerId && navigate(`/player/${sport}/${playerId}`)}
+              >
                 <td className="bsp-td bsp-td-player">
                   <div className="bsp-player-cell">
                     {player.headshot?.href && <img src={player.headshot.href} alt="" className="bsp-avatar" />}

@@ -1896,6 +1896,9 @@ body {
 .bsp-tr:last-child { border-bottom: none; }
 .bsp-tr:hover { background: rgba(255,255,255,0.03); }
 .bsp-dnp { opacity: 0.4; }
+.bsp-tr-clickable { cursor: pointer; }
+.bsp-tr-clickable:hover { background: color-mix(in srgb, var(--accent) 8%, var(--bg3)); }
+.bsp-tr-clickable:hover .bsp-player-name { color: var(--accent2); }
 .bsp-td { padding: 8px 10px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; font-size: 13px; }
 .bsp-td-player { text-align: left; }
 .bsp-hl { font-weight: 800; color: var(--text); }
