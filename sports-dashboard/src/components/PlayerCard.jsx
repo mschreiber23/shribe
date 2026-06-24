@@ -52,14 +52,35 @@ function extractSeasonStats(statsData, sport) {
   }
 
   if (sport === 'nfl') {
-    // Merge all categories first, then determine player type
-    const s = {};
-    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
+    const position = (statsData._position || '').toUpperCase();
     const passing   = categories.find((c) => c.name?.includes('pass'));
     const rushing   = categories.find((c) => c.name?.includes('rush'));
-    if (passing)   return [{ label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'INT', value: s['INT'] }, { label: 'RTG', value: s['RTG'] }];
-    if (rushing)   return [{ label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'CAR', value: s['CAR'] }, { label: 'AVG', value: s['AVG'] }];
-    return [{ label: 'REC', value: s['REC'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'AVG', value: s['AVG'] }];
+    const receiving = categories.find((c) => c.name?.includes('receiv'));
+    const general   = categories.find((c) => c.name === 'general');
+    const gp = getCatStats(general)['GP'] || '';
+
+    // Pick primary category by position
+    const QB_POS = ['QB'];
+    const RB_POS = ['RB', 'HB', 'FB'];
+    const REC_POS = ['WR', 'TE', 'FB'];
+
+    if (QB_POS.includes(position) || (!position && passing)) {
+      const s = getCatStats(passing);
+      return [{ label: 'GP', value: gp }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'INT', value: s['INT'] }, { label: 'RTG', value: s['RTG'] }];
+    }
+    if (RB_POS.includes(position) || (!position && rushing && !passing)) {
+      const s = getCatStats(rushing);
+      const r = getCatStats(receiving);
+      return [{ label: 'GP', value: gp }, { label: 'CAR', value: s['CAR'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'REC', value: r['REC'] }];
+    }
+    if (REC_POS.includes(position) || (!position && receiving)) {
+      const s = getCatStats(receiving);
+      return [{ label: 'GP', value: gp }, { label: 'REC', value: s['REC'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'AVG', value: s['AVG'] }];
+    }
+    // Fallback: use whichever cat has most data
+    const src = passing || rushing || receiving || categories[0];
+    const s = getCatStats(src);
+    return [{ label: 'GP', value: gp }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }];
   }
 
   if (sport === 'nhl') {
@@ -80,6 +101,8 @@ export default function PlayerCard({ player, sport }) {
   const { removePlayer } = useFavorites();
   const { stats, loading, error } = usePlayerStats(sport, player.id);
 
+  // Attach position to stats data so extractSeasonStats can use it for NFL
+  if (stats) stats._position = player.position || '';
   const seasonStats = extractSeasonStats(stats, sport);
 
   return (
