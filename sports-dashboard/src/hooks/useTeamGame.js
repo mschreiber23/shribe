@@ -9,7 +9,14 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
 
   const fetchScoreboard = useCallback(async () => {
     try {
-      const events = await getScoreboard(sport, dateStr);
+      // Always pass an explicit date so ESPN doesn't return yesterday's finals
+      const today = new Date();
+      const todayStr = today.getFullYear().toString()
+        + String(today.getMonth() + 1).padStart(2, '0')
+        + String(today.getDate()).padStart(2, '0');
+      const effectiveDateStr = dateStr || todayStr;
+
+      const events = await getScoreboard(sport, effectiveDateStr);
       const found = events.find((e) =>
         e.competitions?.[0]?.competitors?.some((c) => c.team?.id === String(teamId))
       );
