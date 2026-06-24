@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getScoreboard, getGameBoxscore } from '../api/espn';
 
 /* ── Sport-specific career table columns ─────────────── */
 const CAREER_COLS = {
@@ -136,7 +136,7 @@ export default function PlayerPage() {
 
     getPlayerBio(sport, playerId).then(setBio).catch(() => {});
 
-    getPlayerGameLog(sport, playerId).then((data) => {
+    getPlayerGameLog(sport, playerId).then(async (data) => {
       const labels = data.labels || [];
       const eventsMap = data.events || {};
       const seasonTypes = data.seasonTypes || [];
@@ -156,6 +156,54 @@ export default function PlayerPage() {
         }
       }
       games.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // Check if today's game is missing — if so, pull from live box score
+      const today = new Date().toISOString().slice(0, 10);
+      const hasToday = games.some((g) => g.date.startsWith(today));
+      if (!hasToday) {
+        try {
+          const events = await getScoreboard(sport);
+          // Find game containing this player (by team)
+          const bioData = await getPlayerBio(sport, playerId).catch(() => null);
+          const teamId = bioData?.athlete?.team?.id;
+          const todayGame = teamId
+            ? events.find((e) => e.competitions?.[0]?.competitors?.some((c) => c.team?.id === teamId))
+            : null;
+
+          if (todayGame) {
+            const summary = await getGameBoxscore(sport, todayGame.id);
+            const bsPlayers = summary?.boxscore?.players || [];
+            for (const group of bsPlayers) {
+              for (const sg of group.statistics || []) {
+                const bsLabels = sg.labels || [];
+                const found = (sg.athletes || []).find(
+                  (a) => String(a.athlete?.id) === String(playerId)
+                );
+                if (found && found.stats?.length) {
+                  const comp = todayGame.competitions?.[0];
+                  const competitors = comp?.competitors || [];
+                  const myTeam = competitors.find((c) => c.team?.id === teamId);
+                  const opp = competitors.find((c) => c.team?.id !== teamId);
+                  const status = comp?.status?.type?.state;
+                  const result = status === 'post'
+                    ? (myTeam?.winner ? 'W' : 'L')
+                    : status === 'in' ? 'Live' : '';
+                  games.unshift({
+                    date: todayGame.date || new Date().toISOString(),
+                    opponent: opp?.team?.abbreviation || '',
+                    atVs: myTeam?.homeAway === 'home' ? 'vs' : '@',
+                    result,
+                    stats: Object.fromEntries(bsLabels.map((l, i) => [l, found.stats[i] ?? ''])),
+                    isLive: status === 'in',
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        } catch { /* silent fail */ }
+      }
+
       setGamelog(games.slice(0, 25));
     }).catch(() => {});
 
@@ -321,9 +369,15 @@ export default function PlayerPage() {
                             <span className="pp-gl-atVs">{g.atVs}</span> {g.opponent}
                           </td>
                           <td className="pp-td pp-td-season">
-                            <span className={`pp-gl-result ${isWin ? 'pp-gl-win' : 'pp-gl-loss'}`}>
-                              {g.result}
-                            </span>
+                            {g.isLive ? (
+                              <span className="badge badge-live" style={{ fontSize: 10, padding: '2px 6px' }}>
+                                <span className="live-dot" />Live
+                              </span>
+                            ) : (
+                              <span className={`pp-gl-result ${isWin ? 'pp-gl-win' : 'pp-gl-loss'}`}>
+                                {g.result}
+                              </span>
+                            )}
                           </td>
                           {glCols.map((c) => (
                             <td key={c} className={`pp-td ${c === 'PTS' || c === 'HR' ? 'pp-td-hl' : ''}`}>
