@@ -68,7 +68,6 @@ export default function MyTeams() {
       <div className="section-header">
         <div>
           <h2 className="section-title">My Teams</h2>
-          <p className="section-sub">{isToday ? "Today's games · updates every 30s" : formatDisplay(selectedDate)}</p>
         </div>
         <div className="header-actions">
           {favorites.teams.length > 0 && (
