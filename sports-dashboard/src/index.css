@@ -1476,6 +1476,10 @@ body {
 .pp-td-season { text-align: left; padding-left: 16px; color: var(--text); font-weight: 600; }
 .pp-td-hl { font-weight: 700; color: var(--text); }
 .pp-career-label { font-weight: 800; color: var(--text); }
+.pp-gl-atVs { font-size: 10px; color: var(--text2); text-transform: uppercase; }
+.pp-gl-result { font-weight: 800; font-size: 12px; }
+.pp-gl-win { color: var(--live); }
+.pp-gl-loss { color: var(--danger); }
 
 /* Player card link */
 .player-card-link { text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px; flex: 1; }

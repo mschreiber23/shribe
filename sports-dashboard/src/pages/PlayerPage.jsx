@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPlayerBio, getPlayerSeasonStats } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog } from '../api/espn';
 
 const STAT_COLS = [
   { key: 'GP',  label: 'GP',  title: 'Games Played' },
@@ -37,6 +37,7 @@ export default function PlayerPage() {
   const navigate = useNavigate();
   const [bio, setBio] = useState(null);
   const [seasons, setSeasons] = useState([]);
+  const [gamelog, setGamelog] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +45,33 @@ export default function PlayerPage() {
 
     getPlayerBio(sport, playerId).then(setBio).catch(() => {});
 
-    // Fetch up to 5 most recent seasons
+    getPlayerGameLog(sport, playerId).then((data) => {
+      const labels = data.labels || [];
+      const eventsMap = data.events || {};
+      const seasonTypes = data.seasonTypes || [];
+      const games = [];
+      for (const st of seasonTypes) {
+        for (const cat of st.categories || []) {
+          for (const ev of cat.events || []) {
+            const info = eventsMap[ev.eventId] || {};
+            games.push({
+              date: info.gameDate || '',
+              opponent: info.opponent?.abbreviation || '',
+              atVs: info.atVs || '',
+              result: info.gameResult || '',
+              homeScore: info.homeTeamScore,
+              awayScore: info.awayTeamScore,
+              homeTeamId: info.homeTeamId,
+              awayTeamId: info.awayTeamId,
+              stats: Object.fromEntries(labels.map((l, i) => [l, ev.stats?.[i] ?? ''])),
+            });
+          }
+        }
+      }
+      games.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setGamelog(games.slice(0, 25));
+    }).catch(() => {});
+
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i).reverse();
     Promise.allSettled(years.map((y) => getPlayerSeasonStats(sport, playerId, y)))
       .then((results) => {
@@ -185,6 +212,54 @@ export default function PlayerPage() {
               </table>
             </div>
           </div>
+          {/* Game Log */}
+          {gamelog.length > 0 && (
+            <div className="pp-stats-section">
+              <div className="pp-stats-title">Last {gamelog.length} Games</div>
+              <div className="pp-table-wrap">
+                <table className="pp-table">
+                  <thead>
+                    <tr>
+                      <th className="pp-th pp-th-season">DATE</th>
+                      <th className="pp-th pp-th-season">OPP</th>
+                      <th className="pp-th pp-th-season">RESULT</th>
+                      {['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'].map((c) => (
+                        <th key={c} className="pp-th">{c}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gamelog.map((g, i) => {
+                      const date = g.date ? new Date(g.date) : null;
+                      const dateStr = date
+                        ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : '—';
+                      const isWin = g.result === 'W';
+                      const isHR = parseInt(g.stats['HR']) > 0;
+                      return (
+                        <tr key={i} className="pp-tr">
+                          <td className="pp-td pp-td-season">{dateStr}</td>
+                          <td className="pp-td pp-td-season">
+                            <span className="pp-gl-atVs">{g.atVs}</span> {g.opponent}
+                          </td>
+                          <td className="pp-td pp-td-season">
+                            <span className={`pp-gl-result ${isWin ? 'pp-gl-win' : 'pp-gl-loss'}`}>
+                              {g.result}
+                            </span>
+                          </td>
+                          {['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'].map((c) => (
+                            <td key={c} className={`pp-td ${c === 'HR' && isHR ? 'pp-td-hl' : c === 'AVG' || c === 'OPS' ? 'pp-td-hl' : ''}`}>
+                              {g.stats[c] || '0'}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
 
