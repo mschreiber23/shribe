@@ -22,11 +22,16 @@ export async function getTeamRoster(sport, teamId) {
 }
 
 export async function getPlayerStats(sport, playerId) {
-  const { league } = SPORTS[sport];
   const year = new Date().getFullYear();
-  // Core API v2 returns actual current-season stats (not career totals)
+  // Core API v2 path uses sport/leagues/league format
+  const coreLeague = {
+    nba: 'basketball/leagues/nba',
+    nfl: 'football/leagues/nfl',
+    mlb: 'baseball/leagues/mlb',
+    nhl: 'hockey/leagues/nhl',
+  }[sport];
   const { data } = await axios.get(
-    `https://sports.core.api.espn.com/v2/sports/${league}/seasons/${year}/types/2/athletes/${playerId}/statistics/0`
+    `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${year}/types/2/athletes/${playerId}/statistics/0`
   );
   return data;
 }
