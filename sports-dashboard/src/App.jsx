@@ -1,6 +1,5 @@
 import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FavoritesProvider } from './context/FavoritesContext';
-import Header from './components/Header';
 import MyTeams from './components/MyTeams';
 import PlayerRoster from './components/PlayerRoster';
 import TeamPage from './pages/TeamPage';
@@ -11,7 +10,6 @@ import './index.css';
 function Dashboard() {
   return (
     <>
-      <Header />
       <main className="main">
         <MyTeams />
         <PlayerRoster />
@@ -31,29 +29,13 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/player/:sport/:playerId" element={
-              <>
-                <Header />
-                <main className="main"><PlayerPage /></main>
-                <footer className="footer"><p>Data provided by ESPN</p></footer>
-              </>
+              <main className="main"><PlayerPage /></main>
             } />
             <Route path="/boxscore/:sport/:gameId" element={
-              <>
-                <Header />
-                <main className="main"><BoxScorePage /></main>
-                <footer className="footer"><p>Data provided by ESPN</p></footer>
-              </>
+              <main className="main"><BoxScorePage /></main>
             } />
             <Route path="/team/:sport/:teamId" element={
-              <>
-                <Header />
-                <main className="main">
-                  <TeamPage />
-                </main>
-                <footer className="footer">
-                  <p>Data provided by ESPN · Updates every 30 seconds</p>
-                </footer>
-              </>
+              <main className="main"><TeamPage /></main>
             } />
           </Routes>
         </div>
