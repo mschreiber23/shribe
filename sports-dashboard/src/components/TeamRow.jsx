@@ -260,7 +260,6 @@ export default function TeamRow({ sport, team, onHiddenChange }) {
               <div className="tr-sport">{sportLabel}</div>
             </div>
           </Link>
-          <button className="remove-btn" onClick={() => removeTeam(team.id, sport)} title="Remove">×</button>
         </div>
 
         {/* Right: game */}
