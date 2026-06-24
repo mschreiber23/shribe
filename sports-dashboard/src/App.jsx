@@ -1,6 +1,7 @@
 import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FavoritesProvider } from './context/FavoritesContext';
 import MyTeams from './components/MyTeams';
+import TodaysScores from './components/TodaysScores';
 import PlayerRoster from './components/PlayerRoster';
 import TeamPage from './pages/TeamPage';
 import BoxScorePage from './pages/BoxScorePage';
@@ -11,6 +12,7 @@ function Dashboard() {
   return (
     <>
       <main className="main">
+        <TodaysScores />
         <MyTeams />
         <PlayerRoster />
       </main>
