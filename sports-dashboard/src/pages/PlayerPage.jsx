@@ -91,18 +91,15 @@ function getStats(data, sport) {
     return result;
   }
 
-  if (sport === 'nfl') {
+  if (sport === 'nfl' || sport === 'nhl') {
+    // Merge all categories, then let offensive override for NHL (correct goal count)
     const result = {};
     for (const cat of cats) {
       (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
     }
-    return result;
-  }
-
-  if (sport === 'nhl') {
-    const result = {};
-    for (const cat of cats) {
-      (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    if (sport === 'nhl') {
+      const off = cats.find((c) => c.name === 'offensive');
+      if (off) (off.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
     }
     return result;
   }

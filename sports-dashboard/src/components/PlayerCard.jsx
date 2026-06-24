@@ -52,18 +52,23 @@ function extractSeasonStats(statsData, sport) {
   }
 
   if (sport === 'nfl') {
+    // Merge all categories first, then determine player type
+    const s = {};
+    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
     const passing   = categories.find((c) => c.name?.includes('pass'));
     const rushing   = categories.find((c) => c.name?.includes('rush'));
-    const receiving = categories.find((c) => c.name?.includes('receiv'));
-    const src = passing || rushing || receiving || categories[0];
-    const s = getCatStats(src);
     if (passing)   return [{ label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'INT', value: s['INT'] }, { label: 'RTG', value: s['RTG'] }];
-    if (rushing)   return [{ label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'ATT', value: s['CAR'] || s['ATT'] }, { label: 'AVG', value: s['AVG'] }];
+    if (rushing)   return [{ label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'CAR', value: s['CAR'] }, { label: 'AVG', value: s['AVG'] }];
     return [{ label: 'REC', value: s['REC'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'AVG', value: s['AVG'] }];
   }
 
   if (sport === 'nhl') {
-    const s = getCatStats(categories[0]);
+    // Merge all categories — G/GP/+/- in 'general', A/PTS in 'offensive'
+    const s = {};
+    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
+    // Prefer offensive G over general G (offensive is per-season, general can include playoffs)
+    const offCat = categories.find((c) => c.name === 'offensive');
+    if (offCat) Object.assign(s, getCatStats(offCat));
     return [{ label: 'G', value: s['G'] }, { label: 'A', value: s['A'] }, { label: 'PTS', value: s['PTS'] }, { label: '+/-', value: s['+/-'] }];
   }
 
