@@ -322,40 +322,34 @@ export default function BoxScoreModal({ sport, game, onClose }) {
         {error   && <div style={{ padding: 24, color: 'var(--danger)' }}>{error}</div>}
 
         {!loading && !error && data && (
-          <div className="bsm2-scroll">
-            <Header competitors={comps} status={status} />
-
-            {(sport === 'mlb' || sport === 'nhl') && comps.length > 0 && (
-              <LineScore competitors={comps} />
-            )}
-
-            {situation && (
-              <SituationBar situation={situation} rosters={rosters} status={status} />
-            )}
-
-            {/* Team tab switcher */}
-            {groups.length > 1 && (
-              <div className="bsm2-tabs">
-                <button className={`bsm2-tab ${activeTeam === 0 ? 'bsm2-tab-active' : ''}`} onClick={() => setActiveTeam(0)}>
-                  {awayAbbr}
-                </button>
-                <button className={`bsm2-tab ${activeTeam === 1 ? 'bsm2-tab-active' : ''}`} onClick={() => setActiveTeam(1)}>
-                  {homeAbbr}
-                </button>
-              </div>
-            )}
-
-            <div className="bsm2-body">
-              {groups[activeTeam] && (
-                <TeamStats group={groups[activeTeam]} sport={sport} />
+          <>
+            {/* Sticky header — always visible */}
+            <div className="bsm2-sticky-top">
+              <Header competitors={comps} status={status} />
+              {(sport === 'mlb' || sport === 'nhl') && comps.length > 0 && (
+                <LineScore competitors={comps} />
               )}
-              {!groups.length && (
-                <div style={{ padding: 20, color: 'var(--text2)', textAlign: 'center' }}>
-                  Box score not available yet.
+              {situation && (
+                <SituationBar situation={situation} rosters={rosters} status={status} />
+              )}
+              {groups.length > 1 && (
+                <div className="bsm2-tabs">
+                  <button className={`bsm2-tab ${activeTeam === 0 ? 'bsm2-tab-active' : ''}`} onClick={() => setActiveTeam(0)}>{awayAbbr}</button>
+                  <button className={`bsm2-tab ${activeTeam === 1 ? 'bsm2-tab-active' : ''}`} onClick={() => setActiveTeam(1)}>{homeAbbr}</button>
                 </div>
               )}
             </div>
-          </div>
+
+            {/* Scrollable stats */}
+            <div className="bsm2-scroll">
+              <div className="bsm2-body">
+                {groups[activeTeam] && <TeamStats group={groups[activeTeam]} sport={sport} />}
+                {!groups.length && (
+                  <div style={{ padding: 20, color: 'var(--text2)', textAlign: 'center' }}>Box score not available yet.</div>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

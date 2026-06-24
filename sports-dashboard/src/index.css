@@ -1397,6 +1397,7 @@ body {
 }
 .bsm2-title { font-size: 15px; font-weight: 700; }
 
+.bsm2-sticky-top { flex-shrink: 0; }
 .bsm2-scroll { overflow-y: auto; flex: 1; }
 
 /* Header */
