@@ -82,25 +82,46 @@ export async function getPlayerSeasonStats(sport, playerId, year) {
 }
 
 export async function getPlayerStats(sport, playerId) {
+  const { league } = SPORTS[sport];
   const coreLeague = {
     nba: 'basketball/leagues/nba',
     nfl: 'football/leagues/nfl',
     mlb: 'baseball/leagues/mlb',
     nhl: 'hockey/leagues/nhl',
   }[sport];
+  const year = new Date().getFullYear();
 
-  const tryYear = async (year) => {
+  const tryYear = async (y) => {
     const { data } = await axios.get(
-      `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${year}/types/2/athletes/${playerId}/statistics/0`
+      `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${y}/types/2/athletes/${playerId}/statistics/0`
     );
-    // Check if response has meaningful data
     const cats = data?.splits?.categories || [];
     const hasData = cats.some((c) => (c.stats || []).some((s) => parseFloat(s.displayValue) > 0));
     if (!hasData) throw new Error('no data');
     return data;
   };
 
-  const year = new Date().getFullYear();
+  // For NBA: use statsSummary from bio (official per-game averages) + defensive stats
+  if (sport === 'nba') {
+    const [bioResp, coreResp] = await Promise.allSettled([
+      axios.get(`https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}`),
+      tryYear(year).catch(() => tryYear(year - 1)),
+    ]);
+    const bio = bioResp.status === 'fulfilled' ? bioResp.value.data : null;
+    const core = coreResp.status === 'fulfilled' ? coreResp.value : null;
+    const summaryStats = bio?.athlete?.statsSummary?.statistics || [];
+
+    // Build a unified stats object: statsSummary wins for PTS/REB/AST/FG%
+    const result = { _isBioStats: true, _summaryStats: summaryStats };
+    // Also attach defensive stats from core for STL/BLK
+    if (core) {
+      const defCat = core.splits?.categories?.find((c) => c.name === 'defensive');
+      (defCat?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    }
+    summaryStats.forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    return { _merged: result, splits: { categories: [] } };
+  }
+
   try { return await tryYear(year); }
   catch { return await tryYear(year - 1); }
 }

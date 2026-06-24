@@ -41,13 +41,27 @@ function extractSeasonStats(statsData, sport) {
   }
 
   if (sport === 'nba') {
-    // Merge all categories — PTS/AST/FG% in 'offensive', REB/GP/+/- in 'general'
+    // Use pre-merged stats from bio + defensive core API (set by getPlayerStats)
+    const merged = statsData._merged;
+    if (merged) {
+      return [
+        { label: 'PTS', value: merged['PTS'] },
+        { label: 'REB', value: merged['REB'] },
+        { label: 'AST', value: merged['AST'] },
+        { label: 'STL', value: merged['STL'] },
+        { label: 'BLK', value: merged['BLK'] },
+        { label: 'FG%', value: merged['FG%'] },
+      ];
+    }
+    // Fallback: merge categories
     const s = {};
     categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
+    const off = categories.find((c) => c.name === 'offensive');
+    if (off) Object.assign(s, getCatStats(off));
     return [
-      { label: 'PTS', value: s['PTS'] || s['PPG'] }, { label: 'REB', value: s['REB'] || s['RPG'] },
-      { label: 'AST', value: s['AST'] || s['APG'] }, { label: 'STL', value: s['STL'] },
-      { label: 'BLK', value: s['BLK'] },             { label: 'FG%', value: s['FG%'] || s['FGP'] },
+      { label: 'PTS', value: s['PTS'] }, { label: 'REB', value: s['REB'] },
+      { label: 'AST', value: s['AST'] }, { label: 'STL', value: s['STL'] },
+      { label: 'BLK', value: s['BLK'] }, { label: 'FG%', value: s['FG%'] },
     ];
   }
 
