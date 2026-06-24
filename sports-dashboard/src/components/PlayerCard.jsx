@@ -41,7 +41,9 @@ function extractSeasonStats(statsData, sport) {
   }
 
   if (sport === 'nba') {
-    const s = getCatStats(categories.find((c) => c.name?.includes('general') || c.name === 'offensive') || categories[0]);
+    // Merge all categories — PTS/AST/FG% in 'offensive', REB/GP/+/- in 'general'
+    const s = {};
+    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
     return [
       { label: 'PTS', value: s['PTS'] || s['PPG'] }, { label: 'REB', value: s['REB'] || s['RPG'] },
       { label: 'AST', value: s['AST'] || s['APG'] }, { label: 'STL', value: s['STL'] },

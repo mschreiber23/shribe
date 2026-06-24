@@ -82,18 +82,27 @@ export async function getPlayerSeasonStats(sport, playerId, year) {
 }
 
 export async function getPlayerStats(sport, playerId) {
-  const year = new Date().getFullYear();
-  // Core API v2 path uses sport/leagues/league format
   const coreLeague = {
     nba: 'basketball/leagues/nba',
     nfl: 'football/leagues/nfl',
     mlb: 'baseball/leagues/mlb',
     nhl: 'hockey/leagues/nhl',
   }[sport];
-  const { data } = await axios.get(
-    `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${year}/types/2/athletes/${playerId}/statistics/0`
-  );
-  return data;
+
+  const tryYear = async (year) => {
+    const { data } = await axios.get(
+      `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${year}/types/2/athletes/${playerId}/statistics/0`
+    );
+    // Check if response has meaningful data
+    const cats = data?.splits?.categories || [];
+    const hasData = cats.some((c) => (c.stats || []).some((s) => parseFloat(s.displayValue) > 0));
+    if (!hasData) throw new Error('no data');
+    return data;
+  };
+
+  const year = new Date().getFullYear();
+  try { return await tryYear(year); }
+  catch { return await tryYear(year - 1); }
 }
 
 export async function searchTeams(sport, query) {
