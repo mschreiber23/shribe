@@ -78,6 +78,14 @@ export function FavoritesProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
   }, [favorites]);
 
+  const reorderTeam = (fromIndex, toIndex) =>
+    setFavorites((f) => {
+      const teams = [...f.teams];
+      const [moved] = teams.splice(fromIndex, 1);
+      teams.splice(toIndex, 0, moved);
+      return { ...f, teams };
+    });
+
   const addTeam = (sport, team) =>
     setFavorites((f) => {
       if (f.teams.some((t) => t.team.id === team.id && t.sport === sport)) return f;
@@ -104,7 +112,7 @@ export function FavoritesProvider({ children }) {
 
   return (
     <FavoritesContext.Provider
-      value={{ favorites, addTeam, removeTeam, addPlayer, removePlayer }}
+      value={{ favorites, addTeam, removeTeam, reorderTeam, addPlayer, removePlayer }}
     >
       {children}
     </FavoritesContext.Provider>

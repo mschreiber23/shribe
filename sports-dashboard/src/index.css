@@ -1349,6 +1349,27 @@ body {
 
 .edit-team-name { font-size: 15px; font-weight: 700; }
 
+.edit-reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.edit-reorder-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 28px; height: 24px;
+  border-radius: 6px;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.edit-reorder-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+.edit-reorder-btn:disabled { opacity: 0.25; cursor: default; }
+
 .edit-team-sport {
   font-size: 11px;
   color: var(--text2);

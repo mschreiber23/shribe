@@ -4,7 +4,7 @@ import TeamRow from './TeamRow';
 import { searchTeams, SPORTS } from '../api/espn';
 
 export default function MyTeams() {
-  const { favorites, addTeam, removeTeam } = useFavorites();
+  const { favorites, addTeam, removeTeam, reorderTeam } = useFavorites();
   const [showPicker, setShowPicker] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [pickerSport, setPickerSport] = useState('nba');
@@ -65,7 +65,7 @@ export default function MyTeams() {
       {editMode && (
         <div className="edit-panel">
           <div className="edit-panel-label">Tap — to remove a team</div>
-          {favorites.teams.map(({ sport, team }) => (
+          {favorites.teams.map(({ sport, team }, idx) => (
             <div key={`${sport}-${team.id}`} className="edit-team-row">
               <button
                 className="edit-remove-btn"
@@ -80,6 +80,20 @@ export default function MyTeams() {
                   <div className="edit-team-name">{team.displayName}</div>
                   <div className="edit-team-sport">{SPORTS[sport]?.label}</div>
                 </div>
+              </div>
+              <div className="edit-reorder-btns">
+                <button
+                  className="edit-reorder-btn"
+                  onClick={() => reorderTeam(idx, idx - 1)}
+                  disabled={idx === 0}
+                  title="Move up"
+                >▲</button>
+                <button
+                  className="edit-reorder-btn"
+                  onClick={() => reorderTeam(idx, idx + 1)}
+                  disabled={idx === favorites.teams.length - 1}
+                  title="Move down"
+                >▼</button>
               </div>
             </div>
           ))}
