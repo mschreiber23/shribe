@@ -1,91 +1,27 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 
 const FavoritesContext = createContext(null);
 
-const STORAGE_KEY = 'sports_dashboard_favorites_v3';
-
-// Belt-and-suspenders: also save to sessionStorage so a page reload within
-// the same session always restores correctly even if localStorage is cleared
-function loadFavorites() {
-  try {
-    const local = localStorage.getItem(STORAGE_KEY);
-    if (local) { sessionStorage.setItem(STORAGE_KEY, local); return JSON.parse(local); }
-  } catch {}
-  try {
-    const session = sessionStorage.getItem(STORAGE_KEY);
-    if (session) return JSON.parse(session);
-  } catch {}
-  return DEFAULT_FAVORITES;
-}
-
-function saveFavorites(data) {
-  const json = JSON.stringify(data);
-  try { localStorage.setItem(STORAGE_KEY, json); } catch {}
-  try { sessionStorage.setItem(STORAGE_KEY, json); } catch {}
-}
-
 const DEFAULT_SPORT_ORDER = ['mlb', 'nba', 'nfl', 'nhl'];
-const SPORT_ORDER_KEY = 'sports_dashboard_sport_order';
 
-function loadSportOrder() {
-  try {
-    const stored = localStorage.getItem(SPORT_ORDER_KEY) || sessionStorage.getItem(SPORT_ORDER_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {}
-  return DEFAULT_SPORT_ORDER;
-}
-
-function saveSportOrder(order) {
-  const json = JSON.stringify(order);
-  try { localStorage.setItem(SPORT_ORDER_KEY, json); } catch {}
-  try { sessionStorage.setItem(SPORT_ORDER_KEY, json); } catch {}
-}
-
-const DEFAULT_FAVORITES = {
+export const DEFAULT_FAVORITES = {
   teams: [
     {
       sport: 'mlb',
-      team: {
-        id: '20',
-        displayName: 'Washington Nationals',
-        abbreviation: 'WSH',
-        color: 'ab0003',
-        alternateColor: '11225b',
-        logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png',
-      },
+      team: { id: '20', displayName: 'Washington Nationals', abbreviation: 'WSH', color: 'ab0003', alternateColor: '11225b', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png' },
     },
     {
       sport: 'nba',
-      team: {
-        id: '27',
-        displayName: 'Washington Wizards',
-        abbreviation: 'WSH',
-        color: 'e31837',
-        alternateColor: '002b5c',
-        logo: 'https://a.espncdn.com/i/teamlogos/nba/500/wsh.png',
-      },
+      team: { id: '27', displayName: 'Washington Wizards', abbreviation: 'WSH', color: 'e31837', alternateColor: '002b5c', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/wsh.png' },
     },
     {
       sport: 'nhl',
-      team: {
-        id: '23',
-        displayName: 'Washington Capitals',
-        abbreviation: 'WSH',
-        color: 'd71830',
-        alternateColor: '00214e',
-        logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png',
-      },
+      team: { id: '23', displayName: 'Washington Capitals', abbreviation: 'WSH', color: 'd71830', alternateColor: '00214e', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png' },
     },
     {
       sport: 'nfl',
-      team: {
-        id: '21',
-        displayName: 'Philadelphia Eagles',
-        abbreviation: 'PHI',
-        color: '06424d',
-        alternateColor: 'acc0c6',
-        logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png',
-      },
+      team: { id: '21', displayName: 'Philadelphia Eagles', abbreviation: 'PHI', color: '06424d', alternateColor: 'acc0c6', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png' },
     },
   ],
   players: [
@@ -101,31 +37,97 @@ const DEFAULT_FAVORITES = {
   ],
 };
 
-export function FavoritesProvider({ children }) {
-  const [favorites, setFavorites] = useState(loadFavorites);
-  const [sportOrder, setSportOrderState] = useState(loadSportOrder);
+/* ── Local storage helpers (fallback when logged out) ── */
+const LOCAL_KEY = 'sports_dashboard_favorites_v3';
+const SPORT_ORDER_KEY = 'sports_dashboard_sport_order';
 
+function readLocal(key, fallback) {
+  try {
+    const v = localStorage.getItem(key) || sessionStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  } catch { return fallback; }
+}
+
+function writeLocal(key, value) {
+  const json = JSON.stringify(value);
+  try { localStorage.setItem(key, json); } catch {}
+  try { sessionStorage.setItem(key, json); } catch {}
+}
+
+export function FavoritesProvider({ children, userId }) {
+  const [favorites, setFavoritesState] = useState(() => readLocal(LOCAL_KEY, DEFAULT_FAVORITES));
+  const [sportOrder, setSportOrderState] = useState(() => readLocal(SPORT_ORDER_KEY, DEFAULT_SPORT_ORDER));
+  const [synced, setSynced] = useState(false);
+  const saveTimer = useRef(null);
+
+  /* ── Load from Supabase on login ── */
   useEffect(() => {
-    saveFavorites(favorites);
-  }, [favorites]);
+    if (!userId) {
+      // Logged out — use localStorage
+      setFavoritesState(readLocal(LOCAL_KEY, DEFAULT_FAVORITES));
+      setSportOrderState(readLocal(SPORT_ORDER_KEY, DEFAULT_SPORT_ORDER));
+      setSynced(false);
+      return;
+    }
 
-  const reorderSport = (fromIndex, toIndex) => {
-    setSportOrderState((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      saveSportOrder(next);
+    supabase
+      .from('user_preferences')
+      .select('preferences, sport_order')
+      .eq('user_id', userId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) { console.error('Load prefs error:', error); return; }
+        if (data) {
+          setFavoritesState(data.preferences || DEFAULT_FAVORITES);
+          setSportOrderState(data.sport_order || DEFAULT_SPORT_ORDER);
+        } else {
+          // First time — migrate from localStorage if data exists
+          const local = readLocal(LOCAL_KEY, null);
+          if (local) setFavoritesState(local);
+          const localOrder = readLocal(SPORT_ORDER_KEY, null);
+          if (localOrder) setSportOrderState(localOrder);
+        }
+        setSynced(true);
+      });
+  }, [userId]);
+
+  /* ── Save to Supabase (debounced 1s) ── */
+  const scheduleSave = useCallback((newFavs, newOrder) => {
+    if (!userId || !synced) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      supabase
+        .from('user_preferences')
+        .upsert({ user_id: userId, preferences: newFavs, sport_order: newOrder, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+        .then(({ error }) => { if (error) console.error('Save prefs error:', error); });
+    }, 1000);
+  }, [userId, synced]);
+
+  const setFavorites = useCallback((updater) => {
+    setFavoritesState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      writeLocal(LOCAL_KEY, next);
+      scheduleSave(next, sportOrder);
       return next;
     });
-  };
+  }, [scheduleSave, sportOrder]);
 
-  const reorderTeam = (fromIndex, toIndex) =>
-    setFavorites((f) => {
-      const teams = [...f.teams];
-      const [moved] = teams.splice(fromIndex, 1);
-      teams.splice(toIndex, 0, moved);
-      return { ...f, teams };
+  const setSportOrder = useCallback((updater) => {
+    setSportOrderState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      writeLocal(SPORT_ORDER_KEY, next);
+      scheduleSave(favorites, next);
+      return next;
     });
+  }, [scheduleSave, favorites]);
+
+  /* ── CRUD helpers ── */
+  const reorderSport = (from, to) => setSportOrder((prev) => {
+    const next = [...prev];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    return next;
+  });
 
   const addTeam = (sport, team) =>
     setFavorites((f) => {
@@ -134,10 +136,15 @@ export function FavoritesProvider({ children }) {
     });
 
   const removeTeam = (teamId, sport) =>
-    setFavorites((f) => ({
-      ...f,
-      teams: f.teams.filter((t) => !(t.team.id === teamId && t.sport === sport)),
-    }));
+    setFavorites((f) => ({ ...f, teams: f.teams.filter((t) => !(t.team.id === teamId && t.sport === sport)) }));
+
+  const reorderTeam = (from, to) =>
+    setFavorites((f) => {
+      const teams = [...f.teams];
+      const [m] = teams.splice(from, 1);
+      teams.splice(to, 0, m);
+      return { ...f, teams };
+    });
 
   const addPlayer = (player) =>
     setFavorites((f) => {
@@ -146,15 +153,15 @@ export function FavoritesProvider({ children }) {
     });
 
   const removePlayer = (playerId) =>
-    setFavorites((f) => ({
-      ...f,
-      players: f.players.filter((p) => p.id !== playerId),
-    }));
+    setFavorites((f) => ({ ...f, players: f.players.filter((p) => p.id !== playerId) }));
 
   return (
-    <FavoritesContext.Provider
-      value={{ favorites, addTeam, removeTeam, reorderTeam, addPlayer, removePlayer, sportOrder, reorderSport }}
-    >
+    <FavoritesContext.Provider value={{
+      favorites, sportOrder,
+      addTeam, removeTeam, reorderTeam,
+      addPlayer, removePlayer,
+      reorderSport,
+    }}>
       {children}
     </FavoritesContext.Provider>
   );

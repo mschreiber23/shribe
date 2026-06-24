@@ -1,18 +1,24 @@
 import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider } from './context/FavoritesContext';
 import MyTeams from './components/MyTeams';
+import PlayerRoster from './components/PlayerRoster';
 import TodaysScores from './components/TodaysScores';
 import StatLeaders from './components/StatLeaders';
 import InstallBanner from './components/InstallBanner';
-import PlayerRoster from './components/PlayerRoster';
+import UserMenu from './components/UserMenu';
 import TeamPage from './pages/TeamPage';
 import BoxScorePage from './pages/BoxScorePage';
 import PlayerPage from './pages/PlayerPage';
+import AuthPage from './pages/AuthPage';
 import './index.css';
 
 function Dashboard() {
   return (
     <>
+      <div className="app-topbar">
+        <UserMenu />
+      </div>
       <InstallBanner />
       <main className="main">
         <TodaysScores />
@@ -27,25 +33,39 @@ function Dashboard() {
   );
 }
 
-export default function App() {
+function AppInner() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="auth-loading">
+        <div className="auth-spinner" />
+      </div>
+    );
+  }
+
+  if (!user) return <AuthPage />;
+
   return (
-    <BrowserRouter>
-      <FavoritesProvider>
+    <FavoritesProvider userId={user.id}>
+      <BrowserRouter>
         <div className="app">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/player/:sport/:playerId" element={
-              <main className="main"><PlayerPage /></main>
-            } />
-            <Route path="/boxscore/:sport/:gameId" element={
-              <main className="main"><BoxScorePage /></main>
-            } />
-            <Route path="/team/:sport/:teamId" element={
-              <main className="main"><TeamPage /></main>
-            } />
+            <Route path="/player/:sport/:playerId" element={<main className="main"><PlayerPage /></main>} />
+            <Route path="/boxscore/:sport/:gameId" element={<main className="main"><BoxScorePage /></main>} />
+            <Route path="/team/:sport/:teamId" element={<main className="main"><TeamPage /></main>} />
           </Routes>
         </div>
-      </FavoritesProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </FavoritesProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
