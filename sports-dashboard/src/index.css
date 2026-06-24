@@ -816,13 +816,96 @@ body {
   flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
-  .tr-identity { min-width: 120px; width: 120px; }
-  .tr-rhe-spacer { width: 120px; }
-  .tr-team-identity { width: 120px; }
-  .tr-players { min-width: 140px; }
-  .tr-last-play { display: none; }
+@media (max-width: 640px) {
+  /* Stack team row vertically on mobile */
+  .team-row-card {
+    flex-direction: column;
+    border-left: none;
+    border-top: 3px solid var(--team-accent, var(--accent));
+  }
+
+  .tr-identity {
+    width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 14px;
+    gap: 0;
+    justify-content: space-between;
+  }
+
+  .tr-name-link { gap: 8px; }
+  .tr-logo { width: 28px; height: 28px; }
+  .tr-name { font-size: 12px; }
+  .tr-sport { font-size: 9px; }
+
+  /* Live bar: stack sections */
+  .tr-live-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .tr-inning {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 10px 14px 6px;
+    border-right: none;
+    border-bottom: none;
+    min-width: unset;
+  }
+
+  .tr-inning-half { font-size: 14px; }
+  .tr-inning-num { font-size: 12px; }
+
+  .tr-teams {
+    padding: 6px 14px 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tr-rhe-spacer { width: 140px; }
+  .tr-team-identity { width: 140px; }
+  .tr-team-name-sm { font-size: 13px; }
+
+  /* Hide complex elements on mobile */
+  .tr-middle { display: none; }
+  .tr-players { display: none; }
+
+  /* Non-live game row on mobile */
+  .tr-game-row { padding: 12px 14px; gap: 12px; }
+  .tr-game-teams { gap: 6px; }
   .tr-venue { display: none; }
+  .tr-view-bs { opacity: 1; font-size: 11px; }
+
+  /* General layout */
+  .main { padding: 12px 12px 40px; gap: 24px; }
+
+  .section-title { font-size: 18px; }
+
+  /* Player cards: 2 stat columns on mobile */
+  .stat-pills { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat-value { font-size: 16px; }
+
+  /* Team page mobile */
+  .tp-header-logo { width: 52px; height: 52px; }
+  .tp-header-name { font-size: 20px; }
+  .tp-schedule-row { grid-template-columns: 100px 1fr auto; gap: 8px; font-size: 13px; }
+  .tp-tab { padding: 12px 14px; font-size: 13px; }
+
+  /* Box score modal mobile */
+  .bsm-panel { border-radius: 12px; }
+  .bsm-hdr-logo { width: 40px; height: 40px; }
+  .bsm-hdr-score { font-size: 36px; }
+  .bsm-hdr-name { font-size: 14px; }
+  .bsm-body { max-height: 55vh; padding: 14px; }
+  .bs-dual-section { grid-template-columns: 1fr; }
+  .bs-dual-divider { height: 1px; width: 100%; }
+  .situation-bar { gap: 12px; padding: 12px 14px; }
+  .sit-player { display: none; }
 }
 
 /* ── Team Page ── */

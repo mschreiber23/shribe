@@ -13,72 +13,75 @@ function StatPill({ label, value }) {
 function extractSeasonStats(statsData, sport) {
   if (!statsData) return [];
 
-  // ESPN stats API returns categories with stats arrays
-  const categories = statsData.splits?.categories || [];
+  // New ESPN API: categories[].labels + categories[].totals
+  const categories = statsData.categories || [];
+
+  const getCatStats = (cat) => {
+    if (!cat) return {};
+    const labels = cat.labels || [];
+    const totals = cat.totals || [];
+    const result = {};
+    labels.forEach((l, i) => { result[l] = totals[i]; });
+    return result;
+  };
+
+  if (sport === 'mlb') {
+    const batting = categories.find((c) => c.name?.includes('batting') && !c.name?.includes('expanded') && !c.name?.includes('advanced'));
+    const pitching = categories.find((c) => c.name?.includes('pitching') && !c.name?.includes('expanded') && !c.name?.includes('advanced'));
+    const s = getCatStats(pitching || batting || categories[0]);
+    if (pitching) return [
+      { label: 'ERA', value: s['ERA'] }, { label: 'W', value: s['W'] },
+      { label: 'L', value: s['L'] }, { label: 'SO', value: s['SO'] },
+      { label: 'IP', value: s['IP'] }, { label: 'WHIP', value: s['WHIP'] },
+    ];
+    return [
+      { label: 'AVG', value: s['AVG'] }, { label: 'HR', value: s['HR'] },
+      { label: 'RBI', value: s['RBI'] }, { label: 'R', value: s['R'] },
+      { label: 'H', value: s['H'] }, { label: 'SB', value: s['SB'] },
+    ];
+  }
 
   if (sport === 'nba') {
-    const general = categories.find((c) => c.name === 'general' || c.displayName?.toLowerCase().includes('general'));
-    const stats = general?.stats || categories[0]?.stats || [];
-    const get = (name) => stats.find((s) => s.name === name || s.abbreviation === name)?.displayValue;
+    const cat = categories.find((c) => c.name?.includes('general') || c.name?.includes('total')) || categories[0];
+    const s = getCatStats(cat);
     return [
-      { label: 'PPG', value: get('avgPoints') || get('PTS') },
-      { label: 'RPG', value: get('avgRebounds') || get('REB') },
-      { label: 'APG', value: get('avgAssists') || get('AST') },
-      { label: 'SPG', value: get('avgSteals') || get('STL') },
-      { label: 'BPG', value: get('avgBlocks') || get('BLK') },
-      { label: 'FG%', value: get('shootingPct') || get('FG%') },
+      { label: 'PTS', value: s['PTS'] || s['PPG'] }, { label: 'REB', value: s['REB'] || s['RPG'] },
+      { label: 'AST', value: s['AST'] || s['APG'] }, { label: 'STL', value: s['STL'] },
+      { label: 'BLK', value: s['BLK'] }, { label: 'FG%', value: s['FG%'] || s['FGP'] },
     ];
   }
 
   if (sport === 'nfl') {
-    const passing = categories.find((c) => c.name === 'passing');
-    const rushing = categories.find((c) => c.name === 'rushing');
-    const receiving = categories.find((c) => c.name === 'receiving');
+    const passing = categories.find((c) => c.name?.includes('passing'));
+    const rushing = categories.find((c) => c.name?.includes('rushing'));
+    const receiving = categories.find((c) => c.name?.includes('receiving'));
     const src = passing || rushing || receiving || categories[0];
-    const stats = src?.stats || [];
-    const get = (name) => stats.find((s) => s.name === name || s.abbreviation === name)?.displayValue;
+    const s = getCatStats(src);
     if (passing) return [
-      { label: 'YDS', value: get('passingYards') || get('YDS') },
-      { label: 'TD', value: get('passingTouchdowns') || get('TD') },
-      { label: 'INT', value: get('interceptions') || get('INT') },
-      { label: 'RTG', value: get('QBRating') || get('RTG') },
+      { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] },
+      { label: 'INT', value: s['INT'] }, { label: 'RTG', value: s['RTG'] || s['QBR'] },
     ];
     if (rushing) return [
-      { label: 'YDS', value: get('rushingYards') || get('YDS') },
-      { label: 'TD', value: get('rushingTouchdowns') || get('TD') },
-      { label: 'ATT', value: get('rushingAttempts') || get('ATT') },
-      { label: 'AVG', value: get('avgRushingYards') || get('AVG') },
+      { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] },
+      { label: 'ATT', value: s['CAR'] || s['ATT'] }, { label: 'AVG', value: s['AVG'] },
     ];
     return [
-      { label: 'REC', value: get('receptions') || get('REC') },
-      { label: 'YDS', value: get('receivingYards') || get('YDS') },
-      { label: 'TD', value: get('receivingTouchdowns') || get('TD') },
+      { label: 'REC', value: s['REC'] }, { label: 'YDS', value: s['YDS'] },
+      { label: 'TD', value: s['TD'] }, { label: 'AVG', value: s['AVG'] },
     ];
   }
 
-  if (sport === 'mlb') {
-    const hitting = categories.find((c) => c.name === 'hitting');
-    const pitching = categories.find((c) => c.name === 'pitching');
-    const src = hitting || pitching || categories[0];
-    const stats = src?.stats || [];
-    const get = (name) => stats.find((s) => s.name === name || s.abbreviation === name)?.displayValue;
-    if (pitching) return [
-      { label: 'ERA', value: get('ERA') },
-      { label: 'W', value: get('wins') || get('W') },
-      { label: 'L', value: get('losses') || get('L') },
-      { label: 'SO', value: get('strikeouts') || get('SO') },
-    ];
+  if (sport === 'nhl') {
+    const s = getCatStats(categories[0]);
     return [
-      { label: 'AVG', value: get('avg') || get('AVG') },
-      { label: 'HR', value: get('homeRuns') || get('HR') },
-      { label: 'RBI', value: get('RBI') },
-      { label: 'OPS', value: get('OPS') },
+      { label: 'G', value: s['G'] }, { label: 'A', value: s['A'] },
+      { label: 'PTS', value: s['PTS'] }, { label: '+/-', value: s['+/-'] },
     ];
   }
 
-  // Generic fallback: show first 6 stats
-  const stats = categories[0]?.stats || [];
-  return stats.slice(0, 6).map((s) => ({ label: s.abbreviation || s.name, value: s.displayValue }));
+  // Generic fallback
+  const s = getCatStats(categories[0]);
+  return Object.entries(s).slice(0, 6).map(([label, value]) => ({ label, value }));
 }
 
 export default function PlayerCard({ player, sport }) {
