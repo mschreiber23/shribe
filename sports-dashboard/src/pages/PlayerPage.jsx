@@ -326,7 +326,7 @@ export default function PlayerPage() {
                 <div className="pp-team-row">
                   {teamLogo && <img src={teamLogo} alt="" className="pp-team-logo" />}
                   <span className="pp-team-name">{athlete.team?.displayName}</span>
-                  {athlete.displayJersey && <span className="pp-meta"> · #{athlete.displayJersey}</span>}
+                  {athlete.displayJersey && <span className="pp-meta"> · {athlete.displayJersey}</span>}
                   {athlete.position?.abbreviation && <span className="pp-meta"> · {athlete.position.abbreviation}</span>}
                 </div>
                 <div className="pp-details">
