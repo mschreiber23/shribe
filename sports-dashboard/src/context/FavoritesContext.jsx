@@ -4,6 +4,26 @@ const FavoritesContext = createContext(null);
 
 const STORAGE_KEY = 'sports_dashboard_favorites_v3';
 
+// Belt-and-suspenders: also save to sessionStorage so a page reload within
+// the same session always restores correctly even if localStorage is cleared
+function loadFavorites() {
+  try {
+    const local = localStorage.getItem(STORAGE_KEY);
+    if (local) { sessionStorage.setItem(STORAGE_KEY, local); return JSON.parse(local); }
+  } catch {}
+  try {
+    const session = sessionStorage.getItem(STORAGE_KEY);
+    if (session) return JSON.parse(session);
+  } catch {}
+  return DEFAULT_FAVORITES;
+}
+
+function saveFavorites(data) {
+  const json = JSON.stringify(data);
+  try { localStorage.setItem(STORAGE_KEY, json); } catch {}
+  try { sessionStorage.setItem(STORAGE_KEY, json); } catch {}
+}
+
 const DEFAULT_FAVORITES = {
   teams: [
     {
@@ -65,17 +85,10 @@ const DEFAULT_FAVORITES = {
 };
 
 export function FavoritesProvider({ children }) {
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : DEFAULT_FAVORITES;
-    } catch {
-      return DEFAULT_FAVORITES;
-    }
-  });
+  const [favorites, setFavorites] = useState(loadFavorites);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
+    saveFavorites(favorites);
   }, [favorites]);
 
   const reorderTeam = (fromIndex, toIndex) =>

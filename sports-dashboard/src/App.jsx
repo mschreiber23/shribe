@@ -3,6 +3,7 @@ import { FavoritesProvider } from './context/FavoritesContext';
 import MyTeams from './components/MyTeams';
 import TodaysScores from './components/TodaysScores';
 import StatLeaders from './components/StatLeaders';
+import InstallBanner from './components/InstallBanner';
 import PlayerRoster from './components/PlayerRoster';
 import TeamPage from './pages/TeamPage';
 import BoxScorePage from './pages/BoxScorePage';
@@ -12,6 +13,7 @@ import './index.css';
 function Dashboard() {
   return (
     <>
+      <InstallBanner />
       <main className="main">
         <TodaysScores />
         <MyTeams />
