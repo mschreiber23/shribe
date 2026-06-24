@@ -21,6 +21,38 @@ export async function getTeamRoster(sport, teamId) {
   return data.athletes || [];
 }
 
+export async function getStatLeaders(sport) {
+  const coreLeague = { nba: 'basketball/leagues/nba', nfl: 'football/leagues/nfl', mlb: 'baseball/leagues/mlb', nhl: 'hockey/leagues/nhl' }[sport];
+  const year = new Date().getFullYear();
+  // NFL: try current year, fall back to previous (offseason)
+  const tryYear = async (y) => {
+    const { data } = await axios.get(
+      `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${y}/types/2/leaders`
+    );
+    if (data.categories?.length) return data;
+    throw new Error('no data');
+  };
+  try { return await tryYear(year); }
+  catch { return await tryYear(year - 1); }
+}
+
+export async function getAthleteInfo(sport, athleteId) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${athleteId}`
+  );
+  const a = data.athlete || {};
+  return {
+    id: athleteId,
+    displayName: a.displayName || a.fullName || '',
+    shortName: a.shortName || a.displayName || '',
+    headshot: a.headshot?.href || `https://a.espncdn.com/i/headshots/${league.split('/')[0]}/players/full/${athleteId}.png`,
+    team: a.team?.abbreviation || '',
+    teamLogo: a.team?.logos?.[0]?.href || '',
+    position: a.position?.abbreviation || '',
+  };
+}
+
 export async function getPlayerGameLog(sport, playerId) {
   const { league } = SPORTS[sport];
   const year = new Date().getFullYear();

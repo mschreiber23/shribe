@@ -2,6 +2,7 @@ import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FavoritesProvider } from './context/FavoritesContext';
 import MyTeams from './components/MyTeams';
 import TodaysScores from './components/TodaysScores';
+import StatLeaders from './components/StatLeaders';
 import PlayerRoster from './components/PlayerRoster';
 import TeamPage from './pages/TeamPage';
 import BoxScorePage from './pages/BoxScorePage';
@@ -15,6 +16,7 @@ function Dashboard() {
         <TodaysScores />
         <MyTeams />
         <PlayerRoster />
+        <StatLeaders />
       </main>
       <footer className="footer">
         <p>Data provided by ESPN · Updates every 30 seconds</p>

@@ -1493,6 +1493,115 @@ body {
   .ts-skeleton-row { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Stat Leaders ── */
+.sl-cat-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sl-cat-tab {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.sl-cat-tab:hover { border-color: var(--accent2); color: var(--text); }
+.sl-cat-tab-active { background: var(--bg3); border-color: var(--accent2); color: var(--text); }
+
+.sl-list {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.sl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.sl-row:last-child { border-bottom: none; }
+.sl-row-clickable { cursor: pointer; }
+.sl-row-clickable:hover { background: var(--bg3); }
+
+.sl-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 20px;
+  text-align: center;
+}
+
+.sl-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sl-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+
+.sl-player-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sl-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sl-team {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 1px;
+}
+
+.sl-value {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: right;
+}
+
+.sl-skeleton {
+  height: 56px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.sl-skeleton:last-child { border-bottom: none; }
+
 /* ── Player Page ── */
 .pp-page { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 
