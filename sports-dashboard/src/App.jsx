@@ -5,6 +5,7 @@ import MyTeams from './components/MyTeams';
 import PlayerRoster from './components/PlayerRoster';
 import TeamPage from './pages/TeamPage';
 import BoxScorePage from './pages/BoxScorePage';
+import PlayerPage from './pages/PlayerPage';
 import './index.css';
 
 function Dashboard() {
@@ -29,6 +30,13 @@ export default function App() {
         <div className="app">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/player/:sport/:playerId" element={
+              <>
+                <Header />
+                <main className="main"><PlayerPage /></main>
+                <footer className="footer"><p>Data provided by ESPN</p></footer>
+              </>
+            } />
             <Route path="/boxscore/:sport/:gameId" element={
               <>
                 <Header />

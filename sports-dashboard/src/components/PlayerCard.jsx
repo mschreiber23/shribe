@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
 import { useFavorites } from '../context/FavoritesContext';
 
@@ -76,8 +77,9 @@ export default function PlayerCard({ player, sport }) {
 
   return (
     <div className="player-card">
-      <div className="player-card-header">
-        <div className="player-avatar-wrap">
+        <div className="player-card-header">
+      <Link to={`/player/${sport}/${player.id}`} className="player-card-link">
+      <div className="player-avatar-wrap">
           {player.headshot ? (
             <img src={player.headshot} alt={player.displayName} className="player-avatar" />
           ) : (
@@ -88,6 +90,7 @@ export default function PlayerCard({ player, sport }) {
           <div className="player-name">{player.displayName}</div>
           <div className="player-pos">{player.position}</div>
         </div>
+      </Link>
         <button
           className="remove-btn"
           onClick={() => removePlayer(player.id)}

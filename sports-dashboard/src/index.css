@@ -1371,6 +1371,123 @@ body {
 }
 .hidden-teams-toggle:hover { border-color: var(--accent2); color: var(--text); }
 
+/* ── Player Page ── */
+.pp-page { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+
+.pp-header {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.pp-hero {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+.pp-headshot {
+  width: 140px;
+  flex-shrink: 0;
+  object-fit: cover;
+  object-position: top center;
+  background: var(--bg3);
+}
+
+.pp-bio {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pp-name { font-size: 22px; line-height: 1.1; }
+.pp-firstname { font-weight: 400; color: var(--text2); }
+.pp-lastname { font-weight: 900; color: var(--text); text-transform: uppercase; }
+
+.pp-team-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pp-team-logo { width: 20px; height: 20px; object-fit: contain; }
+.pp-team-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.pp-meta { font-size: 13px; color: var(--text2); }
+
+.pp-details { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.pp-detail-row { display: flex; gap: 10px; font-size: 12px; }
+.pp-detail-label { color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; min-width: 60px; }
+
+/* Stat highlights */
+.pp-stat-highlights {
+  border-top: 1px solid var(--border);
+  padding: 14px 20px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg2));
+}
+.pp-highlights-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent2);
+  margin-bottom: 10px;
+}
+.pp-highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.pp-highlight-pill { text-align: center; }
+.pp-hl-value { font-size: 22px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+.pp-hl-label { font-size: 11px; color: var(--text2); text-transform: uppercase; font-weight: 700; letter-spacing: 0.3px; margin-top: 2px; }
+.pp-hl-rank { font-size: 10px; color: var(--text2); margin-top: 1px; }
+
+/* Stats table */
+.pp-stats-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.pp-stats-title {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pp-table-wrap { overflow-x: auto; }
+.pp-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+.pp-th {
+  background: var(--bg3); color: var(--text2);
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  padding: 8px 10px; text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.pp-th-season { text-align: left; padding-left: 16px; min-width: 70px; }
+.pp-tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.pp-tr:last-child { border-bottom: none; }
+.pp-tr:hover { background: rgba(255,255,255,0.03); }
+.pp-tr-current { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.pp-tr-career { background: var(--bg3); font-weight: 700; }
+.pp-td { padding: 9px 10px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; }
+.pp-td-season { text-align: left; padding-left: 16px; color: var(--text); font-weight: 600; }
+.pp-td-hl { font-weight: 700; color: var(--text); }
+.pp-career-label { font-weight: 800; color: var(--text); }
+
+/* Player card link */
+.player-card-link { text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px; flex: 1; }
+.player-card-link:hover .player-name { color: var(--accent2); }
+
+@media (max-width: 640px) {
+  .pp-headshot { width: 110px; }
+  .pp-name { font-size: 18px; }
+  .pp-highlights-grid { grid-template-columns: repeat(2, 1fr); }
+  .pp-bio { padding: 14px; }
+}
+
 /* ── Box Score Page ── */
 .bsp-page { display: flex; flex-direction: column; gap: 0; width: 100%; }
 
