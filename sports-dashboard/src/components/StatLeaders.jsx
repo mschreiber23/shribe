@@ -134,7 +134,7 @@ export default function StatLeaders() {
 
         for (const cat of rawCats) {
           if (!wantedCats.includes(cat.name)) continue;
-          const top10 = (cat.leaders || []).slice(0, 10).map((l) => {
+          const top10 = (cat.leaders || []).slice(0, 30).map((l) => {
             const athleteId = extractAthleteId(l.athlete?.$ref);
             if (athleteId) allAthleteIds.add(athleteId);
             return { athleteId, value: l.value };
