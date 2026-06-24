@@ -1464,6 +1464,7 @@ body {
 }
 .ts-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
 .ts-card-live { border-color: rgba(34,197,94,0.3); background: color-mix(in srgb, var(--live) 4%, var(--bg2)); }
+.ts-card-mine { border-color: var(--accent); border-width: 2px; }
 
 .ts-status { min-height: 20px; }
 .ts-time { font-size: 11px; color: var(--text2); }

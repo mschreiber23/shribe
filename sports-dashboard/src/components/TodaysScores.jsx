@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
+import { useFavorites } from '../context/FavoritesContext';
 
-function ScoreCard({ game, sport }) {
+function ScoreCard({ game, sport, highlight }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -24,7 +25,7 @@ function ScoreCard({ game, sport }) {
 
   return (
     <button
-      className={`ts-card ${isLive ? 'ts-card-live' : ''}`}
+      className={`ts-card ${isLive ? 'ts-card-live' : ''} ${highlight ? 'ts-card-mine' : ''}`}
       onClick={() => canClick && navigate(`/boxscore/${sport}/${game.id}`)}
       style={{ cursor: canClick ? 'pointer' : 'default' }}
     >
@@ -55,20 +56,31 @@ function ScoreCard({ game, sport }) {
   );
 }
 
-function sortGames(games) {
-  const order = { in: 0, post: 1, pre: 2 };
+function sortGames(games, myTeamIds = []) {
+  const stateOrder = { in: 0, post: 1, pre: 2 };
+  const hasMyTeam = (game) =>
+    game.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id));
   return [...games].sort((a, b) => {
+    const aIsMine = hasMyTeam(a) ? 0 : 1;
+    const bIsMine = hasMyTeam(b) ? 0 : 1;
+    if (aIsMine !== bIsMine) return aIsMine - bIsMine;
     const stateA = a.competitions?.[0]?.status?.type?.state || 'pre';
     const stateB = b.competitions?.[0]?.status?.type?.state || 'pre';
-    return (order[stateA] ?? 2) - (order[stateB] ?? 2);
+    return (stateOrder[stateA] ?? 2) - (stateOrder[stateB] ?? 2);
   });
 }
 
 export default function TodaysScores() {
+  const { favorites } = useFavorites();
   const [scoresBySport, setScoresBySport] = useState({});
   const [activeTab, setActiveTab] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // IDs of all favorite teams for the current active sport
+  const myTeamIds = favorites.teams
+    .filter((t) => t.sport === activeTab)
+    .map((t) => t.team.id);
 
   useEffect(() => {
     const sports = Object.keys(SPORTS);
@@ -92,7 +104,7 @@ export default function TodaysScores() {
   }, []);
 
   const availableSports = Object.keys(scoresBySport);
-  const games = sortGames(activeTab ? scoresBySport[activeTab] || [] : []);
+  const games = sortGames(activeTab ? scoresBySport[activeTab] || [] : [], myTeamIds);
 
   const totalLive = availableSports.reduce((n, s) =>
     n + (scoresBySport[s]?.filter(g => g.competitions?.[0]?.status?.type?.state === 'in').length || 0), 0
@@ -142,11 +154,14 @@ export default function TodaysScores() {
                 })}
               </div>
 
-              {/* Score cards — live first */}
+              {/* Score cards — my team first, then live */}
               <div className="ts-grid">
-                {games.map((game) => (
-                  <ScoreCard key={game.id} game={game} sport={activeTab} />
-                ))}
+                {games.map((game) => {
+                  const isMine = game.competitions?.[0]?.competitors?.some(
+                    (c) => myTeamIds.includes(c.team?.id)
+                  );
+                  return <ScoreCard key={game.id} game={game} sport={activeTab} highlight={isMine} />;
+                })}
               </div>
             </>
           )}
