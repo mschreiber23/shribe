@@ -47,17 +47,30 @@ export default function PlayerRoster() {
     ? allTeams.filter((t) => t.displayName.toLowerCase().includes(teamQuery.toLowerCase()))
     : allTeams;
 
-  const allPlayers = roster.flatMap((group) =>
-    (group.items || []).map((p) => ({
-      id: String(p.id),
-      displayName: p.fullName || p.displayName,
-      position: p.position?.abbreviation || p.position?.name || '',
-      headshot: p.headshot?.href || '',
-      sport: selectedTeam?.sport,
-      teamId: selectedTeam?.id,
-      teamName: selectedTeam?.displayName,
-    }))
-  );
+  // Roster can be flat array of players (NBA/NHL) or grouped with items (MLB/NFL)
+  const flattenRoster = (roster) => {
+    if (!roster.length) return [];
+    const first = roster[0];
+    if (first.items) {
+      // Grouped format (MLB)
+      return roster.flatMap((group) => group.items || []);
+    }
+    if (first.id) {
+      // Flat format (NBA, NHL)
+      return roster;
+    }
+    return [];
+  };
+
+  const allPlayers = flattenRoster(roster).map((p) => ({
+    id: String(p.id),
+    displayName: p.fullName || p.displayName,
+    position: p.position?.abbreviation || p.position?.name || '',
+    headshot: p.headshot?.href || '',
+    sport: selectedTeam?.sport,
+    teamId: selectedTeam?.id,
+    teamName: selectedTeam?.displayName,
+  }));
 
   const filteredPlayers = allPlayers.filter((p) =>
     p.displayName.toLowerCase().includes(playerSearch.toLowerCase())
