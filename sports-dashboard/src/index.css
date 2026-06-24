@@ -897,15 +897,47 @@ body {
   .tp-tab { padding: 12px 14px; font-size: 13px; }
 
   /* Box score modal mobile */
-  .bsm-panel { border-radius: 12px; }
-  .bsm-hdr-logo { width: 40px; height: 40px; }
-  .bsm-hdr-score { font-size: 36px; }
-  .bsm-hdr-name { font-size: 14px; }
-  .bsm-body { max-height: 55vh; padding: 14px; }
-  .bs-dual-section { grid-template-columns: 1fr; }
-  .bs-dual-divider { height: 1px; width: 100%; }
-  .situation-bar { gap: 12px; padding: 12px 14px; }
+  .bsm-overlay { padding: 0; align-items: flex-end; }
+  .bsm-panel { border-radius: 16px 16px 0 0; max-height: 92vh; }
+
+  /* Game header: stack vertically */
+  .bsm-game-header { flex-direction: column; gap: 10px; padding: 14px 16px; }
+  .bsm-side { flex: unset; width: 100%; justify-content: space-between; }
+  .bsm-side-right { flex-direction: row; }
+  .bsm-hdr-logo { width: 36px; height: 36px; }
+  .bsm-hdr-score { font-size: 32px; }
+  .bsm-hdr-name { font-size: 15px; }
+  .bsm-hdr-center { flex-direction: row; gap: 8px; min-width: unset; }
+
+  /* Situation bar: compact */
+  .situation-bar { gap: 10px; padding: 10px 14px; flex-wrap: nowrap; overflow-x: auto; }
   .sit-player { display: none; }
+  .sit-teams { border-left: none; padding-left: 0; }
+  .sit-bases-count { border-left: 1px solid var(--border); padding-left: 10px; }
+
+  /* Line score: scrollable */
+  .linescore-wrap { font-size: 12px; }
+  .ls-th, .ls-td { padding: 7px 7px; }
+  .ls-td-team { padding-left: 10px; }
+
+  /* Box score body */
+  .bsm-body { max-height: 55vh; padding: 12px; }
+
+  /* Stats tables: single column */
+  .bs-dual-section {
+    display: flex !important;
+    flex-direction: column !important;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bs-dual-divider { height: 1px; width: 100%; background: var(--border); }
+  .bs-stat-title { font-size: 11px; }
+  .bs-th { padding: 6px 8px; font-size: 9px; }
+  .bs-td { padding: 7px 8px; font-size: 11px; }
+  .bs-th-player { min-width: 110px; }
+  .bs-avatar { width: 22px; height: 22px; }
+  .bs-player-name { font-size: 11px; }
 }
 
 /* ── Team Page ── */
