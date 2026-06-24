@@ -120,8 +120,8 @@ export default function TodaysScores() {
 
   return (
     <section className="section">
-      {/* Collapsed header */}
-      <div className="ts-header-row">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button className="ts-header" onClick={() => setExpanded((v) => !v)} style={{ flex: 1 }}>
           <div className="ts-header-left">
             <h2 className="section-title" style={{ margin: 0 }}>Today's Scores</h2>
@@ -133,15 +133,13 @@ export default function TodaysScores() {
           </div>
           <span className="ts-chevron">{expanded ? '▲' : '▼'}</span>
         </button>
-        {expanded && (
-          <button
-            className={editOrder ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-            onClick={() => setEditOrder((v) => !v)}
-            style={{ marginLeft: 8, flexShrink: 0 }}
-          >
-            {editOrder ? 'Done' : 'Reorder'}
-          </button>
-        )}
+        <button
+          className={editOrder ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+          onClick={() => { setExpanded(true); setEditOrder((v) => !v); }}
+          style={{ flexShrink: 0 }}
+        >
+          {editOrder ? 'Done' : 'Reorder'}
+        </button>
       </div>
 
       {expanded && (
