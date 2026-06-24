@@ -5,227 +5,122 @@ import useLiveSituation from '../hooks/useLiveSituation';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS } from '../api/espn';
 
-/* ── Base Diamond ──────────────────────────────────── */
-function Diamond({ onFirst, onSecond, onThird }) {
-  return (
-    <svg viewBox="0 0 50 50" className="tr-diamond">
-      <polygon points="25,4 46,25 25,46 4,25"
-        className="tr-base-outline" />
-      {/* Second base - top */}
-      <rect x="19" y="3" width="12" height="12" rx="2"
-        className={`tr-base ${onSecond ? 'tr-base-on' : ''}`}
-        transform="rotate(45 25 9)" />
-      {/* Third base - left */}
-      <rect x="3" y="19" width="12" height="12" rx="2"
-        className={`tr-base ${onThird ? 'tr-base-on' : ''}`}
-        transform="rotate(45 9 25)" />
-      {/* First base - right */}
-      <rect x="35" y="19" width="12" height="12" rx="2"
-        className={`tr-base ${onFirst ? 'tr-base-on' : ''}`}
-        transform="rotate(45 41 25)" />
-      {/* Home plate - bottom */}
-      <rect x="19" y="35" width="12" height="12" rx="2"
-        className="tr-base"
-        transform="rotate(45 25 41)" />
-    </svg>
-  );
+function getScore(c) {
+  const s = c?.score;
+  if (s == null) return null;
+  return typeof s === 'object' ? s.displayValue : String(s);
 }
 
-/* ── Count Dots ────────────────────────────────────── */
-function Dots({ label, filled, total, color }) {
-  return (
-    <div className="tr-count-row">
-      <span className="tr-count-label">{label}</span>
-      <div className="tr-dots">
-        {Array.from({ length: total }).map((_, i) => (
-          <span key={i} className={`tr-dot ${i < filled ? `tr-dot-${color}` : ''}`} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Live Game Bar ─────────────────────────────────── */
-function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
-  const comp = game.competitions?.[0];
-  const status = comp?.status;
-  const shortDetail = status?.type?.shortDetail || '';
-  const isBot = shortDetail.toLowerCase().startsWith('bot');
-
-  const competitors = liveData?.competitors || comp?.competitors || [];
-  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
-  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
-
-  const sit = liveData?.situation || {};
-  const pitcher = liveData?.pitcher;
-  const pitcherStats = liveData?.pitcherStats;
-  const batter = liveData?.batter;
-  const lastPlay = liveData?.lastPlay;
-
-  const getScore = (c) => {
-    const s = c?.score;
-    if (s == null) return '0';
-    return typeof s === 'object' ? s.displayValue : String(s);
-  };
-
-  const broadcasts = comp?.broadcasts?.[0]?.names?.join(', ');
-
-  return (
-    <button className="tr-live-bar" onClick={onBoxScore}>
-      {/* Inning */}
-      <div className="tr-inning">
-        <span className={`tr-inning-half ${isBot ? 'tr-bot' : 'tr-top'}`}>
-          {isBot ? '▼' : '▲'}
-        </span>
-        <span className="tr-inning-num">{shortDetail.replace(/^(top|bot|mid|end)\s*/i, '')}</span>
-        {broadcasts && <span className="tr-broadcast">{broadcasts}</span>}
-      </div>
-
-      {/* Teams + R/H/E */}
-      <div className="tr-teams">
-        <div className="tr-rhe-header">
-          <div className="tr-rhe-spacer" />
-          <span className="tr-rhe-label">R</span>
-          <span className="tr-rhe-label">H</span>
-          <span className="tr-rhe-label">E</span>
-        </div>
-        {[away, home].filter(Boolean).map((c) => (
-          <div key={c.team?.id} className="tr-team-rhe">
-            <div className="tr-team-identity">
-              {c.team?.logo && <img src={c.team.logo} alt="" className="tr-team-logo-sm" />}
-              <div>
-                <div className={`tr-team-name-sm ${c.team?.id === String(teamId) ? 'tr-my-team' : ''}`}>
-                  {c.team?.shortDisplayName || c.team?.displayName}
-                </div>
-                <div className="tr-team-record-sm">
-                  {c.record?.[0]?.summary && `(${c.record[0].summary}`}
-                  {c.homeAway === 'home' ? ', Home)' : c.homeAway === 'away' ? ', Away)' : ')'}
-                </div>
-              </div>
-            </div>
-            <span className="tr-rhe-val">{getScore(c)}</span>
-            <span className="tr-rhe-val">{c.hits ?? 0}</span>
-            <span className="tr-rhe-val">{c.errors ?? 0}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Diamond + Count + Last Play */}
-      <div className="tr-middle">
-        <Diamond
-          onFirst={!!sit.onFirst}
-          onSecond={!!sit.onSecond}
-          onThird={!!sit.onThird}
-        />
-        <div className="tr-count-col">
-          <Dots label="B" filled={sit.balls ?? 0} total={4} color="green" />
-          <Dots label="S" filled={sit.strikes ?? 0} total={3} color="yellow" />
-          <Dots label="O" filled={sit.outs ?? 0} total={3} color="red" />
-        </div>
-        {lastPlay && (
-          <div className="tr-last-play">
-            <span className="tr-last-play-label">LAST PLAY</span>
-            <span className="tr-last-play-text">{lastPlay}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Pitcher / Batter */}
-      <div className="tr-players">
-        {pitcher && (
-          <div className="tr-player-block">
-            <div className="tr-player-role">PITCHING</div>
-            <div className="tr-player-row">
-              {pitcher.headshot?.href && (
-                <img src={pitcher.headshot.href} alt="" className="tr-player-avatar" />
-              )}
-              <div>
-                <div className="tr-player-name">
-                  {pitcher.shortName || pitcher.displayName}
-                  {pitcher.jersey && <span className="tr-jersey"> #{pitcher.jersey}</span>}
-                </div>
-                {pitcherStats && (
-                  <div className="tr-player-stats">
-                    {pitcherStats.IP != null && `${pitcherStats.IP} IP`}
-                    {pitcherStats.ER != null && `, ${pitcherStats.ER} ER`}
-                    {pitcherStats.H != null && `, ${pitcherStats.H} H`}
-                    {pitcherStats.K != null && `, ${pitcherStats.K} K`}
-                    {pitcherStats.BB != null && `, ${pitcherStats.BB} BB`}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        {batter && (
-          <div className="tr-player-block">
-            <div className="tr-player-role">BATTING</div>
-            <div className="tr-player-row">
-              {batter.headshot?.href && (
-                <img src={batter.headshot.href} alt="" className="tr-player-avatar" />
-              )}
-              <div>
-                <div className="tr-player-name">
-                  {batter.shortName || batter.displayName}
-                  {batter.jersey && <span className="tr-jersey"> #{batter.jersey}</span>}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </button>
-  );
-}
-
-/* ── Non-live game row ─────────────────────────────── */
-function GameRow({ game, teamId, sport, onBoxScore }) {
-  if (!game) return <div className="tr-no-game">No game today</div>;
+/* ── Score display for non-live ─────────────────────── */
+function GameScore({ game, teamId }) {
+  const navigate = useNavigate();
+  if (!game) return <div className="tr2-no-game">No game scheduled</div>;
 
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
   const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
   const status = comp?.status;
-  const isFinal = status?.type?.state === 'post';
+  const state = status?.type?.state;
+  const isFinal = state === 'post';
+  const isPre   = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
 
-  const getScore = (c) => {
-    const s = c?.score;
-    if (s == null) return null;
-    return typeof s === 'object' ? s.displayValue : String(s);
-  };
-
   return (
-    <button className="tr-game-row" onClick={onBoxScore}>
-      <div className="tr-game-status">
-        {isFinal
-          ? <span className="badge badge-final">Final</span>
-          : <span className="badge badge-pre">{shortDetail}</span>}
+    <button className="tr2-game" onClick={() => (isFinal) && navigate(`/boxscore/mlb/${game.id}`)}>
+      {/* Status */}
+      <div className="tr2-status">
+        {isFinal && <span className="badge badge-final">Final</span>}
+        {isPre && <span className="tr2-time">{shortDetail}</span>}
       </div>
-      <div className="tr-game-teams">
-        {[away, home].filter(Boolean).map((c) => (
-          <div key={c.team?.id} className="tr-game-team">
-            {c.team?.logo && <img src={c.team.logo} alt="" className="tr-game-logo" />}
-            <span className={`tr-game-abbr ${c.team?.id === String(teamId) ? 'tr-my-team' : ''} ${c.winner ? 'tr-winner' : ''}`}>
-              {c.team?.abbreviation}
-            </span>
-            <span className="tr-game-record">{c.record?.[0]?.summary}</span>
-            {(isFinal || getScore(c) != null) && (
-              <span className={`tr-game-score ${c.winner ? 'tr-winner' : ''}`}>{getScore(c)}</span>
-            )}
-          </div>
-        ))}
+
+      {/* Teams */}
+      <div className="tr2-matchup">
+        <TeamScoreRow competitor={away} teamId={teamId} />
+        <TeamScoreRow competitor={home} teamId={teamId} />
       </div>
-      {comp?.venue?.fullName && (
-        <div className="tr-venue">{comp.venue.fullName}</div>
-      )}
-      <div className="tr-view-bs">Box Score →</div>
+
+      {isFinal && <div className="tr2-tap-hint">Box Score →</div>}
     </button>
   );
 }
 
-/* ── Main TeamRow ──────────────────────────────────── */
+function TeamScoreRow({ competitor, teamId }) {
+  const team = competitor?.team || {};
+  const isMine = team.id === String(teamId);
+  const score = getScore(competitor);
+  const won = competitor?.winner;
+
+  return (
+    <div className={`tr2-team-row ${isMine ? 'tr2-mine' : ''}`}>
+      <div className="tr2-team-left">
+        {team.logo && <img src={team.logo} alt="" className="tr2-team-logo" />}
+        <div>
+          <span className={`tr2-team-name ${isMine ? 'tr2-mine-name' : ''}`}>
+            {team.shortDisplayName || team.displayName || team.abbreviation}
+          </span>
+          {competitor?.records?.[0]?.summary && (
+            <span className="tr2-record"> · {competitor.records[0].summary}</span>
+          )}
+        </div>
+      </div>
+      {score != null && (
+        <span className={`tr2-score ${won ? 'tr2-winner-score' : ''}`}>{score}</span>
+      )}
+    </div>
+  );
+}
+
+/* ── Live bar ───────────────────────────────────────── */
+function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
+  const comp = game.competitions?.[0];
+  const status = comp?.status;
+  const shortDetail = status?.type?.shortDetail || '';
+  const competitors = liveData?.competitors || comp?.competitors || [];
+  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
+  const sit = liveData?.situation || {};
+
+  return (
+    <button className="tr2-live-bar" onClick={onBoxScore}>
+      {/* Status */}
+      <div className="tr2-live-status">
+        <span className="badge badge-live"><span className="live-dot" />{shortDetail}</span>
+      </div>
+
+      {/* Teams + RHE */}
+      <div className="tr2-matchup">
+        {[away, home].filter(Boolean).map((c) => (
+          <div key={c.team?.id} className={`tr2-team-row ${c.team?.id === String(teamId) ? 'tr2-mine' : ''}`}>
+            <div className="tr2-team-left">
+              {c.team?.logo && <img src={c.team.logo} alt="" className="tr2-team-logo" />}
+              <div>
+                <span className={`tr2-team-name ${c.team?.id === String(teamId) ? 'tr2-mine-name' : ''}`}>
+                  {c.team?.shortDisplayName || c.team?.abbreviation}
+                </span>
+                {c.record?.[0]?.summary && <span className="tr2-record"> · {c.record[0].summary}</span>}
+              </div>
+            </div>
+            <span className="tr2-score">{getScore(c) ?? '0'}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Count + bases */}
+      {sit.balls !== undefined && (
+        <div className="tr2-situation">
+          <div className="tr2-count">
+            <span>{sit.balls ?? 0}-{sit.strikes ?? 0}</span>
+            <span className="tr2-outs">{sit.outs ?? 0} out{sit.outs !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="tr2-tap-hint">Box Score →</div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+/* ── Main TeamRow ────────────────────────────────────── */
 export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const { removeTeam } = useFavorites();
   const { game, loading, hasUpcomingGame } = useTeamGame(sport, team.id, 30000, dateStr);
@@ -233,9 +128,6 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
 
   const isLive = game?.competitions?.[0]?.status?.type?.state === 'in';
   const liveData = useLiveSituation(sport, isLive ? game : null);
-
-  const goToBoxScore = () => game && navigate(`/boxscore/${sport}/${game.id}`);
-
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
   const accentColor = `#${team.color || '7c3aed'}`;
 
@@ -245,35 +137,31 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
     }
   }, [hasUpcomingGame]);
 
-  return (
-    <>
-      <div
-        className="team-row-card"
-        style={{ '--team-accent': accentColor }}
-      >
-        {/* Left: team identity */}
-        <div className="tr-identity">
-          <Link to={`/team/${sport}/${team.id}`} className="tr-name-link">
-            {team.logo && <img src={team.logo} alt={team.abbreviation} className="tr-logo" />}
-            <div>
-              <div className="tr-name">{team.displayName}</div>
-              <div className="tr-sport">{sportLabel}</div>
-            </div>
-          </Link>
-        </div>
+  const goToBoxScore = () => game && navigate(`/boxscore/${sport}/${game.id}`);
 
-        {/* Right: game */}
-        <div className="tr-game-area">
-          {loading ? (
-            <div className="tr-no-game">Loading…</div>
-          ) : isLive ? (
-            <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} onBoxScore={goToBoxScore} />
-          ) : (
-            <GameRow game={game} teamId={team.id} sport={sport} onBoxScore={goToBoxScore} />
-          )}
-        </div>
+  return (
+    <div className="tr2-card" style={{ '--team-accent': accentColor }}>
+      {/* Card header */}
+      <div className="tr2-header">
+        <Link to={`/team/${sport}/${team.id}`} className="tr2-identity">
+          {team.logo && <img src={team.logo} alt="" className="tr2-logo" />}
+          <div>
+            <div className="tr2-name">{team.displayName}</div>
+            <div className="tr2-sport">{sportLabel}</div>
+          </div>
+        </Link>
       </div>
 
-    </>
+      {/* Game section */}
+      <div className="tr2-body">
+        {loading ? (
+          <div className="tr2-no-game">Loading…</div>
+        ) : isLive ? (
+          <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} onBoxScore={goToBoxScore} />
+        ) : (
+          <GameScore game={game} teamId={team.id} />
+        )}
+      </div>
+    </div>
   );
 }
