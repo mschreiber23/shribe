@@ -71,10 +71,11 @@ function sortGames(games, myTeamIds = []) {
 }
 
 export default function TodaysScores() {
-  const { favorites } = useFavorites();
+  const { favorites, sportOrder, reorderSport } = useFavorites();
   const [scoresBySport, setScoresBySport] = useState({});
   const [activeTab, setActiveTab] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [editOrder, setEditOrder] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // IDs of all favorite teams for the current active sport
@@ -107,7 +108,8 @@ export default function TodaysScores() {
     });
   }, []);
 
-  const availableSports = Object.keys(scoresBySport);
+  // Sort available sports by user's preferred order
+  const availableSports = sportOrder.filter((s) => scoresBySport[s]);
   const games = sortGames(activeTab ? scoresBySport[activeTab] || [] : [], myTeamIds);
 
   const totalLive = availableSports.reduce((n, s) =>
@@ -118,18 +120,29 @@ export default function TodaysScores() {
 
   return (
     <section className="section">
-      {/* Collapsed header — always visible */}
-      <button className="ts-header" onClick={() => setExpanded((v) => !v)}>
-        <div className="ts-header-left">
-          <h2 className="section-title" style={{ margin: 0 }}>Today's Scores</h2>
-          {totalLive > 0 && (
-            <span className="ts-live-badge">
-              <span className="ts-live-dot" /> {totalLive} Live
-            </span>
-          )}
-        </div>
-        <span className="ts-chevron">{expanded ? '▲' : '▼'}</span>
-      </button>
+      {/* Collapsed header */}
+      <div className="ts-header-row">
+        <button className="ts-header" onClick={() => setExpanded((v) => !v)} style={{ flex: 1 }}>
+          <div className="ts-header-left">
+            <h2 className="section-title" style={{ margin: 0 }}>Today's Scores</h2>
+            {totalLive > 0 && (
+              <span className="ts-live-badge">
+                <span className="ts-live-dot" /> {totalLive} Live
+              </span>
+            )}
+          </div>
+          <span className="ts-chevron">{expanded ? '▲' : '▼'}</span>
+        </button>
+        {expanded && (
+          <button
+            className={editOrder ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+            onClick={() => setEditOrder((v) => !v)}
+            style={{ marginLeft: 8, flexShrink: 0 }}
+          >
+            {editOrder ? 'Done' : 'Reorder'}
+          </button>
+        )}
+      </div>
 
       {expanded && (
         <>
@@ -139,24 +152,39 @@ export default function TodaysScores() {
             </div>
           ) : (
             <>
-              {/* Sport tabs */}
-              <div className="ts-tabs">
-                {availableSports.map((sport) => {
-                  const liveCount = scoresBySport[sport]?.filter(
-                    (g) => g.competitions?.[0]?.status?.type?.state === 'in'
-                  ).length || 0;
-                  return (
-                    <button
-                      key={sport}
-                      className={`ts-tab ${activeTab === sport ? 'ts-tab-active' : ''}`}
-                      onClick={() => setActiveTab(sport)}
-                    >
-                      {SPORTS[sport].label}
-                      {liveCount > 0 && <span className="ts-live-dot" />}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Sport tabs / reorder mode */}
+              {editOrder ? (
+                <div className="ts-reorder-panel">
+                  <div className="edit-panel-label">Drag or use arrows to reorder</div>
+                  {sportOrder.map((sport, idx) => (
+                    <div key={sport} className="ts-reorder-row">
+                      <span className="ts-reorder-sport">{SPORTS[sport]?.label}</span>
+                      <div className="edit-reorder-btns">
+                        <button className="edit-reorder-btn" onClick={() => reorderSport(idx, idx - 1)} disabled={idx === 0}>▲</button>
+                        <button className="edit-reorder-btn" onClick={() => reorderSport(idx, idx + 1)} disabled={idx === sportOrder.length - 1}>▼</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="ts-tabs">
+                  {availableSports.map((sport) => {
+                    const liveCount = scoresBySport[sport]?.filter(
+                      (g) => g.competitions?.[0]?.status?.type?.state === 'in'
+                    ).length || 0;
+                    return (
+                      <button
+                        key={sport}
+                        className={`ts-tab ${activeTab === sport ? 'ts-tab-active' : ''}`}
+                        onClick={() => setActiveTab(sport)}
+                      >
+                        {SPORTS[sport].label}
+                        {liveCount > 0 && <span className="ts-live-dot" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Score cards — my team first, then live */}
               <div className="ts-grid">

@@ -1154,6 +1154,29 @@ body {
 .hidden-teams-toggle:hover { border-color: var(--accent2); color: var(--text); }
 
 /* ── Today's Scores ── */
+.ts-header-row {
+  display: flex;
+  align-items: center;
+}
+
+.ts-reorder-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ts-reorder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ts-reorder-row:last-child { border-bottom: none; }
+
+.ts-reorder-sport { font-size: 14px; font-weight: 700; }
+
 .ts-header {
   display: flex;
   align-items: center;

@@ -24,6 +24,23 @@ function saveFavorites(data) {
   try { sessionStorage.setItem(STORAGE_KEY, json); } catch {}
 }
 
+const DEFAULT_SPORT_ORDER = ['mlb', 'nba', 'nfl', 'nhl'];
+const SPORT_ORDER_KEY = 'sports_dashboard_sport_order';
+
+function loadSportOrder() {
+  try {
+    const stored = localStorage.getItem(SPORT_ORDER_KEY) || sessionStorage.getItem(SPORT_ORDER_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return DEFAULT_SPORT_ORDER;
+}
+
+function saveSportOrder(order) {
+  const json = JSON.stringify(order);
+  try { localStorage.setItem(SPORT_ORDER_KEY, json); } catch {}
+  try { sessionStorage.setItem(SPORT_ORDER_KEY, json); } catch {}
+}
+
 const DEFAULT_FAVORITES = {
   teams: [
     {
@@ -86,10 +103,21 @@ const DEFAULT_FAVORITES = {
 
 export function FavoritesProvider({ children }) {
   const [favorites, setFavorites] = useState(loadFavorites);
+  const [sportOrder, setSportOrderState] = useState(loadSportOrder);
 
   useEffect(() => {
     saveFavorites(favorites);
   }, [favorites]);
+
+  const reorderSport = (fromIndex, toIndex) => {
+    setSportOrderState((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      saveSportOrder(next);
+      return next;
+    });
+  };
 
   const reorderTeam = (fromIndex, toIndex) =>
     setFavorites((f) => {
@@ -125,7 +153,7 @@ export function FavoritesProvider({ children }) {
 
   return (
     <FavoritesContext.Provider
-      value={{ favorites, addTeam, removeTeam, reorderTeam, addPlayer, removePlayer }}
+      value={{ favorites, addTeam, removeTeam, reorderTeam, addPlayer, removePlayer, sportOrder, reorderSport }}
     >
       {children}
     </FavoritesContext.Provider>
