@@ -84,8 +84,12 @@ export default function TodaysScores() {
 
   useEffect(() => {
     const sports = Object.keys(SPORTS);
+    const d = new Date();
+    const todayStr = d.getFullYear().toString()
+      + String(d.getMonth() + 1).padStart(2, '0')
+      + String(d.getDate()).padStart(2, '0');
     Promise.allSettled(
-      sports.map((s) => getScoreboard(s).then((games) => ({ sport: s, games })))
+      sports.map((s) => getScoreboard(s, todayStr).then((games) => ({ sport: s, games })))
     ).then((results) => {
       const data = {};
       results.forEach((r) => {
