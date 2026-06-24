@@ -55,9 +55,19 @@ function ScoreCard({ game, sport }) {
   );
 }
 
+function sortGames(games) {
+  const order = { in: 0, post: 1, pre: 2 };
+  return [...games].sort((a, b) => {
+    const stateA = a.competitions?.[0]?.status?.type?.state || 'pre';
+    const stateB = b.competitions?.[0]?.status?.type?.state || 'pre';
+    return (order[stateA] ?? 2) - (order[stateB] ?? 2);
+  });
+}
+
 export default function TodaysScores() {
   const [scoresBySport, setScoresBySport] = useState({});
   const [activeTab, setActiveTab] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,48 +92,66 @@ export default function TodaysScores() {
   }, []);
 
   const availableSports = Object.keys(scoresBySport);
-  const games = activeTab ? scoresBySport[activeTab] || [] : [];
+  const games = sortGames(activeTab ? scoresBySport[activeTab] || [] : []);
 
-  if (loading) return (
-    <section className="section">
-      <h2 className="section-title">Today's Scores</h2>
-      <div className="ts-skeleton-row">
-        {[1,2,3].map(i => <div key={i} className="skeleton-card" style={{ height: 90 }} />)}
-      </div>
-    </section>
+  const totalLive = availableSports.reduce((n, s) =>
+    n + (scoresBySport[s]?.filter(g => g.competitions?.[0]?.status?.type?.state === 'in').length || 0), 0
   );
 
-  if (availableSports.length === 0) return null;
+  if (!loading && availableSports.length === 0) return null;
 
   return (
     <section className="section">
-      <h2 className="section-title">Today's Scores</h2>
+      {/* Collapsed header — always visible */}
+      <button className="ts-header" onClick={() => setExpanded((v) => !v)}>
+        <div className="ts-header-left">
+          <h2 className="section-title" style={{ margin: 0 }}>Today's Scores</h2>
+          {totalLive > 0 && (
+            <span className="ts-live-badge">
+              <span className="ts-live-dot" /> {totalLive} Live
+            </span>
+          )}
+        </div>
+        <span className="ts-chevron">{expanded ? '▲' : '▼'}</span>
+      </button>
 
-      {/* Sport tabs */}
-      <div className="ts-tabs">
-        {availableSports.map((sport) => {
-          const hasLive = scoresBySport[sport]?.some(
-            (g) => g.competitions?.[0]?.status?.type?.state === 'in'
-          );
-          return (
-            <button
-              key={sport}
-              className={`ts-tab ${activeTab === sport ? 'ts-tab-active' : ''}`}
-              onClick={() => setActiveTab(sport)}
-            >
-              {SPORTS[sport].label}
-              {hasLive && <span className="ts-live-dot" />}
-            </button>
-          );
-        })}
-      </div>
+      {expanded && (
+        <>
+          {loading ? (
+            <div className="ts-skeleton-row">
+              {[1,2,3].map(i => <div key={i} className="skeleton-card" style={{ height: 90 }} />)}
+            </div>
+          ) : (
+            <>
+              {/* Sport tabs */}
+              <div className="ts-tabs">
+                {availableSports.map((sport) => {
+                  const liveCount = scoresBySport[sport]?.filter(
+                    (g) => g.competitions?.[0]?.status?.type?.state === 'in'
+                  ).length || 0;
+                  return (
+                    <button
+                      key={sport}
+                      className={`ts-tab ${activeTab === sport ? 'ts-tab-active' : ''}`}
+                      onClick={() => setActiveTab(sport)}
+                    >
+                      {SPORTS[sport].label}
+                      {liveCount > 0 && <span className="ts-live-dot" />}
+                    </button>
+                  );
+                })}
+              </div>
 
-      {/* Score cards */}
-      <div className="ts-grid">
-        {games.map((game) => (
-          <ScoreCard key={game.id} game={game} sport={activeTab} />
-        ))}
-      </div>
+              {/* Score cards — live first */}
+              <div className="ts-grid">
+                {games.map((game) => (
+                  <ScoreCard key={game.id} game={game} sport={activeTab} />
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
     </section>
   );
 }
