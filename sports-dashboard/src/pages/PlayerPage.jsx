@@ -2,7 +2,20 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getScoreboard, getGameBoxscore } from '../api/espn';
 
-/* ── Sport-specific career table columns ─────────────── */
+/* ── Position detection helpers ─────────────────────── */
+const QB_POS  = ['QB'];
+const RB_POS  = ['RB','HB','FB'];
+const REC_POS = ['WR','TE'];
+const NHL_GOALIE_POS = ['G','GK'];
+
+function getNflKey(pos) {
+  if (QB_POS.includes(pos))  return 'nfl_qb';
+  if (RB_POS.includes(pos))  return 'nfl_rb';
+  if (REC_POS.includes(pos)) return 'nfl_wr';
+  return 'nfl_qb'; // fallback
+}
+
+/* ── Career table columns ─────────────────────────────── */
 const CAREER_COLS = {
   mlb_batting: [
     { key: 'GP', label: 'GP' }, { key: 'AB', label: 'AB' },
@@ -11,102 +24,141 @@ const CAREER_COLS = {
     { key: 'R', label: 'R' }, { key: 'H', label: 'H' },
     { key: '2B', label: '2B' }, { key: '3B', label: '3B' },
     { key: 'HR', label: 'HR', hl: true }, { key: 'RBI', label: 'RBI', hl: true },
-    { key: 'BB', label: 'BB' }, { key: 'HBP', label: 'HBP' },
-    { key: 'SO', label: 'SO' }, { key: 'SB', label: 'SB' },
-    { key: 'CS', label: 'CS' }, { key: 'WAR', label: 'WAR' },
+    { key: 'BB', label: 'BB' }, { key: 'SO', label: 'SO' },
+    { key: 'SB', label: 'SB' }, { key: 'CS', label: 'CS' }, { key: 'WAR', label: 'WAR' },
   ],
   mlb_pitching: [
-    { key: 'GP', label: 'G' }, { key: 'W', label: 'W', hl: true },
-    { key: 'L', label: 'L' }, { key: 'SV', label: 'SV' },
-    { key: 'IP', label: 'IP', hl: true }, { key: 'ERA', label: 'ERA', hl: true },
-    { key: 'WHIP', label: 'WHIP', hl: true }, { key: 'SO', label: 'SO', hl: true },
-    { key: 'BB', label: 'BB' }, { key: 'H', label: 'H' },
-    { key: 'HR', label: 'HR' }, { key: 'HLD', label: 'HLD' },
+    { key: 'GP', label: 'G' }, { key: 'W', label: 'W', hl: true }, { key: 'L', label: 'L' },
+    { key: 'SV', label: 'SV' }, { key: 'IP', label: 'IP', hl: true },
+    { key: 'ERA', label: 'ERA', hl: true }, { key: 'WHIP', label: 'WHIP', hl: true },
+    { key: 'SO', label: 'SO', hl: true }, { key: 'BB', label: 'BB' },
+    { key: 'H', label: 'H' }, { key: 'HR', label: 'HR' },
   ],
   nba: [
     { key: 'GP', label: 'GP' }, { key: 'MIN', label: 'MIN' },
     { key: 'PTS', label: 'PTS', hl: true }, { key: 'REB', label: 'REB', hl: true },
     { key: 'AST', label: 'AST', hl: true }, { key: 'STL', label: 'STL' },
     { key: 'BLK', label: 'BLK' }, { key: 'FG%', label: 'FG%', hl: true },
-    { key: '3P%', label: '3P%' }, { key: 'FT%', label: 'FT%' },
-    { key: 'TO', label: 'TO' }, { key: '+/-', label: '+/-' },
+    { key: '3P%', label: '3P%' }, { key: 'FT%', label: 'FT%' }, { key: 'TO', label: 'TO' },
   ],
-  nfl: [
-    // QB / passing
-    { key: 'GP', label: 'GP' }, { key: 'CMP', label: 'CMP' },
-    { key: 'ATT', label: 'ATT' }, { key: 'YDS', label: 'YDS', hl: true },
-    { key: 'TD', label: 'TD', hl: true }, { key: 'INT', label: 'INT' },
-    { key: 'RTG', label: 'RTG' }, { key: 'CAR', label: 'CAR' },
-    { key: 'REC', label: 'REC' }, { key: 'AVG', label: 'AVG' },
+  nfl_qb: [
+    { key: 'GP', label: 'GP' }, { key: 'ATT', label: 'ATT' },
+    { key: 'YDS', label: 'YDS', hl: true }, { key: 'TD', label: 'TD', hl: true },
+    { key: 'INT', label: 'INT' }, { key: 'RTG', label: 'RTG', hl: true },
+    { key: 'CAR', label: 'CAR' }, { key: 'RYDS', label: 'RYDS' }, { key: 'RTD', label: 'RTD' },
   ],
-  nhl: [
+  nfl_rb: [
+    { key: 'GP', label: 'GP' }, { key: 'CAR', label: 'CAR' },
+    { key: 'YDS', label: 'YDS', hl: true }, { key: 'AVG', label: 'AVG' },
+    { key: 'TD', label: 'TD', hl: true }, { key: 'REC', label: 'REC' },
+    { key: 'RYDS', label: 'REC YDS' }, { key: 'RTD', label: 'REC TD' },
+  ],
+  nfl_wr: [
+    { key: 'GP', label: 'GP' }, { key: 'REC', label: 'REC', hl: true },
+    { key: 'YDS', label: 'YDS', hl: true }, { key: 'AVG', label: 'AVG' },
+    { key: 'TD', label: 'TD', hl: true }, { key: 'TGTS', label: 'TGT' },
+  ],
+  nhl_skater: [
     { key: 'GP', label: 'GP' }, { key: 'G', label: 'G', hl: true },
     { key: 'A', label: 'A', hl: true }, { key: 'PTS', label: 'PTS', hl: true },
-    { key: '+/-', label: '+/-' }, { key: 'PIM', label: 'PIM' },
-    { key: 'SOG', label: 'SOG' }, { key: 'W', label: 'W' },
-    { key: 'L', label: 'L' }, { key: 'GAA', label: 'GAA' },
-    { key: 'SV%', label: 'SV%' },
+    { key: '+/-', label: '+/-' }, { key: 'PIM', label: 'PIM' }, { key: 'SOG', label: 'SOG' },
+  ],
+  nhl_goalie: [
+    { key: 'GP', label: 'GP' }, { key: 'W', label: 'W', hl: true },
+    { key: 'L', label: 'L' }, { key: 'GAA', label: 'GAA', hl: true },
+    { key: 'SV%', label: 'SV%', hl: true }, { key: 'SO', label: 'SO' },
   ],
 };
 
 const CAREER_TITLE = {
-  mlb_batting: 'Career Batting',
-  mlb_pitching: 'Career Pitching',
+  mlb_batting: 'Career Batting', mlb_pitching: 'Career Pitching',
   nba: 'Career Stats',
-  nfl: 'Career Stats',
-  nhl: 'Career Stats',
+  nfl_qb: 'Career Passing', nfl_rb: 'Career Rushing', nfl_wr: 'Career Receiving',
+  nhl_skater: 'Career Stats', nhl_goalie: 'Career Stats',
 };
 
-/* ── Game log columns per sport ──────────────────────── */
-const PITCHER_POSITIONS = new Set(['P','SP','RP','CL','MR','SU']);
-
+/* ── Game log columns ─────────────────────────────────── */
 const GAMELOG_COLS = {
-  mlb_batting: ['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'],
+  mlb_batting:  ['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'],
   mlb_pitching: ['IP','H','R','ER','BB','K','HR','ERA'],
-  nba: ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','FT','TO'],
-  nfl: ['CMP','ATT','YDS','TD','INT','CAR','REC'],
-  nhl: ['G','A','PTS','+/-','SOG','TOI'],
+  nba:   ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','FT','TO'],
+  nfl_qb:  ['CMP','ATT','YDS','TD','INT','RTG'],
+  nfl_rb:  ['CAR','YDS','AVG','TD','REC','RYDS'],
+  nfl_wr:  ['REC','YDS','AVG','TD','TGTS'],
+  nhl_skater: ['G','A','PTS','+/-','SOG','TOI'],
+  nhl_goalie: ['W','L','GAA','SV%','SO'],
 };
 
-/* ── Extract stats from core API response ────────────── */
-function getStats(data, sport) {
+/* ── Extract stats from core API response ─────────────── */
+function getStats(data, sportKey) {
   if (!data) return {};
   const cats = data.splits?.categories || [];
 
-  if (sport === 'mlb' || sport === 'mlb_batting' || sport === 'mlb_pitching') {
+  if (sportKey === 'mlb' || sportKey === 'mlb_batting' || sportKey === 'mlb_pitching') {
     const cat = cats.find((c) => c.name === 'pitching') || cats.find((c) => c.name === 'batting') || cats[0];
     const result = {};
     (cat?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
     return result;
   }
 
-  if (sport === 'nba') {
-    // Merge offensive + general per-game stats
+  if (sportKey === 'nba') {
     const result = {};
-    for (const cat of cats) {
-      (cat.stats || []).forEach((s) => {
-        if (!result[s.abbreviation]) result[s.abbreviation] = s.displayValue;
+    cats.forEach((cat) => (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; }));
+    // Offensive overrides general for accuracy
+    const off = cats.find((c) => c.name === 'offensive');
+    if (off) (off.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    return result;
+  }
+
+  if (sportKey?.startsWith('nfl')) {
+    const passing   = cats.find((c) => c.name?.includes('pass'));
+    const rushing   = cats.find((c) => c.name?.includes('rush'));
+    const receiving = cats.find((c) => c.name?.includes('receiv'));
+    const general   = cats.find((c) => c.name === 'general');
+    const result = {};
+    // Always get GP from general
+    (general?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+
+    if (sportKey === 'nfl_qb') {
+      (passing?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+      // Store rushing separately to avoid overwriting passing YDS
+      (rushing?.stats || []).forEach((s) => {
+        const key = s.abbreviation === 'YDS' ? 'RYDS' : s.abbreviation === 'TD' ? 'RTD' : s.abbreviation === 'AVG' ? 'RAVG' : s.abbreviation;
+        if (!result[key]) result[key] = s.displayValue;
       });
+      result['CAR'] = rushing ? (rushing.stats || []).find((s) => s.abbreviation === 'CAR')?.displayValue : null;
+    } else if (sportKey === 'nfl_rb') {
+      (rushing?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+      (receiving?.stats || []).forEach((s) => {
+        const key = s.abbreviation === 'YDS' ? 'RYDS' : s.abbreviation === 'TD' ? 'RTD' : s.abbreviation;
+        if (!result[key]) result[key] = s.displayValue;
+      });
+    } else {
+      (receiving?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
     }
     return result;
   }
 
-  if (sport === 'nfl' || sport === 'nhl') {
-    // Merge all categories, then let offensive override for NHL (correct goal count)
+  if (sportKey === 'nhl_skater' || sportKey === 'nhl_goalie') {
     const result = {};
-    for (const cat of cats) {
-      (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-    }
-    if (sport === 'nhl') {
-      const off = cats.find((c) => c.name === 'offensive');
-      if (off) (off.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-    }
+    cats.forEach((cat) => (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; }));
+    // Offensive overrides for accurate skater stats
+    const off = cats.find((c) => c.name === 'offensive');
+    if (off && sportKey === 'nhl_skater') (off.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
     return result;
   }
 
   const result = {};
   (cats[0]?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
   return result;
+}
+
+function hasStats(data, sportKey) {
+  const s = getStats(data, sportKey);
+  return Object.values(s).some((v) => {
+    const n = parseFloat(v);
+    return !isNaN(n) && n > 0;
+  });
 }
 
 export default function PlayerPage() {
@@ -117,22 +169,32 @@ export default function PlayerPage() {
   const [gamelog, setGamelog] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Detect MLB pitcher vs batter from bio
-  const position = bio?.athlete?.position?.abbreviation || '';
-  const mlbKey = sport === 'mlb'
-    ? (PITCHER_POSITIONS.has(position) ? 'mlb_pitching' : 'mlb_batting')
-    : null;
-  const sportKey = mlbKey || sport;
+  // Derive sport key after bio loads
+  const position = (bio?.athlete?.position?.abbreviation || '').toUpperCase();
+  const sportKey = (() => {
+    if (sport === 'mlb') {
+      const PITCHER_POS = ['P','SP','RP','CL','MR','SU'];
+      return PITCHER_POS.includes(position) ? 'mlb_pitching' : 'mlb_batting';
+    }
+    if (sport === 'nba') return 'nba';
+    if (sport === 'nfl') return getNflKey(position);
+    if (sport === 'nhl') return NHL_GOALIE_POS.includes(position) ? 'nhl_goalie' : 'nhl_skater';
+    return sport;
+  })();
 
-  const cols = CAREER_COLS[sportKey] || CAREER_COLS.nba;
-  const glCols = GAMELOG_COLS[sportKey] || GAMELOG_COLS.nba;
+  const cols        = CAREER_COLS[sportKey] || CAREER_COLS.nba;
+  const glCols      = GAMELOG_COLS[sportKey] || GAMELOG_COLS.nba;
   const careerTitle = CAREER_TITLE[sportKey] || 'Career Stats';
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
 
-    getPlayerBio(sport, playerId).then(setBio).catch(() => {});
+    // Load bio first
+    getPlayerBio(sport, playerId)
+      .then(setBio)
+      .catch(() => {});
 
+    // Game log
     getPlayerGameLog(sport, playerId).then(async (data) => {
       const labels = data.labels || [];
       const eventsMap = data.events || {};
@@ -154,69 +216,73 @@ export default function PlayerPage() {
       }
       games.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // Check if today's game is missing — if so, pull from live box score
+      // Prepend today's game if not in log
       const today = new Date().toISOString().slice(0, 10);
       const hasToday = games.some((g) => g.date.startsWith(today));
       if (!hasToday) {
         try {
           const events = await getScoreboard(sport);
-          // Find game containing this player (by team)
           const bioData = await getPlayerBio(sport, playerId).catch(() => null);
           const teamId = bioData?.athlete?.team?.id;
           const todayGame = teamId
             ? events.find((e) => e.competitions?.[0]?.competitors?.some((c) => c.team?.id === teamId))
             : null;
-
           if (todayGame) {
             const summary = await getGameBoxscore(sport, todayGame.id);
-            const bsPlayers = summary?.boxscore?.players || [];
-            for (const group of bsPlayers) {
+            for (const group of summary?.boxscore?.players || []) {
               for (const sg of group.statistics || []) {
                 const bsLabels = sg.labels || [];
-                const found = (sg.athletes || []).find(
-                  (a) => String(a.athlete?.id) === String(playerId)
-                );
-                if (found && found.stats?.length) {
+                const found = (sg.athletes || []).find((a) => String(a.athlete?.id) === String(playerId));
+                if (found?.stats?.length) {
                   const comp = todayGame.competitions?.[0];
-                  const competitors = comp?.competitors || [];
-                  const myTeam = competitors.find((c) => c.team?.id === teamId);
-                  const opp = competitors.find((c) => c.team?.id !== teamId);
-                  const status = comp?.status?.type?.state;
-                  const result = status === 'post'
-                    ? (myTeam?.winner ? 'W' : 'L')
-                    : status === 'in' ? 'Live' : '';
+                  const myTeam = comp?.competitors?.find((c) => c.team?.id === teamId);
+                  const opp = comp?.competitors?.find((c) => c.team?.id !== teamId);
+                  const state = comp?.status?.type?.state;
                   games.unshift({
                     date: todayGame.date || new Date().toISOString(),
                     opponent: opp?.team?.abbreviation || '',
                     atVs: myTeam?.homeAway === 'home' ? 'vs' : '@',
-                    result,
+                    result: state === 'post' ? (myTeam?.winner ? 'W' : 'L') : state === 'in' ? 'Live' : '',
                     stats: Object.fromEntries(bsLabels.map((l, i) => [l, found.stats[i] ?? ''])),
-                    isLive: status === 'in',
+                    isLive: state === 'in',
                   });
                   break;
                 }
               }
             }
           }
-        } catch { /* silent fail */ }
+        } catch {}
       }
-
       setGamelog(games.slice(0, 25));
     }).catch(() => {});
 
-    const years = Array.from({ length: 5 }, (_, i) => currentYear - i).reverse();
-    Promise.allSettled(years.map((y) => getPlayerSeasonStats(sport, playerId, y)))
-      .then((results) => {
-        const valid = results
-          .filter((r) => r.status === 'fulfilled')
-          .map((r) => r.value)
-          .filter((r) => {
-            const s = getStats(r.data, 'mlb'); // use generic mlb for filtering
-            return s['GP'] && s['GP'] !== '0';
-          });
-        setSeasons(valid);
-      })
-      .finally(() => setLoading(false));
+    // Season stats — fetch from debut year to current
+    getPlayerBio(sport, playerId).then((bioData) => {
+      const debutYear = bioData?.athlete?.debutYear || currentYear - 8;
+      const years = Array.from(
+        { length: currentYear - debutYear + 1 },
+        (_, i) => debutYear + i
+      );
+      Promise.allSettled(years.map((y) => getPlayerSeasonStats(sport, playerId, y)))
+        .then((results) => {
+          // Determine sport key from bio position
+          const pos = (bioData?.athlete?.position?.abbreviation || '').toUpperCase();
+          const sk = (() => {
+            if (sport === 'mlb') return ['P','SP','RP','CL','MR','SU'].includes(pos) ? 'mlb_pitching' : 'mlb_batting';
+            if (sport === 'nba') return 'nba';
+            if (sport === 'nfl') return getNflKey(pos);
+            if (sport === 'nhl') return NHL_GOALIE_POS.includes(pos) ? 'nhl_goalie' : 'nhl_skater';
+            return sport;
+          })();
+
+          const valid = results
+            .filter((r) => r.status === 'fulfilled')
+            .map((r) => r.value)
+            .filter((r) => hasStats(r.data, sk));
+          setSeasons(valid);
+        })
+        .finally(() => setLoading(false));
+    }).catch(() => setLoading(false));
   }, [sport, playerId]);
 
   const athlete = bio?.athlete || {};
@@ -224,19 +290,18 @@ export default function PlayerPage() {
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
 
   const careerTotals = (() => {
-    const numericKeys = cols.filter((c) => !['AVG','OBP','SLG','OPS','FG%','3P%','FT%','GAA','SV%','RTG','ERA','WHIP'].includes(c.key)).map((c) => c.key);
+    const nonRateKeys = ['AVG','OBP','SLG','OPS','ERA','WHIP','FG%','3P%','FT%','GAA','SV%','RTG','AVG','RAVG'];
     const totals = {};
     seasons.forEach(({ data }) => {
       const s = getStats(data, sportKey);
-      numericKeys.forEach((k) => {
-        const v = parseFloat(s[k]);
-        if (!isNaN(v)) totals[k] = (totals[k] || 0) + v;
+      cols.forEach(({ key }) => {
+        if (nonRateKeys.includes(key)) return;
+        const v = parseFloat(s[key]);
+        if (!isNaN(v)) totals[key] = (totals[key] || 0) + v;
       });
     });
     const lastStats = seasons.length ? getStats(seasons[seasons.length - 1].data, sportKey) : {};
-    ['AVG','OBP','SLG','OPS','ERA','WHIP','FG%','3P%','FT%','GAA','SV%','RTG','+/-'].forEach((k) => {
-      if (lastStats[k]) totals[k] = lastStats[k];
-    });
+    nonRateKeys.forEach((k) => { if (lastStats[k]) totals[k] = lastStats[k]; });
     return totals;
   })();
 
@@ -377,7 +442,7 @@ export default function PlayerPage() {
                             )}
                           </td>
                           {glCols.map((c) => (
-                            <td key={c} className={`pp-td ${c === 'PTS' || c === 'HR' ? 'pp-td-hl' : ''}`}>
+                            <td key={c} className={`pp-td ${c === 'PTS' || c === 'HR' || c === 'TD' ? 'pp-td-hl' : ''}`}>
                               {g.stats[c] || '0'}
                             </td>
                           ))}
