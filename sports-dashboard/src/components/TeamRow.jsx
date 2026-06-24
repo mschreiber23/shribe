@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS } from '../api/espn';
-import BoxScoreModal from './BoxScoreModal';
 
 /* ── Base Diamond ──────────────────────────────────── */
 function Diamond({ onFirst, onSecond, onThird }) {
@@ -230,10 +229,12 @@ function GameRow({ game, teamId, sport, onBoxScore }) {
 export default function TeamRow({ sport, team, onHiddenChange }) {
   const { removeTeam } = useFavorites();
   const { game, loading, hasUpcomingGame } = useTeamGame(sport, team.id);
-  const [showBoxScore, setShowBoxScore] = useState(false);
+  const navigate = useNavigate();
 
   const isLive = game?.competitions?.[0]?.status?.type?.state === 'in';
   const liveData = useLiveSituation(sport, isLive ? game : null);
+
+  const goToBoxScore = () => game && navigate(`/boxscore/${sport}/${game.id}`);
 
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
   const accentColor = `#${team.color || '7c3aed'}`;
@@ -267,27 +268,13 @@ export default function TeamRow({ sport, team, onHiddenChange }) {
           {loading ? (
             <div className="tr-no-game">Loading…</div>
           ) : isLive ? (
-            <LiveBar
-              game={game}
-              teamId={team.id}
-              sport={sport}
-              liveData={liveData}
-              onBoxScore={() => setShowBoxScore(true)}
-            />
+            <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} onBoxScore={goToBoxScore} />
           ) : (
-            <GameRow
-              game={game}
-              teamId={team.id}
-              sport={sport}
-              onBoxScore={() => game && setShowBoxScore(true)}
-            />
+            <GameRow game={game} teamId={team.id} sport={sport} onBoxScore={goToBoxScore} />
           )}
         </div>
       </div>
 
-      {showBoxScore && game && (
-        <BoxScoreModal sport={sport} game={game} onClose={() => setShowBoxScore(false)} />
-      )}
     </>
   );
 }
