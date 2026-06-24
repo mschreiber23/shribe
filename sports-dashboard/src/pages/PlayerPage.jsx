@@ -4,7 +4,7 @@ import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog } from '../api/esp
 
 /* ── Sport-specific career table columns ─────────────── */
 const CAREER_COLS = {
-  mlb: [
+  mlb_batting: [
     { key: 'GP', label: 'GP' }, { key: 'AB', label: 'AB' },
     { key: 'AVG', label: 'AVG', hl: true }, { key: 'OBP', label: 'OBP', hl: true },
     { key: 'SLG', label: 'SLG', hl: true }, { key: 'OPS', label: 'OPS', hl: true },
@@ -14,6 +14,14 @@ const CAREER_COLS = {
     { key: 'BB', label: 'BB' }, { key: 'HBP', label: 'HBP' },
     { key: 'SO', label: 'SO' }, { key: 'SB', label: 'SB' },
     { key: 'CS', label: 'CS' }, { key: 'WAR', label: 'WAR' },
+  ],
+  mlb_pitching: [
+    { key: 'GP', label: 'G' }, { key: 'W', label: 'W', hl: true },
+    { key: 'L', label: 'L' }, { key: 'SV', label: 'SV' },
+    { key: 'IP', label: 'IP', hl: true }, { key: 'ERA', label: 'ERA', hl: true },
+    { key: 'WHIP', label: 'WHIP', hl: true }, { key: 'SO', label: 'SO', hl: true },
+    { key: 'BB', label: 'BB' }, { key: 'H', label: 'H' },
+    { key: 'HR', label: 'HR' }, { key: 'HLD', label: 'HLD' },
   ],
   nba: [
     { key: 'GP', label: 'GP' }, { key: 'MIN', label: 'MIN' },
@@ -42,15 +50,19 @@ const CAREER_COLS = {
 };
 
 const CAREER_TITLE = {
-  mlb: 'Career Batting',
+  mlb_batting: 'Career Batting',
+  mlb_pitching: 'Career Pitching',
   nba: 'Career Stats',
   nfl: 'Career Stats',
   nhl: 'Career Stats',
 };
 
 /* ── Game log columns per sport ──────────────────────── */
+const PITCHER_POSITIONS = new Set(['P','SP','RP','CL','MR','SU']);
+
 const GAMELOG_COLS = {
-  mlb: ['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'],
+  mlb_batting: ['AB','R','H','2B','3B','HR','RBI','BB','SO','SB','AVG','OPS'],
+  mlb_pitching: ['IP','H','R','ER','BB','K','HR','ERA'],
   nba: ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','FT','TO'],
   nfl: ['CMP','ATT','YDS','TD','INT','CAR','REC'],
   nhl: ['G','A','PTS','+/-','SOG','TOI'],
@@ -61,10 +73,10 @@ function getStats(data, sport) {
   if (!data) return {};
   const cats = data.splits?.categories || [];
 
-  if (sport === 'mlb') {
-    const batting = cats.find((c) => c.name === 'batting') || cats[0];
+  if (sport === 'mlb' || sport === 'mlb_batting' || sport === 'mlb_pitching') {
+    const cat = cats.find((c) => c.name === 'pitching') || cats.find((c) => c.name === 'batting') || cats[0];
     const result = {};
-    (batting?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    (cat?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
     return result;
   }
 
@@ -108,9 +120,16 @@ export default function PlayerPage() {
   const [gamelog, setGamelog] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const cols = CAREER_COLS[sport] || CAREER_COLS.mlb;
-  const glCols = GAMELOG_COLS[sport] || GAMELOG_COLS.mlb;
-  const careerTitle = CAREER_TITLE[sport] || 'Career Stats';
+  // Detect MLB pitcher vs batter from bio
+  const position = bio?.athlete?.position?.abbreviation || '';
+  const mlbKey = sport === 'mlb'
+    ? (PITCHER_POSITIONS.has(position) ? 'mlb_pitching' : 'mlb_batting')
+    : null;
+  const sportKey = mlbKey || sport;
+
+  const cols = CAREER_COLS[sportKey] || CAREER_COLS.nba;
+  const glCols = GAMELOG_COLS[sportKey] || GAMELOG_COLS.nba;
+  const careerTitle = CAREER_TITLE[sportKey] || 'Career Stats';
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
@@ -147,7 +166,7 @@ export default function PlayerPage() {
           .filter((r) => r.status === 'fulfilled')
           .map((r) => r.value)
           .filter((r) => {
-            const s = getStats(r.data, sport);
+            const s = getStats(r.data, 'mlb'); // use generic mlb for filtering
             return s['GP'] && s['GP'] !== '0';
           });
         setSeasons(valid);
@@ -160,17 +179,17 @@ export default function PlayerPage() {
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
 
   const careerTotals = (() => {
-    const numericKeys = cols.filter((c) => !['AVG','OBP','SLG','OPS','FG%','3P%','FT%','GAA','SV%','RTG'].includes(c.key)).map((c) => c.key);
+    const numericKeys = cols.filter((c) => !['AVG','OBP','SLG','OPS','FG%','3P%','FT%','GAA','SV%','RTG','ERA','WHIP'].includes(c.key)).map((c) => c.key);
     const totals = {};
     seasons.forEach(({ data }) => {
-      const s = getStats(data, sport);
+      const s = getStats(data, sportKey);
       numericKeys.forEach((k) => {
         const v = parseFloat(s[k]);
         if (!isNaN(v)) totals[k] = (totals[k] || 0) + v;
       });
     });
-    const lastStats = seasons.length ? getStats(seasons[seasons.length - 1].data, sport) : {};
-    ['AVG','OBP','SLG','OPS','FG%','3P%','FT%','GAA','SV%','RTG','+/-'].forEach((k) => {
+    const lastStats = seasons.length ? getStats(seasons[seasons.length - 1].data, sportKey) : {};
+    ['AVG','OBP','SLG','OPS','ERA','WHIP','FG%','3P%','FT%','GAA','SV%','RTG','+/-'].forEach((k) => {
       if (lastStats[k]) totals[k] = lastStats[k];
     });
     return totals;
@@ -246,7 +265,7 @@ export default function PlayerPage() {
                 </thead>
                 <tbody>
                   {seasons.map(({ year, data }) => {
-                    const s = getStats(data, sport);
+                    const s = getStats(data, sportKey);
                     const isCurrent = year === new Date().getFullYear();
                     return (
                       <tr key={year} className={`pp-tr ${isCurrent ? 'pp-tr-current' : ''}`}>
