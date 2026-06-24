@@ -896,15 +896,15 @@ body {
   .tp-schedule-row { grid-template-columns: 100px 1fr auto; gap: 8px; font-size: 13px; }
   .tp-tab { padding: 12px 14px; font-size: 13px; }
 
-  /* ── Box score modal: slides up from bottom ── */
-  .bsm-overlay {
+  /* ── Box score modal v2: slides up from bottom ── */
+  .bsm2-overlay {
     padding: 0;
     align-items: flex-end;
-    justify-content: flex-end;
   }
-  .bsm-panel {
+  .bsm2-panel {
     border-radius: 20px 20px 0 0;
-    max-height: 93vh;
+    max-height: 82vh;
+    max-height: 82dvh;
     width: 100%;
     margin: 0;
   }
@@ -1384,7 +1384,7 @@ body {
   background: var(--bg2);
   border-radius: 20px 20px 0 0;
   width: 100%; max-width: 700px;
-  max-height: 93vh;
+  max-height: min(93vh, 93dvh);
   display: flex; flex-direction: column;
   overflow: hidden;
   box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
@@ -1392,8 +1392,17 @@ body {
 
 .bsm2-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px 10px;
+  padding: 6px 18px 10px;
   flex-shrink: 0;
+}
+.bsm2-topbar::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
 }
 .bsm2-title { font-size: 15px; font-weight: 700; }
 
