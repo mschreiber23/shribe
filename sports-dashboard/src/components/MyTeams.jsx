@@ -9,7 +9,7 @@ export default function MyTeams() {
   const [editMode, setEditMode] = useState(false);
   const [pickerSport, setPickerSport] = useState('nba');
   const [query, setQuery] = useState('');
-  const [teams, setTeams] = useState([]);
+  const [allTeams, setAllTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [hiddenTeams, setHiddenTeams] = useState({});
   const [showHidden, setShowHidden] = useState(false);
@@ -20,14 +20,21 @@ export default function MyTeams() {
 
   const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
 
+  // Fetch all teams for the selected sport once — filter locally by query
   useEffect(() => {
     if (!showPicker) return;
     setLoadingTeams(true);
-    searchTeams(pickerSport, query)
-      .then(setTeams)
-      .catch(() => setTeams([]))
+    setAllTeams([]);
+    setQuery('');
+    searchTeams(pickerSport, '')
+      .then(setAllTeams)
+      .catch(() => setAllTeams([]))
       .finally(() => setLoadingTeams(false));
-  }, [showPicker, pickerSport, query]);
+  }, [showPicker, pickerSport]);
+
+  const teams = query
+    ? allTeams.filter((t) => t.displayName.toLowerCase().includes(query.toLowerCase()))
+    : allTeams;
 
   return (
     <section className="section">
