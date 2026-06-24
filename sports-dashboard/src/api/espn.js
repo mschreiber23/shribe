@@ -149,8 +149,14 @@ export async function getTeamNews(sport, teamId, limit = 10) {
 
 export async function getStandings(sport) {
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(
-    `https://site.web.api.espn.com/apis/v2/sports/${league}/standings`
-  );
-  return data;
+  const year = new Date().getFullYear();
+  const tryYear = async (y) => {
+    const params = `level=3${sport === 'nfl' ? `&season=${y}` : ''}`;
+    const { data } = await axios.get(
+      `https://site.web.api.espn.com/apis/v2/sports/${league}/standings?${params}`
+    );
+    return data;
+  };
+  try { return await tryYear(year); }
+  catch { return await tryYear(year - 1); }
 }

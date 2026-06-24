@@ -861,14 +861,32 @@ body {
 .tp-row-score { color: var(--text); font-weight: 600; }
 .tp-row-time { color: var(--text2); font-size: 13px; }
 
-/* Standings */
-.tp-standings { display: flex; flex-direction: column; gap: 12px; }
+/* Standings v2 */
+.tp-standings-v2 { display: flex; flex-direction: column; gap: 20px; }
 
-.tp-standings-title {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 4px;
+.tp-div-block {}
+
+.tp-div-header {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text2);
+  padding: 0 2px 6px;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 0;
+  display: inline-block;
 }
+
+.tp-div-mine .tp-div-header { color: var(--text); }
+
+.tp-standings-abbr { font-size: 13px; font-weight: 700; color: var(--text2); }
+.tp-standings-mine { color: var(--text); font-weight: 800; }
+.tp-strk-win { color: var(--live); font-weight: 700; }
+.tp-strk-loss { color: var(--danger); }
+
+/* keep old tp-standings-title for fallback */
+.tp-standings-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
 
 .tp-table-wrap {
   overflow-x: auto;

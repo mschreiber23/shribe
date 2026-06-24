@@ -95,6 +95,50 @@ function ScheduleRow({ event, teamId }) {
   );
 }
 
+/* ─── Standings config per sport ───────────────────── */
+const STANDINGS_COLS = {
+  mlb: [
+    { key: 'W', label: 'W', hl: true }, { key: 'L', label: 'L' },
+    { key: 'PCT', label: 'PCT', hl: true }, { key: 'GB', label: 'GB' },
+    { key: 'Home', label: 'HOME' }, { key: 'AWAY', label: 'AWAY' },
+    { key: 'RS', label: 'RS' }, { key: 'RA', label: 'RA' },
+    { key: 'DIFF', label: 'DIFF' }, { key: 'STRK', label: 'STRK' },
+  ],
+  nba: [
+    { key: 'W', label: 'W', hl: true }, { key: 'L', label: 'L' },
+    { key: 'PCT', label: 'PCT', hl: true }, { key: 'GB', label: 'GB' },
+    { key: 'Home', label: 'HOME' }, { key: 'Road', label: 'AWAY' },
+    { key: 'vs. Div.', label: 'DIV' }, { key: 'Last Ten Games', label: 'L10' },
+    { key: 'STRK', label: 'STRK' },
+  ],
+  nfl: [
+    { key: 'W', label: 'W', hl: true }, { key: 'L', label: 'L' },
+    { key: 'T', label: 'T' }, { key: 'PCT', label: 'PCT', hl: true },
+    { key: 'GB', label: 'GB' }, { key: 'Home', label: 'HOME' },
+    { key: 'AWAY', label: 'AWAY' }, { key: 'PF', label: 'PF' },
+    { key: 'PA', label: 'PA' }, { key: 'DIFF', label: 'DIFF' },
+    { key: 'STRK', label: 'STRK' },
+  ],
+  nhl: [
+    { key: 'W', label: 'W', hl: true }, { key: 'L', label: 'L' },
+    { key: 'OTL', label: 'OTL' }, { key: 'PCT', label: 'PTS', hl: true },
+    { key: 'GB', label: 'GB' }, { key: 'Home', label: 'HOME' },
+    { key: 'AWAY', label: 'AWAY' }, { key: 'GF', label: 'GF' },
+    { key: 'GA', label: 'GA' }, { key: 'STRK', label: 'STRK' },
+  ],
+};
+
+function getStatMap(entry) {
+  const result = {};
+  (entry.stats || []).forEach((s) => {
+    const key = s.abbreviation || s.name;
+    if (key) result[key] = s.displayValue;
+    // Also store by display name for split stats like "Home", "Road"
+    if (s.name) result[s.name] = s.displayValue;
+  });
+  return result;
+}
+
 /* ─── Standings Tab ─────────────────────────────────── */
 
 function StandingsTab({ sport, teamId }) {
@@ -111,62 +155,73 @@ function StandingsTab({ sport, teamId }) {
   if (loading) return <div className="tp-loading">Loading standings…</div>;
   if (!standings) return <div className="tp-loading">Standings unavailable.</div>;
 
-  // Flatten all divisions/conferences
+  const cols = STANDINGS_COLS[sport] || STANDINGS_COLS.mlb;
+
+  // Collect all division/conference groups
   const groups = [];
-  const walk = (node) => {
+  const walk = (node, depth = 0) => {
     const entries = node.standings?.entries || [];
-    if (entries.length > 0) groups.push({ name: node.name, entries });
-    (node.children || []).forEach(walk);
+    if (entries.length > 0) {
+      groups.push({ name: node.name, entries, depth });
+    }
+    (node.children || []).forEach((c) => walk(c, depth + 1));
   };
   walk(standings);
 
-  // Find the group that contains our team
-  const myGroup = groups.find((g) =>
+  if (!groups.length) return <div className="tp-loading">No standings data.</div>;
+
+  // Find which group contains this team so we can scroll/highlight
+  const myGroupIdx = groups.findIndex((g) =>
     g.entries.some((e) => e.team?.id === String(teamId))
-  ) || groups[0];
-
-  if (!myGroup) return <div className="tp-loading">No standings data.</div>;
-
-  const statKeys = ['W', 'L', 'PCT', 'GB', 'STRK', 'Home', 'AWAY', 'Last Ten'];
+  );
 
   return (
-    <div className="tp-standings">
-      <div className="tp-standings-title">{myGroup.name}</div>
-      <div className="tp-table-wrap">
-        <table className="tp-table">
-          <thead>
-            <tr>
-              <th className="tp-th tp-th-team">Team</th>
-              {statKeys.map((k) => <th key={k} className="tp-th">{k}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {myGroup.entries.map((entry, i) => {
-              const team = entry.team || {};
-              const stats = Object.fromEntries(
-                (entry.stats || []).map((s) => [s.abbreviation, s.displayValue])
-              );
-              const isMyTeam = team.id === String(teamId);
-              return (
-                <tr key={team.id || i} className={`tp-tr ${isMyTeam ? 'tp-tr-mine' : ''}`}>
-                  <td className="tp-td tp-td-team">
-                    {team.logos?.[0]?.href && (
-                      <img src={team.logos[0].href} alt="" className="tp-standings-logo" />
-                    )}
-                    <span className="tp-standings-name">{team.displayName}</span>
-                    {isMyTeam && <span className="tp-you-tag">you</span>}
-                  </td>
-                  {statKeys.map((k) => (
-                    <td key={k} className={`tp-td ${k === 'W' || k === 'PCT' ? 'tp-td-hl' : ''}`}>
-                      {stats[k] ?? '—'}
-                    </td>
-                  ))}
+    <div className="tp-standings-v2">
+      {groups.map((group, gi) => (
+        <div key={gi} className={`tp-div-block ${gi === myGroupIdx ? 'tp-div-mine' : ''}`}>
+          <div className="tp-div-header">{group.name}</div>
+          <div className="tp-table-wrap">
+            <table className="tp-table">
+              <thead>
+                <tr>
+                  <th className="tp-th tp-th-team">TEAM</th>
+                  {cols.map((c) => <th key={c.key} className="tp-th">{c.label}</th>)}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {group.entries.map((entry, i) => {
+                  const team = entry.team || {};
+                  const stats = getStatMap(entry);
+                  const isMyTeam = team.id === String(teamId);
+                  const logo = team.logos?.[0]?.href;
+                  const strk = stats['STRK'] || stats['streak'] || '';
+                  const isWinStreak = strk.startsWith('W');
+                  return (
+                    <tr key={team.id || i} className={`tp-tr ${isMyTeam ? 'tp-tr-mine' : ''}`}>
+                      <td className="tp-td tp-td-team">
+                        {logo && <img src={logo} alt="" className="tp-standings-logo" />}
+                        <span className={`tp-standings-abbr ${isMyTeam ? 'tp-standings-mine' : ''}`}>
+                          {team.abbreviation || team.shortDisplayName}
+                        </span>
+                        {isMyTeam && <span className="tp-you-tag">▶</span>}
+                      </td>
+                      {cols.map((c) => {
+                        const val = stats[c.key] ?? '—';
+                        const isStrk = c.key === 'STRK';
+                        return (
+                          <td key={c.key} className={`tp-td ${c.hl ? 'tp-td-hl' : ''} ${isStrk && isWinStreak ? 'tp-strk-win' : isStrk ? 'tp-strk-loss' : ''}`}>
+                            {val}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
