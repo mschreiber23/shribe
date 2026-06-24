@@ -1408,8 +1408,10 @@ body {
 }
 .bsm2-team-side { display: flex; align-items: center; gap: 10px; flex: 1; }
 .bsm2-team-side-right { flex-direction: row-reverse; }
-.bsm2-team-logo { width: 48px; height: 48px; object-fit: contain; }
-.bsm2-score { font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+.bsm2-team-logo { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
+.bsm2-team-abbr { font-size: 13px; font-weight: 800; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+.bsm2-score { font-size: 42px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+.bsm2-team-record { font-size: 11px; color: var(--text2); margin-top: 2px; }
 .bsm2-center-info {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   flex-shrink: 0; padding: 0 8px;

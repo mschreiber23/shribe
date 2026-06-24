@@ -14,6 +14,10 @@ function buildRosterMap(rosters = []) {
 }
 
 /* ─── Header ──────────────────────────────────────── */
+function teamLogo(team) {
+  return team?.logo || team?.logos?.[0]?.href || null;
+}
+
 function Header({ competitors, status }) {
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
@@ -23,11 +27,19 @@ function Header({ competitors, status }) {
 
   return (
     <div className="bsm2-header">
+      {/* Away team */}
       <div className="bsm2-team-side">
-        {away?.team?.logo && <img src={away.team.logo} alt="" className="bsm2-team-logo" />}
-        <div className="bsm2-score">{away?.score ?? '—'}</div>
+        {teamLogo(away?.team) && (
+          <img src={teamLogo(away.team)} alt="" className="bsm2-team-logo" />
+        )}
+        <div>
+          <div className="bsm2-team-abbr">{away?.team?.abbreviation}</div>
+          <div className="bsm2-score">{away?.score ?? '—'}</div>
+          <div className="bsm2-team-record">{away?.record?.[0]?.displayValue}</div>
+        </div>
       </div>
 
+      {/* Center */}
       <div className="bsm2-center-info">
         {isLive && <span className="badge badge-live" style={{ fontSize: 10 }}><span className="live-dot" /> LIVE</span>}
         {isFinal && <span className="badge badge-final" style={{ fontSize: 10 }}>Final</span>}
@@ -35,9 +47,16 @@ function Header({ competitors, status }) {
         <BaseDiamond small />
       </div>
 
+      {/* Home team */}
       <div className="bsm2-team-side bsm2-team-side-right">
-        <div className="bsm2-score">{home?.score ?? '—'}</div>
-        {home?.team?.logo && <img src={home.team.logo} alt="" className="bsm2-team-logo" />}
+        <div style={{ textAlign: 'right' }}>
+          <div className="bsm2-team-abbr">{home?.team?.abbreviation}</div>
+          <div className="bsm2-score">{home?.score ?? '—'}</div>
+          <div className="bsm2-team-record">{home?.record?.[0]?.displayValue}</div>
+        </div>
+        {teamLogo(home?.team) && (
+          <img src={teamLogo(home.team)} alt="" className="bsm2-team-logo" />
+        )}
       </div>
     </div>
   );
@@ -76,7 +95,7 @@ function LineScore({ competitors }) {
           {competitors.map((c) => (
             <tr key={c.team?.id}>
               <td className="bsm2-ls-td bsm2-ls-team">
-                {c.team?.logo && <img src={c.team.logo} alt="" className="bsm2-ls-logo" />}
+                {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="bsm2-ls-logo" />}
                 <span className="bsm2-ls-abbr">{c.team?.abbreviation}</span>
               </td>
               {innings.map((_, i) => (
