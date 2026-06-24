@@ -896,48 +896,106 @@ body {
   .tp-schedule-row { grid-template-columns: 100px 1fr auto; gap: 8px; font-size: 13px; }
   .tp-tab { padding: 12px 14px; font-size: 13px; }
 
-  /* Box score modal mobile */
-  .bsm-overlay { padding: 0; align-items: flex-end; }
-  .bsm-panel { border-radius: 16px 16px 0 0; max-height: 92vh; }
+  /* ── Box score modal: slides up from bottom ── */
+  .bsm-overlay {
+    padding: 0;
+    align-items: flex-end;
+    justify-content: flex-end;
+  }
+  .bsm-panel {
+    border-radius: 20px 20px 0 0;
+    max-height: 93vh;
+    width: 100%;
+    margin: 0;
+  }
 
-  /* Game header: stack vertically */
-  .bsm-game-header { flex-direction: column; gap: 10px; padding: 14px 16px; }
-  .bsm-side { flex: unset; width: 100%; justify-content: space-between; }
-  .bsm-side-right { flex-direction: row; }
-  .bsm-hdr-logo { width: 36px; height: 36px; }
-  .bsm-hdr-score { font-size: 32px; }
-  .bsm-hdr-name { font-size: 15px; }
-  .bsm-hdr-center { flex-direction: row; gap: 8px; min-width: unset; }
+  /* Header: compact two-row scoreboard */
+  .bsm-game-header {
+    flex-direction: column;
+    padding: 12px 16px 10px;
+    gap: 0;
+  }
+  /* Hide the original sides and center, rebuild with rows */
+  .bsm-side, .bsm-side-right, .bsm-hdr-center { display: none !important; }
 
-  /* Situation bar: compact */
-  .situation-bar { gap: 10px; padding: 10px 14px; flex-wrap: nowrap; overflow-x: auto; }
+  /* Inject mobile scoreboard rows via pseudo - actually use a wrapper approach */
+  /* We'll repurpose the existing elements with display flex overrides */
+  .bsm-side {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 8px 0 !important;
+    width: 100% !important;
+    flex: unset !important;
+  }
+  .bsm-side-right {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 8px 0 !important;
+    width: 100% !important;
+    flex: unset !important;
+    border-top: 1px solid var(--border) !important;
+  }
+  .bsm-hdr-center {
+    display: flex !important;
+    justify-content: center !important;
+    padding: 6px 0 2px !important;
+    min-width: unset !important;
+    order: -1 !important;
+  }
+  .bsm-hdr-detail { display: none; }
+  .bsm-hdr-logo { width: 32px; height: 32px; flex-shrink: 0; }
+  .bsm-hdr-info, .bsm-hdr-info-right { text-align: left !important; flex: 1; }
+  .bsm-hdr-name { font-size: 14px; }
+  .bsm-hdr-record { font-size: 11px; }
+  .bsm-hdr-ha { font-size: 10px; }
+  .bsm-hdr-score {
+    font-size: 28px !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    flex-shrink: 0;
+  }
+
+  /* Situation bar */
+  .situation-bar {
+    gap: 10px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
   .sit-player { display: none; }
-  .sit-teams { border-left: none; padding-left: 0; }
-  .sit-bases-count { border-left: 1px solid var(--border); padding-left: 10px; }
+  .sit-teams { border-left: none; padding-left: 0; border-right: 1px solid var(--border); padding-right: 10px; }
 
-  /* Line score: scrollable */
-  .linescore-wrap { font-size: 12px; }
-  .ls-th, .ls-td { padding: 7px 7px; }
-  .ls-td-team { padding-left: 10px; }
+  /* Line score */
+  .linescore-wrap { font-size: 11px; }
+  .ls-th, .ls-td { padding: 6px 6px; }
+  .ls-td-team { padding-left: 10px; min-width: 60px; }
+  .ls-team-abbr { font-size: 12px; }
+  .ls-team-logo { width: 18px; height: 18px; }
 
   /* Box score body */
-  .bsm-body { max-height: 55vh; padding: 12px; }
+  .bsm-body { max-height: 52vh; padding: 10px 12px; gap: 16px; }
 
-  /* Stats tables: single column */
+  /* Stat tables: force single column */
   .bs-dual-section {
     display: flex !important;
     flex-direction: column !important;
     border: 1px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
+    grid-template-columns: unset !important;
   }
-  .bs-dual-divider { height: 1px; width: 100%; background: var(--border); }
-  .bs-stat-title { font-size: 11px; }
-  .bs-th { padding: 6px 8px; font-size: 9px; }
-  .bs-td { padding: 7px 8px; font-size: 11px; }
-  .bs-th-player { min-width: 110px; }
-  .bs-avatar { width: 22px; height: 22px; }
+  .bs-dual-divider { height: 1px !important; width: 100% !important; background: var(--border); }
+  .bs-stat-title { font-size: 11px; padding: 8px 12px; }
+  .bs-th { padding: 5px 8px; font-size: 9px; }
+  .bs-th-player { min-width: 100px; }
+  .bs-td { padding: 6px 8px; font-size: 11px; }
+  .bs-avatar { width: 20px; height: 20px; }
   .bs-player-name { font-size: 11px; }
+  .bs-player-pos { font-size: 10px; }
 }
 
 /* ── Team Page ── */
