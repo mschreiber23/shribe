@@ -1410,19 +1410,19 @@ body {
 .ticker-card {
   background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
   padding: 6px 9px; cursor: pointer; text-align: left; color: inherit;
-  flex-shrink: 0; min-width: 120px; display: flex; flex-direction: column; gap: 4px;
+  flex-shrink: 0; width: 128px; height: 82px;
+  display: flex; flex-direction: column; justify-content: space-between;
   transition: border-color 0.15s;
 }
 .ticker-card:hover { border-color: rgba(255,255,255,0.25); }
 .ticker-card-mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg3)); }
 
-.ticker-status { display: flex; align-items: center; gap: 5px; min-height: 16px; }
+.ticker-status { display: flex; align-items: center; gap: 5px; min-height: 14px; }
 .ticker-live { display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; color: var(--live); }
 .ticker-final { font-size: 10px; font-weight: 700; color: var(--text2); }
-.ticker-time { font-size: 10px; color: var(--text2); white-space: nowrap; }
 .ticker-broadcast { font-size: 9px; color: var(--text2); margin-left: auto; }
 
-.ticker-teams { display: flex; flex-direction: column; gap: 3px; }
+.ticker-teams { display: flex; flex-direction: column; gap: 4px; }
 .ticker-team { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
 .ticker-team-left { display: flex; align-items: center; gap: 4px; }
 .ticker-logo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
@@ -1433,19 +1433,22 @@ body {
 .ticker-score { font-size: 14px; font-weight: 900; color: var(--text2); font-variant-numeric: tabular-nums; min-width: 16px; text-align: right; }
 .ticker-score-win { color: var(--live); }
 .ticker-winner .ticker-score { color: var(--text); }
-.ticker-context { font-size: 9px; color: var(--text2); text-align: center; }
+
+.ticker-bottom { min-height: 14px; display: flex; align-items: center; }
+.ticker-time { font-size: 10px; color: var(--text2); white-space: nowrap; }
+.ticker-context-text { font-size: 9px; color: var(--text2); }
 
 .ticker-skeleton {
-  width: 120px; height: 60px; flex-shrink: 0;
+  width: 128px; height: 82px; flex-shrink: 0;
   background: var(--bg3); border-radius: 8px; animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.ts-expand-btn {
-  background: transparent; border: 1px solid var(--border); color: var(--text2);
-  width: 28px; height: 28px; border-radius: 8px; font-size: 14px; cursor: pointer;
-  flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+.ts-all-scores-btn {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+  padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s;
 }
-.ts-expand-btn:hover { border-color: var(--accent2); color: var(--text); }
+.ts-all-scores-btn:hover { border-color: var(--accent2); color: var(--text); }
 
 .ts-expanded {
   background: var(--bg2); border: 1px solid var(--border); border-top: none;

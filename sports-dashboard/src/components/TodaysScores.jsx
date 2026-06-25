@@ -48,11 +48,10 @@ function TickerCard({ game, sport, myTeamIds }) {
       className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
     >
-      {/* Status row */}
+      {/* Top status — only for live/final */}
       <div className="ticker-status">
         {isLive && <span className="ticker-live"><span className="live-dot" />{shortDetail}</span>}
         {isFinal && <span className="ticker-final">Final</span>}
-        {isPre && <span className="ticker-time">{shortDetail}</span>}
         {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
 
@@ -74,10 +73,11 @@ function TickerCard({ game, sport, myTeamIds }) {
         ))}
       </div>
 
-      {/* Live context */}
-      {isLive && status?.type?.detail && (
-        <div className="ticker-context">{status.type.detail}</div>
-      )}
+      {/* Bottom — game time for pre-game, context for live */}
+      <div className="ticker-bottom">
+        {isPre && <span className="ticker-time">{shortDetail}</span>}
+        {isLive && status?.type?.detail && <span className="ticker-context-text">{status.type.detail}</span>}
+      </div>
     </button>
   );
 }
@@ -187,8 +187,8 @@ export default function TodaysScores() {
             <button className="ts-date-btn" onClick={() => shiftDate(1)}>›</button>
           </div>
 
-          <button className="ts-expand-btn" onClick={() => setExpanded((v) => !v)} title={expanded ? 'Collapse' : 'Full Scoreboard'}>
-            {expanded ? '✕' : '⊞'}
+          <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? '✕ Close' : 'All Scores'}
           </button>
         </div>
 
