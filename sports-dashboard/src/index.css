@@ -1666,16 +1666,17 @@ body {
 }
 
 /* Last 5 games */
-.preview-last5 { display: flex; gap: 20px; }
-.preview-last5-team { display: flex; align-items: center; gap: 10px; flex: 1; }
-.preview-last5-header { display: flex; align-items: center; gap: 6px; }
-.preview-last5-abbr { font-size: 12px; font-weight: 700; min-width: 32px; }
-.preview-last5-games { display: flex; gap: 4px; }
+.preview-last5 { display: flex; flex-direction: column; gap: 10px; }
+.preview-last5-team { display: flex; align-items: center; gap: 12px; }
+.preview-last5-header { display: flex; align-items: center; gap: 6px; min-width: 64px; }
+.preview-last5-abbr { font-size: 13px; font-weight: 800; }
+.preview-last5-games { display: flex; gap: 5px; flex: 1; }
 .preview-last5-dot {
-  width: 26px; height: 26px;
+  width: 30px; height: 30px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800;
+  font-size: 12px; font-weight: 800;
+  flex-shrink: 0;
 }
 .preview-dot-w { background: rgba(34,197,94,0.2); color: var(--live); border: 1.5px solid var(--live); }
 .preview-dot-l { background: rgba(239,68,68,0.15); color: var(--danger); border: 1.5px solid var(--danger); }
