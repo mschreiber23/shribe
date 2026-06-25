@@ -128,11 +128,19 @@ export function FavoritesProvider({ children, userId }) {
   const removePlayer = (playerId) =>
     setFavorites((f) => ({ ...f, players: f.players.filter((p) => p.id !== playerId) }));
 
+  const reorderPlayer = (from, to) =>
+    setFavorites((f) => {
+      const players = [...f.players];
+      const [m] = players.splice(from, 1);
+      players.splice(to, 0, m);
+      return { ...f, players };
+    });
+
   return (
     <FavoritesContext.Provider value={{
       favorites, sportOrder,
       addTeam, removeTeam, reorderTeam,
-      addPlayer, removePlayer,
+      addPlayer, removePlayer, reorderPlayer,
       reorderSport,
     }}>
       {children}

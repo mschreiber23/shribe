@@ -126,7 +126,7 @@ function extractSeasonStats(statsData, sport) {
 
 /* ── Trading Card Component ─────────────────────────── */
 export default function PlayerCard({ player, sport }) {
-  const { removePlayer } = useFavorites();
+  const { } = useFavorites(); // remove button moved to edit mode
   const { stats, loading, error } = usePlayerStats(sport, player.id);
   const liveBio = usePlayerBio(sport, player.id);
 
@@ -145,8 +145,6 @@ export default function PlayerCard({ player, sport }) {
       {/* Shine overlay */}
       <div className="sports-card-shine" />
 
-      {/* Remove button */}
-      <button className="sports-card-remove" onClick={() => removePlayer(player.id)} title="Remove">×</button>
 
       {/* Photo area */}
       <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">

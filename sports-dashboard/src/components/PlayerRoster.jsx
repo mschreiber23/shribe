@@ -4,8 +4,9 @@ import PlayerCard from './PlayerCard';
 import { getTeamRoster, searchTeams, SPORTS } from '../api/espn';
 
 export default function PlayerRoster() {
-  const { favorites, addPlayer } = useFavorites();
+  const { favorites, addPlayer, removePlayer, reorderPlayer } = useFavorites();
 
+  const [editMode, setEditMode]       = useState(false);
   const [showPicker, setShowPicker]   = useState(false);
   const [pickerSport, setPickerSport] = useState('mlb');
   const [teamQuery, setTeamQuery]     = useState('');
@@ -87,13 +88,44 @@ export default function PlayerRoster() {
   return (
     <section className="section">
       <div className="section-header">
-        <div>
-          <h2 className="section-title">My Players</h2>
+        <h2 className="section-title">My Players</h2>
+        <div className="header-actions">
+          {favorites.players.length > 0 && (
+            <button
+              className={editMode ? 'btn-primary' : 'btn-ghost'}
+              onClick={() => { setEditMode((v) => !v); setShowPicker(false); }}
+            >
+              {editMode ? 'Done' : 'Edit'}
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => { showPicker ? close() : setShowPicker(true); setEditMode(false); }}>
+            {showPicker ? 'Done' : '+ Add Player'}
+          </button>
         </div>
-        <button className="btn-primary" onClick={() => showPicker ? close() : setShowPicker(true)}>
-          {showPicker ? 'Done' : '+ Add Player'}
-        </button>
       </div>
+
+      {/* Edit mode */}
+      {editMode && (
+        <div className="edit-panel">
+          <div className="edit-panel-label">Tap — to remove · use arrows to reorder</div>
+          {favorites.players.map((player, idx) => (
+            <div key={player.id} className="edit-team-row">
+              <button className="edit-remove-btn" onClick={() => removePlayer(player.id)} title="Remove">−</button>
+              <div className="edit-team-info">
+                {player.headshot && <img src={player.headshot} alt="" className="edit-team-logo" style={{ borderRadius: '50%' }} />}
+                <div>
+                  <div className="edit-team-name">{player.displayName}</div>
+                  <div className="edit-team-sport">{player.position} · {SPORTS[player.sport]?.label}</div>
+                </div>
+              </div>
+              <div className="edit-reorder-btns">
+                <button className="edit-reorder-btn" onClick={() => reorderPlayer(idx, idx - 1)} disabled={idx === 0}>▲</button>
+                <button className="edit-reorder-btn" onClick={() => reorderPlayer(idx, idx + 1)} disabled={idx === favorites.players.length - 1}>▼</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showPicker && (
         <div className="picker-panel">
@@ -203,7 +235,7 @@ export default function PlayerRoster() {
         </div>
       )}
 
-      {favorites.players.length === 0 && !showPicker && (
+      {favorites.players.length === 0 && !showPicker && !editMode && (
         <div className="onboarding-prompt">
           <div className="onboarding-icon">⭐</div>
           <div className="onboarding-title">Add a favorite player</div>
@@ -212,11 +244,13 @@ export default function PlayerRoster() {
         </div>
       )}
 
-      <div className="players-grid">
-        {favorites.players.map((player) => (
-          <PlayerCard key={player.id} player={player} sport={player.sport} />
-        ))}
-      </div>
+      {!editMode && (
+        <div className="players-grid">
+          {favorites.players.map((player) => (
+            <PlayerCard key={player.id} player={player} sport={player.sport} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
