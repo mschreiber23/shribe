@@ -255,11 +255,24 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
     return vb - va;
   });
 
-  // Mark WC positions
+  // Calculate bubble GBP (3rd WC spot = cutline)
+  const bubbleGBP = sorted.length >= wcSpots
+    ? parseFloat(getStatMap(sorted[wcSpots - 1])['GBP'] ?? -999)
+    : -999;
+
+  // Mark WC positions and compute WC GB relative to bubble
   const markedRows = sorted.map((entry, i) => {
     const isWC = i < wcSpots;
     const isLast = i === wcSpots - 1;
-    return { entry, isDivLeader: false, isWC, isLast };
+    const teamGBP = parseFloat(getStatMap(entry)['GBP'] ?? -999);
+    const wcGBdiff = bubbleGBP !== -999 && teamGBP !== -999 ? teamGBP - bubbleGBP : null;
+    let wcGBDisplay = '—';
+    if (wcGBdiff !== null) {
+      if (Math.abs(wcGBdiff) < 0.05) wcGBDisplay = '—';
+      else if (wcGBdiff > 0) wcGBDisplay = `+${wcGBdiff % 1 === 0 ? wcGBdiff.toFixed(0) : wcGBdiff.toFixed(1)}`;
+      else wcGBDisplay = `${wcGBdiff % 1 === 0 ? wcGBdiff.toFixed(0) : wcGBdiff.toFixed(1)}`;
+    }
+    return { entry, isWC, isLast, wcGBDisplay };
   });
 
   return (
@@ -277,31 +290,32 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
           </tr>
         </thead>
         <tbody>
-          {markedRows.map(({ entry, isDivLeader, isWC, isLast }, i) => {
+          {markedRows.map(({ entry, isWC, isLast, wcGBDisplay }, i) => {
             const team = entry.team || {};
             const stats = getStatMap(entry);
             const logo = team.logos?.[0]?.href;
             const strk = stats['STRK'] || '';
             const isWStrk = strk.startsWith('W');
             const clinch = stats['CLINCH'];
-            const isOut = !isDivLeader && !isWC;
+            const isOut = !isWC;
             return (
               <>
                 <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
                   <td className="standings-td standings-td-team">
                     {logo && <img src={logo} alt="" className="standings-logo" />}
-                      <div className="standings-team-info">
-                        <span className="standings-abbr">{team.abbreviation}</span>
-                        {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
-                        {isWC && <span className="standings-wc-badge">WC</span>}
-                      </div>
+                    <div className="standings-team-info">
+                      <span className="standings-abbr">{team.abbreviation}</span>
+                      {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                      {isWC && <span className="standings-wc-badge">WC</span>}
+                    </div>
                   </td>
                   {cols.map((c) => {
-                    let val = stats[c.k] ?? '—';
-                    if (c.k === 'GBP') val = formatGBP(val);
+                    // Replace GBP column with computed WC GB
+                    let val = c.k === 'GBP' ? wcGBDisplay : (stats[c.k] ?? '—');
                     const isStrk = c.k === 'STRK';
+                    const isGBP = c.k === 'GBP';
                     return (
-                      <td key={c.k} className={`standings-td ${c.hl ? 'standings-td-hl' : ''} ${isStrk && isWStrk ? 'standings-strk-w' : isStrk ? 'standings-strk-l' : ''} ${c.k === 'GBP' && parseFloat(stats['GBP']) > 0 ? 'standings-wc-in' : ''}`}>
+                      <td key={c.k} className={`standings-td ${c.hl ? 'standings-td-hl' : ''} ${isStrk && isWStrk ? 'standings-strk-w' : isStrk ? 'standings-strk-l' : ''} ${isGBP && isWC ? 'standings-wc-in' : ''}`}>
                         {val}
                       </td>
                     );
