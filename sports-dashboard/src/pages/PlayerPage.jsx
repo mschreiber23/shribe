@@ -507,7 +507,11 @@ export default function PlayerPage() {
                     <div className="pp-detail-row"><span className="pp-detail-label">HT/WT</span><span>{athlete.displayHeight}, {athlete.displayWeight}</span></div>
                   )}
                   {athlete.displayDOB && (
-                    <div className="pp-detail-row"><span className="pp-detail-label">BORN</span><span>{athlete.displayDOB}{athlete.age ? ` (${athlete.age})` : ''}</span></div>
+                    <div className="pp-detail-row"><span className="pp-detail-label">BORN</span><span>{(() => {
+                      // ESPN returns D/M/YYYY — convert to M/D/YYYY
+                      const parts = athlete.displayDOB.split('/');
+                      return parts.length === 3 ? `${parts[1]}/${parts[0]}/${parts[2]}` : athlete.displayDOB;
+                    })()}{athlete.age ? ` (${athlete.age})` : ''}</span></div>
                   )}
                   {athlete.displayBatsThrows && (
                     <div className="pp-detail-row"><span className="pp-detail-label">BAT/THR</span><span>{athlete.displayBatsThrows}</span></div>
