@@ -103,13 +103,11 @@ function TickerCard({ game, sport, myTeamIds }) {
           </div>
         ))}
       </div>
-      <div className="ticker-bottom">
-        {outs !== null && (
-          <div className="ticker-situation">
-            <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
-            <span className="ticker-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>
-          </div>
-        )}
+      <div className="ticker-bottom ticker-bottom-live">
+        <div className="ticker-situation">
+          <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
+          {outs !== null && <span className="ticker-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>}
+        </div>
       </div>
     </button>
   );
