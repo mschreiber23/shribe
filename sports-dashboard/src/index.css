@@ -1398,6 +1398,8 @@ body {
 .lv-actions { display: flex; gap: 8px; }
 .lv-btn { background: transparent; border: 1px solid var(--border); color: var(--text2); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
 .lv-btn:hover { border-color: var(--accent2); color: var(--text); }
+.lv-possession { font-size: 11px; color: var(--text2); font-weight: 600; }
+.lv-down-dist { font-size: 11px; color: var(--text); font-weight: 700; }
 @media (max-width: 640px) { .lv-body { flex-direction: column; } .lv-players { flex-direction: row; gap: 12px; } .lv-last-play { max-width: 100%; } }
 
 .show-all-btn {
