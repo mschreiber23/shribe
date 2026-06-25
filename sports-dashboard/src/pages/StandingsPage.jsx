@@ -244,25 +244,22 @@ function formatGBP(val) {
 }
 
 function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir, onSort }) {
-  // Sort by GBP descending (highest = best position)
-  const sorted = [...entries].sort((a, b) => {
+  // Exclude division leaders entirely from WC view
+  const wcTeams = entries.filter((e) => !divLeaderIds?.has(e.team?.id));
+
+  // Sort by GBP descending (highest = safest in WC)
+  const sorted = [...wcTeams].sort((a, b) => {
     const sa = getStatMap(a); const sb = getStatMap(b);
     const va = parseFloat(sa['GBP'] ?? sa['PTS'] ?? -999);
     const vb = parseFloat(sb['GBP'] ?? sb['PTS'] ?? -999);
     return vb - va;
   });
 
-  // Count WC spots among non-div-leaders
-  let wcCount = 0;
-  const markedRows = sorted.map((entry) => {
-    const isDivLeader = divLeaderIds?.has(entry.team?.id);
-    let isWC = false, isLast = false;
-    if (!isDivLeader) {
-      wcCount++;
-      if (wcCount <= wcSpots) isWC = true;
-      if (wcCount === wcSpots) isLast = true;
-    }
-    return { entry, isDivLeader, isWC, isLast };
+  // Mark WC positions
+  const markedRows = sorted.map((entry, i) => {
+    const isWC = i < wcSpots;
+    const isLast = i === wcSpots - 1;
+    return { entry, isDivLeader: false, isWC, isLast };
   });
 
   return (
@@ -293,12 +290,11 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
                 <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
                   <td className="standings-td standings-td-team">
                     {logo && <img src={logo} alt="" className="standings-logo" />}
-                    <div className="standings-team-info">
-                      <span className="standings-abbr">{team.abbreviation}</span>
-                      {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
-                      {isDivLeader && <span className="standings-div-badge">DIV</span>}
-                      {isWC && !isDivLeader && <span className="standings-wc-badge">WC</span>}
-                    </div>
+                      <div className="standings-team-info">
+                        <span className="standings-abbr">{team.abbreviation}</span>
+                        {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                        {isWC && <span className="standings-wc-badge">WC</span>}
+                      </div>
                   </td>
                   {cols.map((c) => {
                     let val = stats[c.k] ?? '—';
