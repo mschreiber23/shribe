@@ -128,7 +128,6 @@ export async function getPlayerStats(sport, playerId) {
 
 export async function searchTeams(sport, query) {
   const { league } = SPORTS[sport];
-  // Use standings endpoint — has CORS headers unlike the teams endpoint
   const { data } = await axios.get(
     `https://site.web.api.espn.com/apis/v2/sports/${league}/standings`
   );
@@ -143,6 +142,12 @@ export async function searchTeams(sport, query) {
   };
   walk(data);
   const unique = Array.from(new Map(teams.map((t) => [t.id, t])).values());
+  // Sort alphabetically by city/location
+  unique.sort((a, b) => {
+    const cityA = (a.location || a.displayName || '').toLowerCase();
+    const cityB = (b.location || b.displayName || '').toLowerCase();
+    return cityA.localeCompare(cityB);
+  });
   if (!query) return unique;
   return unique.filter((t) => t.displayName.toLowerCase().includes(query.toLowerCase()));
 }

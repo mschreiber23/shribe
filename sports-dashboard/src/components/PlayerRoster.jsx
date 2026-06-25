@@ -73,9 +73,9 @@ export default function PlayerRoster() {
     teamName: selectedTeam?.displayName,
   }));
 
-  const filteredPlayers = allPlayers.filter((p) =>
-    p.displayName.toLowerCase().includes(playerSearch.toLowerCase())
-  );
+  const filteredPlayers = allPlayers
+    .filter((p) => p.displayName.toLowerCase().includes(playerSearch.toLowerCase()))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   const close = () => {
     setShowPicker(false);
