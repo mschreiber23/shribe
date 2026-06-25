@@ -2,14 +2,38 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getScoreboard, getGameBoxscore } from '../api/espn';
 
-/* Round any numeric display value to max 1 decimal place */
-function roundStat(val) {
+/* Format a stat value:
+   - Rate stats (.265, 0.923, 1.023, 48.4%) → keep 3 decimals for baseball rates, 1 decimal for % rates
+   - Counting stats → integer or 1 decimal
+*/
+const BASEBALL_RATE_KEYS = new Set(['AVG','OBP','SLG','OPS','BABIP','ISO','ISOP','wOBA']);
+
+function roundStat(val, key = '') {
   if (val == null || val === '—' || val === '') return val;
-  const n = parseFloat(String(val).replace(/,/g, ''));
-  if (isNaN(n)) return val;
-  // If the value is already a clean integer, keep it
+  const str = String(val).trim();
+
+  // Baseball rate stats: always 3 decimal places
+  if (BASEBALL_RATE_KEYS.has(key)) {
+    const n = parseFloat(str);
+    if (isNaN(n)) return str;
+    // Format like .265 or 1.023
+    if (Math.abs(n) < 2) {
+      const formatted = Math.abs(n) < 1
+        ? n.toFixed(3).replace(/^0\./, '.')   // 0.265 → .265
+        : n.toFixed(3);                         // 1.023 → 1.023
+      return n < 0 ? `-${formatted.replace('-', '')}` : formatted;
+    }
+    return n.toFixed(1);
+  }
+
+  // Values that look like batting averages already (start with ".")
+  if (str.startsWith('.') || str.startsWith('-.')) {
+    return str; // already formatted correctly by ESPN
+  }
+
+  const n = parseFloat(str.replace(/,/g, ''));
+  if (isNaN(n)) return str;
   if (Number.isInteger(n)) return String(Math.round(n));
-  // Round to 1 decimal
   return n.toFixed(1);
 }
 
@@ -407,18 +431,50 @@ export default function PlayerPage() {
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
 
   const careerTotals = (() => {
-    const nonRateKeys = ['AVG','OBP','SLG','OPS','ERA','WHIP','FG%','3P%','FT%','GAA','SV%','RTG','AVG','RAVG'];
+    if (!seasons.length) return {};
+
+    const rateKeys = ['AVG','OBP','SLG','OPS','ERA','WHIP','FG%','3P%','FT%','GAA','SV%','RTG','RAVG'];
+    // NBA: GP sums, everything else averages across seasons
+    const isNba = sportKey === 'nba';
+    const NBA_AVG_KEYS = ['MIN','PTS','REB','AST','STL','BLK','FG%','3P%','FT%','TO'];
+
     const totals = {};
+    const counts = {};
+
     seasons.forEach(({ data }) => {
       const s = getStats(data, sportKey);
       cols.forEach(({ key }) => {
-        if (nonRateKeys.includes(key)) return;
-        const v = parseFloat(s[key]);
-        if (!isNaN(v)) totals[key] = (totals[key] || 0) + v;
+        const val = s[key];
+        if (val == null || val === '—') return;
+        const n = parseFloat(String(val).replace(/,/g, ''));
+        if (isNaN(n)) return;
+
+        if (isNba && NBA_AVG_KEYS.includes(key)) {
+          // Average these for NBA
+          totals[key] = (totals[key] || 0) + n;
+          counts[key] = (counts[key] || 0) + 1;
+        } else if (!rateKeys.includes(key)) {
+          // Sum for counting stats
+          totals[key] = (totals[key] || 0) + n;
+        }
       });
     });
-    const lastStats = seasons.length ? getStats(seasons[seasons.length - 1].data, sportKey) : {};
-    nonRateKeys.forEach((k) => { if (lastStats[k]) totals[k] = lastStats[k]; });
+
+    // Finalize averages for NBA
+    if (isNba) {
+      NBA_AVG_KEYS.forEach((k) => {
+        if (totals[k] !== undefined && counts[k]) {
+          totals[k] = totals[k] / counts[k];
+        }
+      });
+    }
+
+    // Rate stats: use most recent season's value
+    const lastStats = getStats(seasons[seasons.length - 1].data, sportKey);
+    rateKeys.forEach((k) => {
+      if (lastStats[k] && lastStats[k] !== '—') totals[k] = lastStats[k];
+    });
+
     return totals;
   })();
 
@@ -501,7 +557,7 @@ export default function PlayerPage() {
                         <td className="pp-td pp-td-season">{year}</td>
                         {cols.map((c) => (
                           <td key={c.key} className={`pp-td ${c.hl ? 'pp-td-hl' : ''}`}>
-                            {roundStat(s[c.key]) ?? '—'}
+                            {roundStat(s[c.key], c.key) ?? '—'}
                           </td>
                         ))}
                       </tr>
@@ -512,7 +568,7 @@ export default function PlayerPage() {
                       <td className="pp-td pp-td-season pp-career-label">Career</td>
                       {cols.map((c) => (
                         <td key={c.key} className={`pp-td ${c.hl ? 'pp-td-hl' : ''}`}>
-                          {careerTotals[c.key] !== undefined ? roundStat(careerTotals[c.key]) : '—'}
+                          {careerTotals[c.key] !== undefined ? roundStat(careerTotals[c.key], c.key) : '—'}
                         </td>
                       ))}
                     </tr>
