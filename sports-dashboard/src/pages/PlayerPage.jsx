@@ -412,25 +412,32 @@ export default function PlayerPage() {
             ? events.find((e) => e.competitions?.[0]?.competitors?.some((c) => c.team?.id === teamId))
             : null;
           if (todayGame) {
-            const summary = await getGameBoxscore(sport, todayGame.id);
-            for (const group of summary?.boxscore?.players || []) {
-              for (const sg of group.statistics || []) {
-                const bsLabels = sg.labels || [];
-                const found = (sg.athletes || []).find((a) => String(a.athlete?.id) === String(playerId));
-                if (found?.stats?.length) {
-                  const comp = todayGame.competitions?.[0];
-                  const myTeam = comp?.competitors?.find((c) => c.team?.id === teamId);
-                  const opp = comp?.competitors?.find((c) => c.team?.id !== teamId);
-                  const state = comp?.status?.type?.state;
-                  games.unshift({
-                    date: todayGame.date || new Date().toISOString(),
-                    opponent: opp?.team?.abbreviation || '',
-                    atVs: myTeam?.homeAway === 'home' ? 'vs' : '@',
-                    result: state === 'post' ? (myTeam?.winner ? 'W' : 'L') : state === 'in' ? 'Live' : '',
-                    stats: Object.fromEntries(bsLabels.map((l, i) => [l, found.stats[i] ?? ''])),
-                    isLive: state === 'in',
-                  });
-                  break;
+            const comp = todayGame.competitions?.[0];
+            const state = comp?.status?.type?.state;
+            // Only inject for live or completed games — pre-game box scores show season totals not game stats
+            if (state === 'in' || state === 'post') {
+              const summary = await getGameBoxscore(sport, todayGame.id);
+              for (const group of summary?.boxscore?.players || []) {
+                for (const sg of group.statistics || []) {
+                  const bsLabels = sg.labels || [];
+                  const found = (sg.athletes || []).find((a) => String(a.athlete?.id) === String(playerId));
+                  if (found?.stats?.length) {
+                    const myTeam = comp?.competitors?.find((c) => c.team?.id === teamId);
+                    const opp = comp?.competitors?.find((c) => c.team?.id !== teamId);
+                    const injected = Object.fromEntries(bsLabels.map((l, i) => [l, found.stats[i] ?? '']));
+                    // Sanity: AB must be a realistic single-game number (not season totals)
+                    if (parseInt(injected['AB'] || 0) <= 10) {
+                      games.unshift({
+                        date: todayGame.date || new Date().toISOString(),
+                        opponent: opp?.team?.abbreviation || '',
+                        atVs: myTeam?.homeAway === 'home' ? 'vs' : '@',
+                        result: state === 'post' ? (myTeam?.winner ? 'W' : 'L') : 'Live',
+                        stats: injected,
+                        isLive: state === 'in',
+                      });
+                    }
+                    break;
+                  }
                 }
               }
             }
