@@ -1700,6 +1700,27 @@ body {
   font-weight: 700;
 }
 
+/* ── vs Team picker ── */
+.vs-team-picker-wrap {
+  padding: 12px 0;
+}
+
+.vs-team-picker-select {
+  width: 100%;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg3));
+  border: 1.5px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.vs-team-picker-select:focus { border-color: var(--accent2); }
+.vs-team-picker-select option { background: var(--bg2); color: var(--text); }
+
 /* ── Career Batting Tabs ── */
 .pp-career-header {
   display: flex;

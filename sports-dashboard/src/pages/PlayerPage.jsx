@@ -647,14 +647,13 @@ export default function PlayerPage() {
               )}
             </div>
             {careerTab === 'opp' && (
-              <div style={{ padding: '0 0 8px' }}>
+              <div className="vs-team-picker-wrap">
                 <select
-                  className="ab-tracker-select"
+                  className="vs-team-picker-select"
                   value={vsTeamAbbr}
                   onChange={(e) => setVsTeamAbbr(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: 13 }}
                 >
-                  <option value="">Select a team…</option>
+                  <option value="">— Select an opponent —</option>
                   {mlbTeams.map((t) => (
                     <option key={t.id} value={t.abbreviation}>
                       {t.displayName}
