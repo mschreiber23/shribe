@@ -85,21 +85,21 @@ function RecentABTracker({ gamelog }) {
         </select>
       </div>
 
-      {/* Rate stats — highlighted row */}
-      <div className="ab-tracker-rate-row">
-        {rateStats.map((s) => (
-          <div key={s.label} className="ab-tracker-rate-stat">
-            <div className="ab-tracker-rate-value">{s.value}</div>
+      {/* Counting stats — top */}
+      <div className="ab-tracker-count-row">
+        {countingStats.map((s) => (
+          <div key={s.label} className="ab-tracker-count-stat">
+            <div className="ab-tracker-count-value">{s.value}</div>
             <div className="ab-tracker-label">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Counting stats */}
-      <div className="ab-tracker-count-row">
-        {countingStats.map((s) => (
-          <div key={s.label} className="ab-tracker-count-stat">
-            <div className="ab-tracker-count-value">{s.value}</div>
+      {/* Rate stats — featured bottom row */}
+      <div className="ab-tracker-rate-row">
+        {rateStats.map((s) => (
+          <div key={s.label} className="ab-tracker-rate-stat">
+            <div className="ab-tracker-rate-value">{s.value}</div>
             <div className="ab-tracker-label">{s.label}</div>
           </div>
         ))}
