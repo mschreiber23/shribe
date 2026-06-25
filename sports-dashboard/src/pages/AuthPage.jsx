@@ -45,7 +45,7 @@ export default function AuthPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">🏆</div>
-        <h1 className="auth-title">Sports Dashboard</h1>
+        <h1 className="auth-title">Shribely</h1>
         <p className="auth-sub">Your teams. Your players. Your stats.</p>
 
         <div className="auth-tabs">

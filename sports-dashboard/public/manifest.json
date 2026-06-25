@@ -1,7 +1,7 @@
 {
-  "name": "Sports Dashboard",
-  "short_name": "Sports",
-  "description": "Live scores, stats and standings for your favorite teams",
+  "name": "Shribely",
+  "short_name": "Shribely",
+  "description": "Shribely - Live scores, stats and standings for your favorite teams",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "theme_color": "#0f0f13",
   "icons": [
     {
-      "src": "/shribe/trophy.svg",
+      "src": "/trophy.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
