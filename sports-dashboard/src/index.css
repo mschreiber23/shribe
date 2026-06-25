@@ -1351,6 +1351,55 @@ body {
   margin-top: 2px;
 }
 
+/* ── Live Game Bar (ESPN-style) ── */
+.lv-bar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--border); }
+.lv-status-row { display: flex; align-items: center; justify-content: space-between; }
+.lv-inning { font-size: 13px; font-weight: 800; }
+.lv-top { color: #60a5fa; }
+.lv-bot { color: #f97316; }
+.lv-broadcast { font-size: 11px; color: var(--text2); }
+.lv-body { display: flex; gap: 12px; flex-wrap: wrap; }
+.lv-teams-section { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; }
+.lv-rhe-header { display: flex; margin-bottom: 2px; }
+.lv-rhe-spacer { flex: 1; }
+.lv-rhe-label { width: 28px; text-align: center; font-size: 10px; color: var(--text2); font-weight: 700; }
+.lv-team-row { display: flex; align-items: center; }
+.lv-team-left { display: flex; align-items: center; gap: 6px; flex: 1; }
+.lv-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.lv-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.lv-my-team .lv-name { color: var(--team-accent, var(--accent)); }
+.lv-record { font-size: 10px; color: var(--text2); }
+.lv-rhe-val { width: 28px; text-align: center; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lv-rhe-secondary { color: var(--text2); font-weight: 400; font-size: 13px; }
+.lv-broadcast-bottom { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.lv-center { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.lv-diamond-count { display: flex; align-items: center; gap: 10px; }
+.lv-diamond { width: 40px; height: 40px; flex-shrink: 0; }
+.lv-base { fill: var(--bg3); stroke: rgba(255,255,255,0.2); stroke-width: 1.5; }
+.lv-base-on { fill: #f59e0b; stroke: #fbbf24; }
+.lv-count-col { display: flex; flex-direction: column; gap: 4px; }
+.lv-count-row { display: flex; align-items: center; gap: 4px; }
+.lv-cl { font-size: 10px; color: var(--text2); font-weight: 700; width: 10px; }
+.lv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); border: 1.5px solid rgba(255,255,255,0.15); }
+.lv-dot-g { background: var(--live); border-color: var(--live); }
+.lv-dot-y { background: #f59e0b; border-color: #f59e0b; }
+.lv-dot-r { background: var(--danger); border-color: var(--danger); }
+.lv-last-play { display: flex; flex-direction: column; gap: 2px; max-width: 160px; }
+.lv-lp-label { font-size: 9px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.lv-lp-text { font-size: 11px; color: var(--text); line-height: 1.3; }
+.lv-pbp-link { background: transparent; border: none; color: var(--accent2); font-size: 11px; font-weight: 700; cursor: pointer; padding: 0; text-align: left; }
+.lv-players { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.lv-player-role { font-size: 9px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.lv-player-row { display: flex; align-items: center; gap: 7px; }
+.lv-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
+.lv-player-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.lv-jersey { color: var(--text2); font-weight: 400; }
+.lv-player-stats { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.lv-actions { display: flex; gap: 8px; }
+.lv-btn { background: transparent; border: 1px solid var(--border); color: var(--text2); padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.lv-btn:hover { border-color: var(--accent2); color: var(--text); }
+@media (max-width: 640px) { .lv-body { flex-direction: column; } .lv-players { flex-direction: row; gap: 12px; } .lv-last-play { max-width: 100%; } }
+
 .show-all-btn {
   background: transparent;
   border: 1px solid var(--border);

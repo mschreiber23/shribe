@@ -67,52 +67,114 @@ function TeamScoreRow({ competitor, teamId, showScore }) {
   );
 }
 
+/* ── Small base diamond ─────────────────────────────── */
+function SmallDiamond({ onFirst, onSecond, onThird }) {
+  return (
+    <svg viewBox="0 0 36 36" className="lv-diamond">
+      <rect x="12" y="1" width="12" height="12" rx="2" className={`lv-base ${onSecond ? 'lv-base-on' : ''}`} transform="rotate(45 18 7)" />
+      <rect x="1" y="12" width="12" height="12" rx="2" className={`lv-base ${onThird ? 'lv-base-on' : ''}`} transform="rotate(45 7 18)" />
+      <rect x="23" y="12" width="12" height="12" rx="2" className={`lv-base ${onFirst ? 'lv-base-on' : ''}`} transform="rotate(45 29 18)" />
+      <rect x="12" y="23" width="12" height="12" rx="2" className="lv-base" transform="rotate(45 18 29)" />
+    </svg>
+  );
+}
+
 /* ── Live bar ───────────────────────────────────────── */
 function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
+  const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const status = comp?.status;
   const shortDetail = status?.type?.shortDetail || '';
-  const competitors = liveData?.competitors || comp?.competitors || [];
+  const competitors = comp?.competitors || [];
   const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
   const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
   const sit = liveData?.situation || {};
+  const pitcher = liveData?.pitcher;
+  const pitcherStats = liveData?.pitcherStats;
+  const batter = liveData?.batter;
+  const lastPlay = liveData?.lastPlay;
+  const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const isBot = shortDetail.toLowerCase().startsWith('bot');
 
   return (
-    <button className="tr2-live-bar" onClick={onBoxScore}>
-      {/* Status */}
-      <div className="tr2-live-status">
-        <span className="badge badge-live"><span className="live-dot" />{shortDetail}</span>
+    <div className="lv-bar">
+      <div className="lv-status-row">
+        <span className={`lv-inning ${isBot ? 'lv-bot' : 'lv-top'}`}>{isBot ? '▼' : '▲'} {shortDetail}</span>
+        {broadcast && <span className="lv-broadcast">{broadcast}</span>}
       </div>
 
-      {/* Teams + RHE */}
-      <div className="tr2-matchup">
-        {[away, home].filter(Boolean).map((c) => (
-          <div key={c.team?.id} className={`tr2-team-row ${c.team?.id === String(teamId) ? 'tr2-mine' : ''}`}>
-            <div className="tr2-team-left">
-              {c.team?.logo && <img src={c.team.logo} alt="" className="tr2-team-logo" />}
-              <div>
-                <span className={`tr2-team-name ${c.team?.id === String(teamId) ? 'tr2-mine-name' : ''}`}>
-                  {c.team?.shortDisplayName || c.team?.abbreviation}
-                </span>
-                {c.record?.[0]?.summary && <span className="tr2-record"> · {c.record[0].summary}</span>}
+      <div className="lv-body">
+        {/* Teams R/H/E */}
+        <div className="lv-teams-section">
+          <div className="lv-rhe-header">
+            <div className="lv-rhe-spacer" />
+            <span className="lv-rhe-label">R</span>
+            <span className="lv-rhe-label">H</span>
+            <span className="lv-rhe-label">E</span>
+          </div>
+          {[away, home].filter(Boolean).map((c) => (
+            <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
+              <div className="lv-team-left">
+                {c.team?.logo && <img src={c.team.logo} alt="" className="lv-logo" />}
+                <div>
+                  <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
+                  {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary} · {c.homeAway === 'home' ? 'Home' : 'Away'}</div>}
+                </div>
+              </div>
+              <span className="lv-rhe-val">{getScore(c) ?? '0'}</span>
+              <span className="lv-rhe-val lv-rhe-secondary">{c.hits ?? '0'}</span>
+              <span className="lv-rhe-val lv-rhe-secondary">{c.errors ?? '0'}</span>
+            </div>
+          ))}
+          {broadcast && <div className="lv-broadcast-bottom">{broadcast}</div>}
+        </div>
+
+        {/* Diamond + count + last play */}
+        <div className="lv-center">
+          <div className="lv-diamond-count">
+            <SmallDiamond onFirst={!!sit.onFirst} onSecond={!!sit.onSecond} onThird={!!sit.onThird} />
+            <div className="lv-count-col">
+              <div className="lv-count-row"><span className="lv-cl">B</span>{Array.from({length:4}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.balls??0)?'lv-dot-g':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">S</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.strikes??0)?'lv-dot-y':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">O</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.outs??0)?'lv-dot-r':''}`}/>)}</div>
+            </div>
+          </div>
+          {lastPlay && <div className="lv-last-play"><span className="lv-lp-label">LAST PLAY</span><span className="lv-lp-text">{lastPlay}</span></div>}
+          <button className="lv-pbp-link" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>Play-by-Play →</button>
+        </div>
+
+        {/* Pitcher / Batter */}
+        <div className="lv-players">
+          {pitcher && (
+            <div className="lv-player">
+              <div className="lv-player-role">PITCHING</div>
+              <div className="lv-player-row">
+                {pitcher.headshot?.href && <img src={pitcher.headshot.href} alt="" className="lv-avatar" />}
+                <div>
+                  <div className="lv-player-name">{pitcher.shortName || pitcher.displayName}{pitcher.jersey && <span className="lv-jersey"> #{pitcher.jersey}</span>}</div>
+                  {pitcherStats && <div className="lv-player-stats">{[pitcherStats.IP&&`${pitcherStats.IP} IP`,pitcherStats.ER!==null&&`${pitcherStats.ER} ER`,pitcherStats.H!==null&&`${pitcherStats.H} H`,pitcherStats.K!==null&&`${pitcherStats.K} K`,pitcherStats.BB!==null&&`${pitcherStats.BB} BB`].filter(Boolean).join(', ')}</div>}
+                </div>
               </div>
             </div>
-            <span className="tr2-score">{getScore(c) ?? '0'}</span>
-          </div>
-        ))}
+          )}
+          {batter && (
+            <div className="lv-player">
+              <div className="lv-player-role">BATTING</div>
+              <div className="lv-player-row">
+                {batter.headshot?.href && <img src={batter.headshot.href} alt="" className="lv-avatar" />}
+                <div><div className="lv-player-name">{batter.shortName || batter.displayName}{batter.jersey && <span className="lv-jersey"> #{batter.jersey}</span>}</div></div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Count + bases */}
-      {sit.balls !== undefined && (
-        <div className="tr2-situation">
-          <div className="tr2-count">
-            <span>{sit.balls ?? 0}-{sit.strikes ?? 0}</span>
-            <span className="tr2-outs">{sit.outs ?? 0} out{sit.outs !== 1 ? 's' : ''}</span>
-          </div>
-          <div className="tr2-tap-hint">Box Score →</div>
-        </div>
-      )}
-    </button>
+      {/* Action buttons */}
+      <div className="lv-actions">
+        <button className="lv-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>Gamecast</button>
+        <button className="lv-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>Box Score</button>
+      </div>
+    </div>
   );
 }
 
