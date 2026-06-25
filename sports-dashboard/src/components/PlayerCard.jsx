@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
+import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
 
 /* ── Stat extraction (unchanged logic) ─────────────── */
@@ -97,12 +98,17 @@ function extractSeasonStats(statsData, sport) {
 export default function PlayerCard({ player, sport }) {
   const { removePlayer } = useFavorites();
   const { stats, loading, error } = usePlayerStats(sport, player.id);
+  const liveBio = usePlayerBio(sport, player.id);
 
-  if (stats) stats._position = player.position || '';
+  // Use live position from bio (most accurate), fall back to stored
+  const position = liveBio.position || player.position || '';
+  if (stats) stats._position = position;
   const seasonStats = extractSeasonStats(stats, sport);
 
-  // Team color for gradient — stored on player or fall back to accent
-  const teamColor = player.teamColor ? `#${player.teamColor}` : '#7c3aed';
+  // Team color: live from bio, then stored, then accent
+  const rawColor = liveBio.teamColor || player.teamColor;
+  const teamColor = rawColor ? `#${rawColor}` : '#7c3aed';
+  const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
 
   return (
     <div className="sports-card">
@@ -120,15 +126,15 @@ export default function PlayerCard({ player, sport }) {
           ) : (
             <div className="sports-card-photo-placeholder">{player.displayName?.[0]}</div>
           )}
-          {/* Gradient fade at bottom of photo */}
-          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 40%, ${teamColor} 100%)` }} />
+          {/* Gradient fade at bottom of photo — stays in bottom 30% */}
+          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${teamColor}cc 100%)` }} />
         </div>
 
         {/* Player info strip */}
-        <div className="sports-card-info" style={{ background: teamColor }}>
-          <div className="sports-card-name">{player.displayName}</div>
-          <div className="sports-card-meta">{player.position} · {player.teamName?.split(' ').pop()}</div>
-        </div>
+          <div className="sports-card-info" style={{ background: teamColor }}>
+            <div className="sports-card-name">{player.displayName}</div>
+            <div className="sports-card-meta">{position} · {teamShort}</div>
+          </div>
       </Link>
 
       {/* Stats section */}
