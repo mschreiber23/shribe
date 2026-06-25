@@ -49,13 +49,16 @@ function RecentABTracker({ gamelog }) {
     return { ab, h, hr, rbi, bb, so, r, sb, avg, obp, slg, ops, games: gamesUsed.length };
   })();
 
-  const stats = [
-    { label: 'AB',  value: accumulated.ab },
-    { label: 'H',   value: accumulated.h },
+  // Two rows: rate stats on top, counting stats below
+  const rateStats    = [
     { label: 'AVG', value: accumulated.avg },
     { label: 'OBP', value: accumulated.obp },
     { label: 'SLG', value: accumulated.slg },
     { label: 'OPS', value: accumulated.ops },
+  ];
+  const countingStats = [
+    { label: 'AB',  value: accumulated.ab },
+    { label: 'H',   value: accumulated.h },
     { label: 'HR',  value: accumulated.hr },
     { label: 'RBI', value: accumulated.rbi },
     { label: 'BB',  value: accumulated.bb },
@@ -64,12 +67,13 @@ function RecentABTracker({ gamelog }) {
     { label: 'SB',  value: accumulated.sb },
   ];
 
-  const HL_STATS = ['AVG','OBP','SLG','OPS','HR','RBI'];
-
   return (
     <div className="pp-stats-section">
       <div className="pp-stats-title-row">
-        <span className="pp-stats-title">Recent AB Tracker</span>
+        <div>
+          <div className="pp-stats-title">Recent AB Tracker</div>
+          <div className="ab-tracker-meta">{accumulated.games} game{accumulated.games !== 1 ? 's' : ''} · {accumulated.ab} AB</div>
+        </div>
         <select
           className="ab-tracker-select"
           value={targetABs}
@@ -80,13 +84,22 @@ function RecentABTracker({ gamelog }) {
           ))}
         </select>
       </div>
-      <div className="ab-tracker-meta">
-        {accumulated.games} game{accumulated.games !== 1 ? 's' : ''} · {accumulated.ab} AB
+
+      {/* Rate stats — highlighted row */}
+      <div className="ab-tracker-rate-row">
+        {rateStats.map((s) => (
+          <div key={s.label} className="ab-tracker-rate-stat">
+            <div className="ab-tracker-rate-value">{s.value}</div>
+            <div className="ab-tracker-label">{s.label}</div>
+          </div>
+        ))}
       </div>
-      <div className="ab-tracker-grid">
-        {stats.map((s) => (
-          <div key={s.label} className={`ab-tracker-stat ${HL_STATS.includes(s.label) ? 'ab-tracker-hl' : ''}`}>
-            <div className="ab-tracker-value">{s.value}</div>
+
+      {/* Counting stats */}
+      <div className="ab-tracker-count-row">
+        {countingStats.map((s) => (
+          <div key={s.label} className="ab-tracker-count-stat">
+            <div className="ab-tracker-count-value">{s.value}</div>
             <div className="ab-tracker-label">{s.label}</div>
           </div>
         ))}
