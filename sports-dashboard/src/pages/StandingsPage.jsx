@@ -1,32 +1,123 @@
 import { useState, useEffect } from 'react';
 import { getStandings, SPORTS } from '../api/espn';
 
-const STANDING_COLS = {
-  mlb: [{ k:'W',hl:true },{ k:'L' },{ k:'PCT',hl:true },{ k:'GB' },{ k:'STRK' },{ k:'Home' },{ k:'AWAY' }],
-  nba: [{ k:'W',hl:true },{ k:'L' },{ k:'PCT',hl:true },{ k:'GB' },{ k:'STRK' },{ k:'Home' },{ k:'Road' }],
-  nfl: [{ k:'W',hl:true },{ k:'L' },{ k:'T' },{ k:'PCT',hl:true },{ k:'GB' },{ k:'STRK' },{ k:'Home' },{ k:'AWAY' }],
-  nhl: [{ k:'W',hl:true },{ k:'L' },{ k:'OTL' },{ k:'PCT',hl:true },{ k:'GB' },{ k:'STRK' },{ k:'Home' },{ k:'AWAY' }],
+/* ── Column configs matching ESPN ─────────────────────── */
+const COLS = {
+  mlb: [
+    { k:'W', label:'W', hl:true }, { k:'L', label:'L' },
+    { k:'PCT', label:'PCT', hl:true }, { k:'GB', label:'GB' },
+    { k:'Home', label:'HOME' }, { k:'AWAY', label:'AWAY' },
+    { k:'RS', label:'RS' }, { k:'RA', label:'RA' },
+    { k:'DIFF', label:'DIFF' }, { k:'STRK', label:'STRK' },
+    { k:'Last Ten', label:'L10' },
+  ],
+  nba: [
+    { k:'W', label:'W', hl:true }, { k:'L', label:'L' },
+    { k:'PCT', label:'PCT', hl:true }, { k:'GB', label:'GB' },
+    { k:'Home', label:'HOME' }, { k:'Road', label:'AWAY' },
+    { k:'vs. Div.', label:'DIV' }, { k:'vs. Conf.', label:'CONF' },
+    { k:'PPG', label:'PPG' }, { k:'OPP PPG', label:'OPP' },
+    { k:'DIFF', label:'DIFF' }, { k:'L10', label:'L10' },
+    { k:'STRK', label:'STRK' },
+  ],
+  nfl: [
+    { k:'W', label:'W', hl:true }, { k:'L', label:'L' },
+    { k:'T', label:'T' }, { k:'PCT', label:'PCT', hl:true },
+    { k:'Home', label:'HOME' }, { k:'Road', label:'AWAY' },
+    { k:'vs. Div.', label:'DIV' }, { k:'vs. Conf.', label:'CONF' },
+    { k:'PF', label:'PF' }, { k:'PA', label:'PA' },
+    { k:'DIFF', label:'DIFF' }, { k:'STRK', label:'STRK' },
+  ],
+  nhl: [
+    { k:'GP', label:'GP' }, { k:'W', label:'W', hl:true },
+    { k:'L', label:'L' }, { k:'OTL', label:'OTL' },
+    { k:'PTS', label:'PTS', hl:true }, { k:'ROW', label:'ROW' },
+    { k:'HOME', label:'HOME' }, { k:'AWAY', label:'AWAY' },
+    { k:'GF', label:'GF' }, { k:'GA', label:'GA' },
+    { k:'DIFF', label:'DIFF' }, { k:'L10', label:'L10' },
+    { k:'STRK', label:'STRK' },
+  ],
 };
 
 function getStatMap(entry) {
   const r = {};
   (entry.stats || []).forEach((s) => {
     const key = s.abbreviation || s.name;
-    if (key) { r[key] = s.displayValue; r[s.name] = s.displayValue; }
+    if (key) { r[key] = s.displayValue; }
+    if (s.name) { r[s.name] = s.displayValue; }
   });
   return r;
 }
 
-function StandingsTable({ sport }) {
+function StandingsGroup({ group, cols }) {
+  return (
+    <div className="standings-group">
+      <div className="standings-group-header">{group.name}</div>
+      <div className="standings-table-wrap">
+        <table className="standings-table">
+          <thead>
+            <tr>
+              <th className="standings-th standings-th-team">TEAM</th>
+              {cols.map((c) => (
+                <th key={c.k} className={`standings-th ${c.hl ? 'standings-th-hl' : ''}`}>{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {group.entries.map((entry, i) => {
+              const team = entry.team || {};
+              const stats = getStatMap(entry);
+              const logo = team.logos?.[0]?.href;
+              const strk = stats['STRK'] || stats['streak'] || '';
+              const isWStrk = strk.startsWith('W');
+              const clinch = stats['CLINCH'];
+              return (
+                <tr key={team.id || i} className="standings-tr">
+                  <td className="standings-td standings-td-team">
+                    {logo && <img src={logo} alt="" className="standings-logo" />}
+                    <div className="standings-team-info">
+                      <span className="standings-abbr">{team.abbreviation}</span>
+                      {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                    </div>
+                  </td>
+                  {cols.map((c) => {
+                    const val = stats[c.k] ?? '—';
+                    const isStrk = c.k === 'STRK';
+                    return (
+                      <td
+                        key={c.k}
+                        className={`standings-td ${c.hl ? 'standings-td-hl' : ''} ${isStrk && isWStrk ? 'standings-strk-w' : isStrk ? 'standings-strk-l' : ''}`}
+                      >
+                        {val}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SportStandings({ sport }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const cols = STANDING_COLS[sport] || STANDING_COLS.mlb;
+  const cols = COLS[sport] || COLS.mlb;
 
   useEffect(() => {
+    setLoading(true);
+    setData(null);
     getStandings(sport).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
   }, [sport]);
 
-  if (loading) return <div className="tp-loading">Loading…</div>;
+  if (loading) return (
+    <div className="standings-skeleton">
+      {[1,2,3].map((i) => <div key={i} className="skeleton-card" style={{height:200}} />)}
+    </div>
+  );
   if (!data) return <div className="tp-loading">Standings unavailable.</div>;
 
   const groups = [];
@@ -38,43 +129,8 @@ function StandingsTable({ sport }) {
   walk(data);
 
   return (
-    <div className="tp-standings-v2">
-      {groups.map((g, gi) => (
-        <div key={gi} className="tp-div-block">
-          <div className="tp-div-header">{g.name}</div>
-          <div className="tp-table-wrap">
-            <table className="tp-table">
-              <thead>
-                <tr>
-                  <th className="tp-th tp-th-team">TEAM</th>
-                  {cols.map((c) => <th key={c.k} className="tp-th">{c.k === 'Road' ? 'AWAY' : c.k}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {g.entries.map((entry, i) => {
-                  const team = entry.team || {};
-                  const stats = getStatMap(entry);
-                  const logo = team.logos?.[0]?.href;
-                  const strk = stats['STRK'] || stats['streak'] || '';
-                  return (
-                    <tr key={team.id || i} className="tp-tr">
-                      <td className="tp-td tp-td-team">
-                        {logo && <img src={logo} alt="" className="tp-standings-logo" />}
-                        <span className="tp-standings-abbr">{team.abbreviation || team.shortDisplayName}</span>
-                      </td>
-                      {cols.map((c) => (
-                        <td key={c.k} className={`tp-td ${c.hl ? 'tp-td-hl' : ''} ${c.k === 'STRK' && strk.startsWith('W') ? 'tp-strk-win' : c.k === 'STRK' ? 'tp-strk-loss' : ''}`}>
-                          {stats[c.k] ?? '—'}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+    <div className="standings-groups">
+      {groups.map((g, i) => <StandingsGroup key={i} group={g} cols={cols} />)}
     </div>
   );
 }
@@ -86,12 +142,16 @@ export default function StandingsPage() {
       <h1 className="page-title">Standings</h1>
       <div className="scores-sport-tabs">
         {Object.entries(SPORTS).map(([key, { label }]) => (
-          <button key={key} className={`ts-tab ${activeSport === key ? 'ts-tab-active' : ''}`} onClick={() => setActiveSport(key)}>
+          <button
+            key={key}
+            className={`ts-tab ${activeSport === key ? 'ts-tab-active' : ''}`}
+            onClick={() => setActiveSport(key)}
+          >
             {label}
           </button>
         ))}
       </div>
-      <StandingsTable sport={activeSport} />
+      <SportStandings sport={activeSport} />
     </div>
   );
 }
