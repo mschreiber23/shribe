@@ -137,7 +137,7 @@ function TickerCard({ game, sport, myTeamIds }) {
   );
 }
 
-/* ── Full grid card (expanded view) ───────────────────── */
+/* ── Full grid card — same design as ticker, just larger ── */
 function GridCard({ game, sport, myTeamIds }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
@@ -151,29 +151,77 @@ function GridCard({ game, sport, myTeamIds }) {
   const isPre = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
   const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
+  const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const sit = comp?.situation || {};
+  const outs = sit.outs ?? null;
+  const onFirst = !!sit.onFirst;
+  const onSecond = !!sit.onSecond;
+  const onThird = !!sit.onThird;
+
+  if (isPre) return (
+    <button className={`grid-card ${isMine ? 'grid-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="grid-card-top">
+        <span className="grid-card-time">{shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}</span>
+      </div>
+      <div className="grid-card-teams">
+        {[away, home].filter(Boolean).map((c) => (
+          <div key={c.team?.id} className={`grid-card-team ${myTeamIds.includes(c.team?.id) ? 'grid-my-team' : ''}`}>
+            <div className="grid-team-left">
+              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="grid-logo" />}
+              <span className="grid-abbr">{c.team?.abbreviation}</span>
+            </div>
+            {c.records?.[0]?.summary && <span className="grid-record">{c.records[0].summary}</span>}
+          </div>
+        ))}
+      </div>
+      {broadcast && <div className="grid-card-bottom"><span className="grid-broadcast">{broadcast}</span></div>}
+    </button>
+  );
+
+  if (isLive) return (
+    <button className={`grid-card grid-card-live ${isMine ? 'grid-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="grid-card-top">
+        <span className="grid-live"><span className="live-dot" />{shortDetail}</span>
+        {broadcast && <span className="grid-broadcast">{broadcast}</span>}
+      </div>
+      <div className="grid-card-teams">
+        {[away, home].filter(Boolean).map((c) => (
+          <div key={c.team?.id} className={`grid-card-team ${myTeamIds.includes(c.team?.id) ? 'grid-my-team' : ''}`}>
+            <div className="grid-team-left">
+              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="grid-logo" />}
+              <span className="grid-abbr">{c.team?.abbreviation}</span>
+            </div>
+            <span className="grid-score">{getScore(c) ?? '0'}</span>
+          </div>
+        ))}
+      </div>
+      <div className="grid-card-bottom grid-card-bottom-right">
+        <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
+        {outs !== null && <span className="grid-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>}
+      </div>
+    </button>
+  );
 
   return (
-    <button
-      className={`scores-card ${isMine ? 'scores-card-mine' : ''} ${isLive ? 'scores-card-live' : ''}`}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
-    >
-      <div className="scores-card-status">
-        {isLive && <span className="badge badge-live" style={{fontSize:10}}><span className="live-dot"/>{shortDetail}</span>}
-        {isFinal && <span className="badge badge-final" style={{fontSize:10}}>Final</span>}
-        {isPre && <span className="scores-time">{shortDetail}</span>}
+    <button className={`grid-card ${isMine ? 'grid-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="grid-card-top">
+        <span className="grid-final">Final</span>
       </div>
-      {[away, home].filter(Boolean).map((c) => (
-        <div key={c.team?.id} className={`scores-team-row ${c.winner ? 'scores-winner' : ''}`}>
-          <div className="scores-team-left">
-            {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="scores-team-logo" />}
-            <div>
-              <span className={`scores-team-name ${myTeamIds.includes(c.team?.id) ? 'scores-my-team' : ''}`}>{c.team?.abbreviation}</span>
-              {c.records?.[0]?.summary && <span className="scores-record"> {c.records[0].summary}</span>}
+      <div className="grid-card-teams">
+        {[away, home].filter(Boolean).map((c) => (
+          <div key={c.team?.id} className={`grid-card-team ${c.winner ? 'grid-winner' : ''} ${myTeamIds.includes(c.team?.id) ? 'grid-my-team' : ''}`}>
+            <div className="grid-team-left">
+              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="grid-logo" />}
+              <div>
+                <span className="grid-abbr">{c.team?.abbreviation}</span>
+                {c.records?.[0]?.summary && <span className="grid-record-sm"> {c.records[0].summary}</span>}
+              </div>
             </div>
+            <span className={`grid-score ${c.winner ? 'grid-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
           </div>
-          {(isLive || isFinal) && <span className="scores-score">{getScore(c) ?? '0'}</span>}
-        </div>
-      ))}
+        ))}
+      </div>
+      <div className="grid-card-bottom" />
     </button>
   );
 }
