@@ -2708,6 +2708,14 @@ body {
   padding: 0;
 }
 
+.standings-div-badge {
+  font-size: 9px; font-weight: 800;
+  background: color-mix(in srgb, var(--accent2) 20%, transparent);
+  color: var(--accent2);
+  border: 1px solid var(--accent2);
+  padding: 1px 4px; border-radius: 4px; margin-left: 4px;
+}
+.standings-wc-in { color: var(--live); font-weight: 700; }
 .standings-wc-badge {
   font-size: 9px;
   font-weight: 800;

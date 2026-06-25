@@ -234,6 +234,93 @@ function buildMlbWildCard(data, cols, sortKey, sortDir, onSort) {
   return null; // handled separately with two fetches
 }
 
+/* Format GBP: positive = "+X", zero/null = "—", negative = "-X" */
+function formatGBP(val) {
+  if (val == null || val === '—' || val === '-') return '—';
+  const n = parseFloat(val);
+  if (isNaN(n)) return val;
+  if (n === 0) return '—';
+  return n > 0 ? `+${val}` : `${val}`;
+}
+
+function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir, onSort }) {
+  // Sort by GBP descending (highest = best position)
+  const sorted = [...entries].sort((a, b) => {
+    const sa = getStatMap(a); const sb = getStatMap(b);
+    const va = parseFloat(sa['GBP'] ?? sa['PTS'] ?? -999);
+    const vb = parseFloat(sb['GBP'] ?? sb['PTS'] ?? -999);
+    return vb - va;
+  });
+
+  // Count WC spots among non-div-leaders
+  let wcCount = 0;
+  const markedRows = sorted.map((entry) => {
+    const isDivLeader = divLeaderIds?.has(entry.team?.id);
+    let isWC = false, isLast = false;
+    if (!isDivLeader) {
+      wcCount++;
+      if (wcCount <= wcSpots) isWC = true;
+      if (wcCount === wcSpots) isLast = true;
+    }
+    return { entry, isDivLeader, isWC, isLast };
+  });
+
+  return (
+    <div className="standings-table-wrap">
+      <table className="standings-table">
+        <thead>
+          <tr>
+            <th className="standings-th standings-th-team">TEAM</th>
+            {cols.map((c) => (
+              <th key={c.k} className={`standings-th standings-th-sortable ${c.hl ? 'standings-th-hl' : ''} ${sortKey === c.k ? 'standings-th-sorted' : ''}`}
+                onClick={() => onSort(c.k, c.rev)}>
+                {c.label}<span className="standings-sort-icon">{sortKey === c.k ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ' ↕'}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {markedRows.map(({ entry, isDivLeader, isWC, isLast }, i) => {
+            const team = entry.team || {};
+            const stats = getStatMap(entry);
+            const logo = team.logos?.[0]?.href;
+            const strk = stats['STRK'] || '';
+            const isWStrk = strk.startsWith('W');
+            const clinch = stats['CLINCH'];
+            const isOut = !isDivLeader && !isWC;
+            return (
+              <>
+                <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
+                  <td className="standings-td standings-td-team">
+                    {logo && <img src={logo} alt="" className="standings-logo" />}
+                    <div className="standings-team-info">
+                      <span className="standings-abbr">{team.abbreviation}</span>
+                      {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                      {isDivLeader && <span className="standings-div-badge">DIV</span>}
+                      {isWC && !isDivLeader && <span className="standings-wc-badge">WC</span>}
+                    </div>
+                  </td>
+                  {cols.map((c) => {
+                    let val = stats[c.k] ?? '—';
+                    if (c.k === 'GBP') val = formatGBP(val);
+                    const isStrk = c.k === 'STRK';
+                    return (
+                      <td key={c.k} className={`standings-td ${c.hl ? 'standings-td-hl' : ''} ${isStrk && isWStrk ? 'standings-strk-w' : isStrk ? 'standings-strk-l' : ''} ${c.k === 'GBP' && parseFloat(stats['GBP']) > 0 ? 'standings-wc-in' : ''}`}>
+                        {val}
+                      </td>
+                    );
+                  })}
+                </tr>
+                {isLast && <tr key={`sep-${i}`} className="standings-wc-separator"><td colSpan={cols.length + 1} /></tr>}
+              </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
   const [divData, setDivData] = useState(null);
   const [leagueData, setLeagueData] = useState(null);
@@ -255,19 +342,20 @@ function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
 
   if (sport === 'mlb') {
     if (!leagueData) return <div className="tp-loading">No data.</div>;
-    // Get division leaders from div data
+
+    // Identify division leaders (top by PCT in each division)
     const divLeaderIds = new Set();
     const walkDiv = (node) => {
       const entries = node.standings?.entries || [];
       if (entries.length > 0) {
-        const sorted = sortEntries(entries, 'PCT', 'desc');
-        if (sorted[0]) divLeaderIds.add(sorted[0].team?.id);
+        const top = sortEntries(entries, 'PCT', 'desc')[0];
+        if (top) divLeaderIds.add(top.team?.id);
       }
       (node.children || []).forEach(walkDiv);
     };
     if (divData) walkDiv(divData);
 
-    // Build league groups with non-leaders sorted for WC
+    // League groups (AL + NL)
     const groups = [];
     const walkLeague = (node) => {
       const entries = node.standings?.entries || [];
@@ -276,49 +364,23 @@ function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
     };
     walkLeague(leagueData);
 
-    // MLB has 3 WC spots per league
-    const WC_SPOTS = 3;
+    const wcCols = COLS['mlb_wc'] || cols;
+
     return (
       <div className="standings-groups">
-        {groups.map((g, i) => {
-          // Separate div leaders from WC contenders, sort all by PCT
-          const allSorted = sortEntries(g.entries, 'PCT', 'desc');
-          const divLeaders = allSorted.filter((e) => divLeaderIds.has(e.team?.id));
-          const wcContenders = allSorted.filter((e) => !divLeaderIds.has(e.team?.id));
-
-          return (
-            <div key={i} className="standings-group">
-              <div className="standings-group-header">{g.name}</div>
-              {divLeaders.length > 0 && (
-                <div className="standings-wc-section-label">Division Leaders</div>
-              )}
-              <StandingsGroup group={{ name: '', entries: divLeaders }} cols={cols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-              <div className="standings-wc-section-label">Wild Card Race</div>
-              <StandingsGroup group={{ name: '', entries: wcContenders }} cols={cols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} wcSpots={WC_SPOTS} />
-            </div>
-          );
-        })}
+        {groups.map((g, i) => (
+          <div key={i} className="standings-group">
+            <div className="standings-group-header">{g.name}</div>
+            <WildCardTable entries={g.entries} cols={wcCols} divLeaderIds={divLeaderIds} wcSpots={3} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (sport === 'nhl') {
     if (!divData) return <div className="tp-loading">No data.</div>;
-    // Build conference → division → teams map
-    const conferences = {};
-    const walkConf = (node, conf = '', div = '') => {
-      const name = node.name || '';
-      const entries = node.standings?.entries || [];
-      if (name.includes('Conference')) conf = name;
-      if (name.includes('Division')) div = name;
-      if (entries.length > 0) {
-        if (!conferences[conf]) conferences[conf] = { divs: {} };
-        conferences[conf].divs[div] = entries;
-      }
-      (node.children || []).forEach((c) => walkConf(c, conf, div));
-    };
-    walkDiv(divData);
-    // re-walk properly
+
     const confMap = {};
     const walkNHL = (node, conf = '', div = '') => {
       const name = node.name || '';
@@ -334,13 +396,10 @@ function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
     walkNHL(divData);
 
     const nhlCols = cols;
-    const DIV_SPOTS = 3; // top 3 per division qualify
-    const WC_SPOTS = 2;  // 2 wild card spots per conference
 
     return (
       <div className="standings-groups">
         {Object.entries(confMap).map(([conf, teams]) => {
-          // Group by division, take top 3 from each
           const byDiv = {};
           teams.forEach((t) => {
             if (!byDiv[t._div]) byDiv[t._div] = [];
@@ -350,8 +409,8 @@ function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
           const divQualifiers = new Set();
           const divGroups = Object.entries(byDiv).map(([div, dteams]) => {
             const sorted = sortEntries(dteams, 'PTS', 'desc');
-            sorted.slice(0, DIV_SPOTS).forEach((t) => divQualifiers.add(t.team?.id));
-            return { div, top3: sorted.slice(0, DIV_SPOTS) };
+            sorted.slice(0, 3).forEach((t) => divQualifiers.add(t.team?.id));
+            return { div, top3: sorted.slice(0, 3) };
           });
 
           const wcPool = sortEntries(teams.filter((t) => !divQualifiers.has(t.team?.id)), 'PTS', 'desc');
@@ -366,7 +425,7 @@ function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
                 </div>
               ))}
               <div className="standings-wc-section-label">Wild Card</div>
-              <StandingsGroup group={{ name: '', entries: wcPool }} cols={nhlCols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} wcSpots={WC_SPOTS} />
+              <StandingsGroup group={{ name: '', entries: wcPool }} cols={nhlCols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} wcSpots={2} />
             </div>
           );
         })}
