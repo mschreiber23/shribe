@@ -65,10 +65,8 @@ function TickerCard({ game, sport, myTeamIds }) {
     <button className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
         <span className="ticker-pregame-time">
-          {/* Strip "6/25 - " date prefix, keep just the time */}
           {shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}
         </span>
-        {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
       <div className="ticker-teams">
         {[away, home].filter(Boolean).map((c) => (
@@ -81,7 +79,9 @@ function TickerCard({ game, sport, myTeamIds }) {
           </div>
         ))}
       </div>
-      <div className="ticker-bottom" />
+      <div className="ticker-bottom">
+        {broadcast && <span className="ticker-broadcast-bottom">{broadcast}</span>}
+      </div>
     </button>
   );
 

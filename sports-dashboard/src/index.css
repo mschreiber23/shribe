@@ -1445,6 +1445,7 @@ body {
 .mini-base { fill: var(--bg3); stroke: rgba(255,255,255,0.2); stroke-width: 1.5; }
 .mini-base-on { fill: #f59e0b; stroke: #fbbf24; }
 .ticker-outs { font-size: 9px; color: var(--text2); font-weight: 600; white-space: nowrap; }
+.ticker-broadcast-bottom { font-size: 9px; color: var(--text2); }
 
 .ticker-skeleton {
   width: 128px; height: 82px; flex-shrink: 0;
