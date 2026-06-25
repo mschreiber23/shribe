@@ -18,10 +18,9 @@ function formatDisplay(date) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export default function MyTeams() {
+export default function MyTeams({ editMode = false, setEditMode }) {
   const { favorites, addTeam, removeTeam, reorderTeam } = useFavorites();
   const [showPicker, setShowPicker] = useState(false);
-  const [editMode, setEditMode] = useState(false);
 
   // Date navigation
   const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
@@ -70,20 +69,11 @@ export default function MyTeams() {
           <h2 className="section-title">My Teams</h2>
         </div>
         <div className="header-actions">
-          {favorites.teams.length > 0 && (
-            <button
-              className={editMode ? 'btn-primary' : 'btn-ghost'}
-              onClick={() => { setEditMode((v) => !v); setShowPicker(false); }}
-            >
-              {editMode ? 'Done' : 'Edit'}
+          {editMode && (
+            <button className="btn-primary" onClick={() => { setShowPicker((v) => !v); }}>
+              {showPicker ? 'Done' : '+ Add Team'}
             </button>
           )}
-          <button
-            className="btn-primary"
-            onClick={() => { setShowPicker((v) => !v); setEditMode(false); }}
-          >
-            {showPicker ? 'Done' : '+ Add Team'}
-          </button>
         </div>
       </div>
 

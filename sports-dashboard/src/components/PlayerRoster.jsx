@@ -3,10 +3,9 @@ import { useFavorites } from '../context/FavoritesContext';
 import PlayerCard from './PlayerCard';
 import { getTeamRoster, searchTeams, SPORTS } from '../api/espn';
 
-export default function PlayerRoster() {
+export default function PlayerRoster({ editMode = false, setEditMode }) {
   const { favorites, addPlayer, removePlayer, reorderPlayer, togglePlayerVisibility } = useFavorites();
 
-  const [editMode, setEditMode]       = useState(false);
   const [showPicker, setShowPicker]   = useState(false);
   const [pickerSport, setPickerSport] = useState('mlb');
   const [teamQuery, setTeamQuery]     = useState('');
@@ -90,17 +89,11 @@ export default function PlayerRoster() {
       <div className="section-header">
         <h2 className="section-title">My Players</h2>
         <div className="header-actions">
-          {favorites.players.length > 0 && (
-            <button
-              className={editMode ? 'btn-primary' : 'btn-ghost'}
-              onClick={() => { setEditMode((v) => !v); setShowPicker(false); }}
-            >
-              {editMode ? 'Done' : 'Edit'}
+          {editMode && (
+            <button className="btn-primary" onClick={() => { showPicker ? close() : setShowPicker(true); }}>
+              {showPicker ? 'Done' : '+ Add Player'}
             </button>
           )}
-          <button className="btn-primary" onClick={() => { showPicker ? close() : setShowPicker(true); setEditMode(false); }}>
-            {showPicker ? 'Done' : '+ Add Player'}
-          </button>
         </div>
       </div>
 

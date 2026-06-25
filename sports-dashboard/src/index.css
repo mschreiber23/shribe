@@ -3197,6 +3197,28 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 
+/* ── Dashboard Edit Button ── */
+.dashboard-edit-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text2);
+  padding: 12px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.2px;
+}
+.dashboard-edit-btn:hover { border-color: var(--accent2); color: var(--text); }
+.dashboard-edit-btn-active {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg2));
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--accent2);
+}
+
 /* ── Footer ── */
 .footer {
   margin-top: auto;

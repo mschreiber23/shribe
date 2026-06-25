@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { FavoritesProvider } from './context/FavoritesContext';
+import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import { BottomNav, TopNav } from './components/Nav';
 import InstallBanner from './components/InstallBanner';
 import MyTeams from './components/MyTeams';
@@ -18,11 +19,23 @@ import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
 function Dashboard() {
+  const [editMode, setEditMode] = useState(false);
+  const { favorites } = useFavorites();
+  const hasContent = favorites.teams.length > 0 || favorites.players.length > 0;
+
   return (
     <main className="main">
       <TodaysScores />
-      <MyTeams />
-        <PlayerRoster />
+      <MyTeams editMode={editMode} setEditMode={setEditMode} />
+      <PlayerRoster editMode={editMode} setEditMode={setEditMode} />
+      {hasContent && (
+        <button
+          className={`dashboard-edit-btn ${editMode ? 'dashboard-edit-btn-active' : ''}`}
+          onClick={() => setEditMode((v) => !v)}
+        >
+          {editMode ? '✓ Done Editing' : '✎ Edit Dashboard'}
+        </button>
+      )}
     </main>
   );
 }
