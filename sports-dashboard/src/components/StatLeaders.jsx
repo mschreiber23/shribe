@@ -98,10 +98,10 @@ function CategoryList({ leaders, catKey, sport, loading }) {
 }
 
 /* ── Main Component ────────────────────────────────── */
-export default function StatLeaders() {
+export default function StatLeaders({ embedded = false }) {
   const [activeSport, setActiveSport] = useState('mlb');
   const [activeCategory, setActiveCategory] = useState(CATEGORIES['mlb'][0].key);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(embedded);
 
   // Per-sport cache: { [sport]: { [catKey]: leaders[] } }
   const [leaderCache, setLeaderCache] = useState({});
@@ -178,53 +178,37 @@ export default function StatLeaders() {
   const currentLeaders = sportData?.[activeCategory] || [];
   const isLoading = loadingSport && !sportData;
 
+  const inner = (
+    <>
+      <div className="ts-tabs">
+        {Object.entries(SPORTS).map(([key, { label }]) => (
+          <button key={key} className={`ts-tab ${activeSport === key ? 'ts-tab-active' : ''}`} onClick={() => setActiveSport(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="sl-cat-tabs">
+        {categories.map((cat) => (
+          <button key={cat.key} className={`sl-cat-tab ${activeCategory === cat.key ? 'sl-cat-tab-active' : ''}`} onClick={() => setActiveCategory(cat.key)}>
+            {cat.label}
+          </button>
+        ))}
+      </div>
+      <CategoryList leaders={currentLeaders} catKey={activeCategory} sport={activeSport} loading={isLoading} />
+    </>
+  );
+
+  if (embedded) return <div className="section">{inner}</div>;
+
   return (
     <section className="section">
-      {/* Collapsed header */}
       <button className="ts-header" onClick={() => setExpanded((v) => !v)}>
         <div className="ts-header-left">
           <h2 className="section-title" style={{ margin: 0 }}>Stat Leaders</h2>
         </div>
         <span className="ts-chevron">{expanded ? '▲' : '▼'}</span>
       </button>
-
-      {expanded && (
-        <>
-          {/* Sport tabs */}
-          <div className="ts-tabs">
-            {Object.entries(SPORTS).map(([key, { label }]) => (
-              <button
-                key={key}
-                className={`ts-tab ${activeSport === key ? 'ts-tab-active' : ''}`}
-                onClick={() => setActiveSport(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Category tabs */}
-          <div className="sl-cat-tabs">
-            {categories.map((cat) => (
-              <button
-                key={cat.key}
-                className={`sl-cat-tab ${activeCategory === cat.key ? 'sl-cat-tab-active' : ''}`}
-                onClick={() => setActiveCategory(cat.key)}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Leaders list */}
-          <CategoryList
-            leaders={currentLeaders}
-            catKey={activeCategory}
-            sport={activeSport}
-            loading={isLoading}
-          />
-        </>
-      )}
+      {expanded && inner}
     </section>
   );
 }
