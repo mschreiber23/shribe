@@ -2,19 +2,9 @@ import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
 import { useFavorites } from '../context/FavoritesContext';
 
-function StatPill({ label, value }) {
-  return (
-    <div className="stat-pill">
-      <div className="stat-value">{value ?? '—'}</div>
-      <div className="stat-label">{label}</div>
-    </div>
-  );
-}
-
+/* ── Stat extraction (unchanged logic) ─────────────── */
 function extractSeasonStats(statsData, sport) {
   if (!statsData) return [];
-
-  // ESPN core API v2: splits.categories[].stats[{abbreviation, displayValue}]
   const categories = statsData.splits?.categories || [];
 
   const getCatStats = (cat) => {
@@ -30,30 +20,26 @@ function extractSeasonStats(statsData, sport) {
     const s = getCatStats(pitching || batting || categories[0]);
     if (pitching) return [
       { label: 'ERA', value: s['ERA'] }, { label: 'W', value: s['W'] },
-      { label: 'L', value: s['L'] },   { label: 'SO', value: s['SO'] },
-      { label: 'IP', value: s['IP'] }, { label: 'WHIP', value: s['WHIP'] },
+      { label: 'SO',  value: s['SO'] },  { label: 'IP',  value: s['IP'] },
+      { label: 'L',   value: s['L'] },   { label: 'WHIP',value: s['WHIP'] },
     ];
     return [
       { label: 'AVG', value: s['AVG'] }, { label: 'OPS', value: s['OPS'] },
-      { label: 'HR', value: s['HR'] },   { label: 'RBI', value: s['RBI'] },
-      { label: 'R', value: s['R'] },     { label: 'SB', value: s['SB'] },
+      { label: 'HR',  value: s['HR'] },  { label: 'RBI', value: s['RBI'] },
+      { label: 'R',   value: s['R'] },   { label: 'SB',  value: s['SB'] },
     ];
   }
 
   if (sport === 'nba') {
-    // Use pre-merged stats from bio + defensive core API (set by getPlayerStats)
+    // Use pre-merged stats from bio + defensive (set by getPlayerStats)
     const merged = statsData._merged;
     if (merged) {
       return [
-        { label: 'PTS', value: merged['PTS'] },
-        { label: 'REB', value: merged['REB'] },
-        { label: 'AST', value: merged['AST'] },
-        { label: 'STL', value: merged['STL'] },
-        { label: 'BLK', value: merged['BLK'] },
-        { label: 'FG%', value: merged['FG%'] },
+        { label: 'PTS', value: merged['PTS'] }, { label: 'REB', value: merged['REB'] },
+        { label: 'AST', value: merged['AST'] }, { label: 'STL', value: merged['STL'] },
+        { label: 'BLK', value: merged['BLK'] }, { label: 'FG%', value: merged['FG%'] },
       ];
     }
-    // Fallback: merge categories
     const s = {};
     categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
     const off = categories.find((c) => c.name === 'offensive');
@@ -73,7 +59,6 @@ function extractSeasonStats(statsData, sport) {
     const general   = categories.find((c) => c.name === 'general');
     const gp = getCatStats(general)['GP'] || '';
 
-    // Pick primary category by position
     const QB_POS = ['QB'];
     const RB_POS = ['RB', 'HB', 'FB'];
     const REC_POS = ['WR', 'TE', 'FB'];
@@ -91,19 +76,16 @@ function extractSeasonStats(statsData, sport) {
       const s = getCatStats(receiving);
       return [{ label: 'GP', value: gp }, { label: 'REC', value: s['REC'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'AVG', value: s['AVG'] }];
     }
-    // Fallback: use whichever cat has most data
     const src = passing || rushing || receiving || categories[0];
     const s = getCatStats(src);
     return [{ label: 'GP', value: gp }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }];
   }
 
   if (sport === 'nhl') {
-    // Merge all categories — G/GP/+/- in 'general', A/PTS in 'offensive'
     const s = {};
     categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
-    // Prefer offensive G over general G (offensive is per-season, general can include playoffs)
-    const offCat = categories.find((c) => c.name === 'offensive');
-    if (offCat) Object.assign(s, getCatStats(offCat));
+    const off = categories.find((c) => c.name === 'offensive');
+    if (off) Object.assign(s, getCatStats(off));
     return [{ label: 'G', value: s['G'] }, { label: 'A', value: s['A'] }, { label: 'PTS', value: s['PTS'] }, { label: '+/-', value: s['+/-'] }];
   }
 
@@ -111,53 +93,61 @@ function extractSeasonStats(statsData, sport) {
   return Object.entries(s).slice(0, 6).map(([label, value]) => ({ label, value }));
 }
 
+/* ── Trading Card Component ─────────────────────────── */
 export default function PlayerCard({ player, sport }) {
   const { removePlayer } = useFavorites();
   const { stats, loading, error } = usePlayerStats(sport, player.id);
 
-  // Attach position to stats data so extractSeasonStats can use it for NFL
   if (stats) stats._position = player.position || '';
   const seasonStats = extractSeasonStats(stats, sport);
 
+  // Team color for gradient — stored on player or fall back to accent
+  const teamColor = player.teamColor ? `#${player.teamColor}` : '#7c3aed';
+
   return (
-    <div className="player-card">
-        <div className="player-card-header">
-      <Link to={`/player/${sport}/${player.id}`} className="player-card-link">
-      <div className="player-avatar-wrap">
+    <div className="sports-card">
+      {/* Shine overlay */}
+      <div className="sports-card-shine" />
+
+      {/* Remove button */}
+      <button className="sports-card-remove" onClick={() => removePlayer(player.id)} title="Remove">×</button>
+
+      {/* Photo area */}
+      <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">
+        <div className="sports-card-photo-wrap" style={{ '--card-color': teamColor }}>
           {player.headshot ? (
-            <img src={player.headshot} alt={player.displayName} className="player-avatar" />
+            <img src={player.headshot} alt={player.displayName} className="sports-card-photo" />
           ) : (
-            <div className="player-avatar-placeholder">{player.displayName?.[0]}</div>
+            <div className="sports-card-photo-placeholder">{player.displayName?.[0]}</div>
           )}
+          {/* Gradient fade at bottom of photo */}
+          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 40%, ${teamColor} 100%)` }} />
         </div>
-        <div className="player-meta">
-          <div className="player-name">{player.displayName}</div>
-          <div className="player-pos">{player.position}</div>
+
+        {/* Player info strip */}
+        <div className="sports-card-info" style={{ background: teamColor }}>
+          <div className="sports-card-name">{player.displayName}</div>
+          <div className="sports-card-meta">{player.position} · {player.teamName?.split(' ').pop()}</div>
         </div>
       </Link>
-        <button
-          className="remove-btn"
-          onClick={() => removePlayer(player.id)}
-          title="Remove player"
-        >
-          ×
-        </button>
-      </div>
 
-      <div className="player-stats-section">
-        <div className="stats-label">Season Stats</div>
-        {loading && <div className="stats-loading">Loading stats…</div>}
-        {error && <div className="stats-error">{error}</div>}
-        {!loading && !error && seasonStats.length === 0 && (
-          <div className="stats-error">No stats available.</div>
-        )}
+      {/* Stats section */}
+      <div className="sports-card-stats">
+        {loading && <div className="sports-card-loading">Loading…</div>}
         {!loading && !error && seasonStats.length > 0 && (
-          <div className="stat-pills">
+          <div className="sports-card-stat-grid">
             {seasonStats.map((s) => (
-              <StatPill key={s.label} label={s.label} value={s.value} />
+              <div key={s.label} className="sports-card-stat">
+                <div className="sports-card-stat-value">{s.value ?? '—'}</div>
+                <div className="sports-card-stat-label">{s.label}</div>
+              </div>
             ))}
           </div>
         )}
+        {!loading && (error || seasonStats.length === 0) && (
+          <div className="sports-card-loading">No stats available</div>
+        )}
+        <div className="sports-card-season">2025-26 Season</div>
       </div>
     </div>
   );

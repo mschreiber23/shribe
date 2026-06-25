@@ -304,11 +304,174 @@ body {
   border-top: 1px solid var(--border);
 }
 
-/* ── Player Cards ── */
+/* ── Player Cards (Trading Card Style) ── */
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 16px;
+}
+
+.sports-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  aspect-ratio: 2.5 / 3.5;
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+}
+.sports-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* Holographic shine overlay */
+.sports-card-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.03) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 16px;
+}
+
+.sports-card-remove {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 20;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: all 0.15s;
+}
+.sports-card-remove:hover { background: var(--danger); color: #fff; }
+
+.sports-card-photo-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  min-height: 0;
+}
+
+.sports-card-photo-wrap {
+  position: relative;
+  flex: 1;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--card-color, #7c3aed) 30%, #1a1a2e) 0%,
+    color-mix(in srgb, var(--card-color, #7c3aed) 15%, #0d0d1a) 100%
+  );
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sports-card-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.sports-card-photo-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px; font-weight: 900; color: rgba(255,255,255,0.3);
+}
+
+.sports-card-fade {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 50%;
+  pointer-events: none;
+}
+
+.sports-card-info {
+  padding: 8px 10px 6px;
+  position: relative;
+  z-index: 5;
+}
+.sports-card-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.2;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sports-card-meta {
+  font-size: 10px;
+  color: rgba(255,255,255,0.75);
+  font-weight: 600;
+  margin-top: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sports-card-stats {
+  background: var(--bg2);
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.sports-card-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.sports-card-stat { text-align: center; padding: 3px 0; }
+.sports-card-stat-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.sports-card-stat-label {
+  font-size: 9px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.sports-card-season {
+  font-size: 9px;
+  color: var(--text2);
+  text-align: center;
+  margin-top: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.6;
+}
+
+.sports-card-loading {
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+  padding: 6px 0;
 }
 
 .player-card {

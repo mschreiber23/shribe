@@ -89,7 +89,6 @@ export default function PlayerRoster() {
       <div className="section-header">
         <div>
           <h2 className="section-title">My Players</h2>
-          <p className="section-sub">Season stats</p>
         </div>
         <button className="btn-primary" onClick={() => showPicker ? close() : setShowPicker(true)}>
           {showPicker ? 'Done' : '+ Add Player'}
