@@ -38,89 +38,118 @@ function roundStat(val, key = '') {
 }
 
 /* ── Recent AB Tracker ───────────────────────────────── */
+function accumulateStats(games) {
+  let ab=0,h=0,hr=0,rbi=0,bb=0,so=0,db=0,tr=0,r=0,sb=0;
+  for (const g of games) {
+    ab  += parseInt(g.stats['AB']  || 0);
+    h   += parseInt(g.stats['H']   || 0);
+    hr  += parseInt(g.stats['HR']  || 0);
+    rbi += parseInt(g.stats['RBI'] || 0);
+    bb  += parseInt(g.stats['BB']  || 0);
+    so  += parseInt(g.stats['SO']  || g.stats['K'] || 0);
+    db  += parseInt(g.stats['2B']  || 0);
+    tr  += parseInt(g.stats['3B']  || 0);
+    r   += parseInt(g.stats['R']   || 0);
+    sb  += parseInt(g.stats['SB']  || 0);
+  }
+  const fmt3 = (n) => n < 1 ? n.toFixed(3).replace(/^0\./, '.') : n.toFixed(3);
+  const avg = ab > 0 ? fmt3(h / ab) : '.000';
+  const obp = (ab+bb) > 0 ? fmt3((h+bb)/(ab+bb)) : '.000';
+  const tb  = (h-db-tr-hr) + 2*db + 3*tr + 4*hr;
+  const slg = ab > 0 ? fmt3(tb / ab) : '.000';
+  const opsN = (parseFloat('0'+obp) + parseFloat('0'+slg));
+  const ops = fmt3(opsN);
+  return { ab, h, hr, rbi, bb, so, r, sb, avg, obp, slg, ops, games: games.length };
+}
+
 function RecentABTracker({ gamelog }) {
-  const [targetABs, setTargetABs] = useState(20);
+  const [searchMode, setSearchMode] = useState('ab'); // 'ab' | 'games'
+  const [abInput,    setAbInput]    = useState('20');
+  const [gamesInput, setGamesInput] = useState('10');
 
-  // Accumulate games from most recent until we hit target AB count
-  const accumulated = (() => {
-    let ab = 0, h = 0, hr = 0, rbi = 0, bb = 0, so = 0, doubles = 0, triples = 0, r = 0, sb = 0;
-    const gamesUsed = [];
-
-    for (const g of gamelog) {
-      if (ab >= targetABs) break;
-      const gAB  = parseInt(g.stats['AB']  || 0);
-      const gH   = parseInt(g.stats['H']   || 0);
-      const gHR  = parseInt(g.stats['HR']  || 0);
-      const gRBI = parseInt(g.stats['RBI'] || 0);
-      const gBB  = parseInt(g.stats['BB']  || 0);
-      const gSO  = parseInt(g.stats['SO'] || g.stats['K'] || 0);
-      const g2B  = parseInt(g.stats['2B']  || 0);
-      const g3B  = parseInt(g.stats['3B']  || 0);
-      const gR   = parseInt(g.stats['R']   || 0);
-      const gSB  = parseInt(g.stats['SB']  || 0);
-
-      ab  += gAB;
-      h   += gH;
-      hr  += gHR;
-      rbi += gRBI;
-      bb  += gBB;
-      so  += gSO;
-      doubles += g2B;
-      triples += g3B;
-      r   += gR;
-      sb  += gSB;
-      gamesUsed.push(g);
+  const trimmedGames = (() => {
+    if (searchMode === 'games') {
+      const n = Math.max(1, parseInt(gamesInput) || 10);
+      return gamelog.slice(0, n);
+    } else {
+      const target = Math.max(1, parseInt(abInput) || 20);
+      let ab = 0;
+      const result = [];
+      for (const g of gamelog) {
+        if (ab >= target) break;
+        ab += parseInt(g.stats['AB'] || 0);
+        result.push(g);
+      }
+      return result;
     }
-
-    const avg = ab > 0 ? (h / ab).toFixed(3).replace(/^0\./, '.') : '.000';
-    const obp = (ab + bb) > 0 ? ((h + bb) / (ab + bb)).toFixed(3).replace(/^0\./, '.') : '.000';
-    const singles = h - doubles - triples - hr;
-    const tb = singles + 2 * doubles + 3 * triples + 4 * hr;
-    const slg = ab > 0 ? (tb / ab).toFixed(3).replace(/^0\./, '.') : '.000';
-    const ops = ab > 0
-      ? ((parseFloat(obp.startsWith('.') ? '0'+obp : obp) + parseFloat(slg.startsWith('.') ? '0'+slg : slg))).toFixed(3).replace(/^0\./, '.')
-      : '.000';
-
-    return { ab, h, hr, rbi, bb, so, r, sb, avg, obp, slg, ops, games: gamesUsed.length };
   })();
 
-  // Two rows: rate stats on top, counting stats below
-  const rateStats    = [
-    { label: 'AVG', value: accumulated.avg },
-    { label: 'OBP', value: accumulated.obp },
-    { label: 'SLG', value: accumulated.slg },
-    { label: 'OPS', value: accumulated.ops },
+  const acc = accumulateStats(trimmedGames);
+
+  const rateStats = [
+    { label:'AVG', value:acc.avg }, { label:'OBP', value:acc.obp },
+    { label:'SLG', value:acc.slg }, { label:'OPS', value:acc.ops },
   ];
   const countingStats = [
-    { label: 'AB',  value: accumulated.ab },
-    { label: 'H',   value: accumulated.h },
-    { label: 'HR',  value: accumulated.hr },
-    { label: 'RBI', value: accumulated.rbi },
-    { label: 'BB',  value: accumulated.bb },
-    { label: 'SO',  value: accumulated.so },
-    { label: 'R',   value: accumulated.r },
-    { label: 'SB',  value: accumulated.sb },
+    { label:'AB',  value:acc.ab  }, { label:'H',   value:acc.h   },
+    { label:'HR',  value:acc.hr  }, { label:'RBI', value:acc.rbi },
+    { label:'BB',  value:acc.bb  }, { label:'SO',  value:acc.so  },
+    { label:'R',   value:acc.r   }, { label:'SB',  value:acc.sb  },
   ];
 
   return (
     <div className="pp-stats-section">
       <div className="ab-tracker-inner">
-        <div className="pp-stats-title-row">
-          <div className="pp-stats-title">Recent AB Tracker</div>
-          <select
-            className="ab-tracker-select"
-            value={targetABs}
-            onChange={(e) => setTargetABs(Number(e.target.value))}
-          >
-            {[20,30,40,50,60,70,80,90,100,125,150,162,200,250,300,400,500].map((n) => (
-              <option key={n} value={n}>Last {n} ABs</option>
-            ))}
-          </select>
+        <div className="pp-stats-title">Recent AB Tracker</div>
+
+        {/* Mode tabs + search input */}
+        <div className="ab-tracker-search-row">
+          <div className="ab-tracker-mode-tabs">
+            <button
+              className={`ab-tracker-mode-tab ${searchMode === 'ab' ? 'ab-tracker-mode-active' : ''}`}
+              onClick={() => setSearchMode('ab')}
+            >
+              🔍 ABs
+            </button>
+            <button
+              className={`ab-tracker-mode-tab ${searchMode === 'games' ? 'ab-tracker-mode-active' : ''}`}
+              onClick={() => setSearchMode('games')}
+            >
+              🔍 Games
+            </button>
+          </div>
+          <div className="ab-tracker-input-wrap">
+            {searchMode === 'ab' ? (
+              <input
+                type="number"
+                className="ab-tracker-input"
+                value={abInput}
+                min="1"
+                max="600"
+                placeholder="# of ABs"
+                onChange={(e) => setAbInput(e.target.value)}
+              />
+            ) : (
+              <input
+                type="number"
+                className="ab-tracker-input"
+                value={gamesInput}
+                min="1"
+                max="162"
+                placeholder="# of Games"
+                onChange={(e) => setGamesInput(e.target.value)}
+              />
+            )}
+          </div>
         </div>
+
+        {/* Summary pills */}
         <div className="ab-tracker-meta">
-          <span className="ab-tracker-meta-pill">{accumulated.ab} AB</span>
-          <span className="ab-tracker-meta-pill">{accumulated.games} game{accumulated.games !== 1 ? 's' : ''}</span>
+          <span className="ab-tracker-meta-pill">{acc.ab} AB</span>
+          <span className="ab-tracker-meta-pill">{acc.games} game{acc.games !== 1 ? 's' : ''}</span>
         </div>
+
+        {/* Rate stats */}
         <div className="ab-tracker-rate-row">
           {rateStats.map((s) => (
             <div key={s.label} className="ab-tracker-rate-stat">
@@ -129,6 +158,8 @@ function RecentABTracker({ gamelog }) {
             </div>
           ))}
         </div>
+
+        {/* Counting stats */}
         <div className="ab-tracker-count-row">
           {countingStats.map((s) => (
             <div key={s.label} className="ab-tracker-count-stat">

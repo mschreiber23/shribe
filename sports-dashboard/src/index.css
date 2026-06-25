@@ -1691,6 +1691,56 @@ body {
   line-height: 1;
 }
 
+.ab-tracker-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ab-tracker-mode-tabs {
+  display: flex;
+  background: var(--bg3);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.ab-tracker-mode-tab {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.ab-tracker-mode-tab:hover { color: var(--text); }
+.ab-tracker-mode-active { background: var(--accent); color: #fff; }
+
+.ab-tracker-input-wrap { flex: 1; }
+
+.ab-tracker-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.15s;
+  -moz-appearance: textfield;
+}
+.ab-tracker-input:focus { border-color: var(--accent2); }
+.ab-tracker-input::-webkit-inner-spin-button,
+.ab-tracker-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.ab-tracker-input::placeholder { color: var(--text2); font-weight: 400; }
+
 .ab-tracker-label {
   font-size: 10px;
   color: var(--text2);
