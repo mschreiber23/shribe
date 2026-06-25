@@ -1467,6 +1467,37 @@ body {
 .ts-expanded-title { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; }
 
 /* ── All Scores Grid Cards ── */
+/* Sport selector tabs (used on Scores, Standings, Leaders pages) */
+.scores-sport-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ts-tab {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ts-tab:hover { border-color: var(--accent2); color: var(--text); }
+.ts-tab-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.ts-live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
 .scores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 
 .grid-card {
