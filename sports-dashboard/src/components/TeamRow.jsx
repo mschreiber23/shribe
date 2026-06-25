@@ -99,6 +99,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
     const pitcher = liveData?.pitcher;
     const pitcherStats = liveData?.pitcherStats;
     const batter = liveData?.batter;
+    const batterStats = liveData?.batterStats;
     const isBot = shortDetail.toLowerCase().startsWith('bot');
     return (
       <div className="lv-bar">
@@ -158,7 +159,10 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
                 <div className="lv-player-role">BATTING</div>
                 <div className="lv-player-row">
                   {batter.headshot?.href && <img src={batter.headshot.href} alt="" className="lv-avatar" />}
-                  <div><div className="lv-player-name">{batter.shortName || batter.displayName}{batter.jersey && <span className="lv-jersey"> #{batter.jersey}</span>}</div></div>
+                  <div>
+                    <div className="lv-player-name">{batter.shortName || batter.displayName}{batter.jersey && <span className="lv-jersey"> #{batter.jersey}</span>}</div>
+                    {batterStats && <div className="lv-player-stats">{batterStats['H-AB'] || '0-0'}{batterStats.HR > 0 ? `, ${batterStats.HR} HR` : ''}{batterStats.RBI > 0 ? `, ${batterStats.RBI} RBI` : ''}</div>}
+                  </div>
                 </div>
               </div>
             )}

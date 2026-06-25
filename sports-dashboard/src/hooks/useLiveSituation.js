@@ -76,6 +76,27 @@ export default function useLiveSituation(sport, game) {
   const batter = playerMap[String(sit.batter?.playerId)];
   const pitcherStats = getPitcherStats(sit.pitcher?.playerId);
 
+  // Get batter's current game stats from boxscore batting
+  const getBatterStats = (batterId) => {
+    for (const group of bs.players || []) {
+      for (const sg of group.statistics || []) {
+        if ((sg.type || sg.name || '') === 'batting') {
+          const labels = sg.labels || [];
+          const found = (sg.athletes || []).find(
+            (a) => String(a.athlete?.id) === String(batterId)
+          );
+          if (found) {
+            const stats = found.stats || [];
+            const get = (l) => { const i = labels.indexOf(l); return i !== -1 ? stats[i] : null; };
+            return { 'H-AB': get('H-AB'), K: get('K'), HR: get('HR'), RBI: get('RBI') };
+          }
+        }
+      }
+    }
+    return { 'H-AB': '0-0' };
+  };
+  const batterStats = getBatterStats(sit.batter?.playerId);
+
   // Get last play from plays array
   const plays = summary.plays || [];
   const lastPlay = plays.length > 0 ? plays[plays.length - 1]?.text : null;
@@ -87,6 +108,7 @@ export default function useLiveSituation(sport, game) {
     pitcher,
     pitcherStats,
     batter,
+    batterStats,
     lastPlay,
   };
 }
