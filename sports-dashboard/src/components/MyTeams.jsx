@@ -65,8 +65,16 @@ export default function MyTeams({ editMode = false, setEditMode }) {
   return (
     <section className="section">
       <div className="section-header">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h2 className="section-title">My Teams</h2>
+          {hiddenCount > 0 && (
+            <button
+              className="show-all-btn"
+              onClick={() => setShowHidden((v) => !v)}
+            >
+              {showHidden ? 'Hide Inactive' : `Show All`}
+            </button>
+          )}
         </div>
         <div className="header-actions">
           {editMode && (
@@ -233,13 +241,6 @@ export default function MyTeams({ editMode = false, setEditMode }) {
             })}
           </div>
 
-          {hiddenCount > 0 && (
-            <button className="hidden-teams-toggle" onClick={() => setShowHidden((v) => !v)}>
-              {showHidden
-                ? `▲ Hide ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`
-                : `▼ Show ${hiddenCount} team${hiddenCount > 1 ? 's' : ''} with no games this week`}
-            </button>
-          )}
         </>
       )}
     </section>
