@@ -59,7 +59,10 @@ export default function ScoresPage() {
   const [activeSport, setActiveSport] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const myTeamIds = favorites.teams.map((t) => t.team.id);
+  // Only match teams in the currently viewed sport to avoid cross-sport ID collisions
+  const myTeamIds = favorites.teams
+    .filter((t) => t.sport === activeSport)
+    .map((t) => t.team.id);
 
   useEffect(() => {
     const d = new Date();
