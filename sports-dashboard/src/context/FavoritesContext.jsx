@@ -6,39 +6,12 @@ const FavoritesContext = createContext(null);
 const DEFAULT_SPORT_ORDER = ['mlb', 'nba', 'nfl', 'nhl'];
 
 export const DEFAULT_FAVORITES = {
-  teams: [
-    {
-      sport: 'mlb',
-      team: { id: '20', displayName: 'Washington Nationals', abbreviation: 'WSH', color: 'ab0003', alternateColor: '11225b', logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png' },
-    },
-    {
-      sport: 'nba',
-      team: { id: '27', displayName: 'Washington Wizards', abbreviation: 'WSH', color: 'e31837', alternateColor: '002b5c', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/wsh.png' },
-    },
-    {
-      sport: 'nhl',
-      team: { id: '23', displayName: 'Washington Capitals', abbreviation: 'WSH', color: 'd71830', alternateColor: '00214e', logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png' },
-    },
-    {
-      sport: 'nfl',
-      team: { id: '21', displayName: 'Philadelphia Eagles', abbreviation: 'PHI', color: '06424d', alternateColor: 'acc0c6', logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png' },
-    },
-  ],
-  players: [
-    {
-      id: '4918256',
-      displayName: 'James Wood',
-      position: 'CF',
-      headshot: 'https://a.espncdn.com/i/headshots/mlb/players/full/4918256.png',
-      sport: 'mlb',
-      teamId: '20',
-      teamName: 'Washington Nationals',
-    },
-  ],
+  teams: [],
+  players: [],
 };
 
 /* ── Local storage helpers (fallback when logged out) ── */
-const LOCAL_KEY = 'sports_dashboard_favorites_v3';
+const LOCAL_KEY = 'sports_dashboard_favorites_v4';
 const SPORT_ORDER_KEY = 'sports_dashboard_sport_order';
 
 function readLocal(key, fallback) {

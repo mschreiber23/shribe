@@ -205,9 +205,11 @@ export default function PlayerRoster() {
       )}
 
       {favorites.players.length === 0 && !showPicker && (
-        <div className="empty-state">
-          <div className="empty-icon">⭐</div>
-          <p>No players added yet. Click "+ Add Player" to get started.</p>
+        <div className="onboarding-prompt">
+          <div className="onboarding-icon">⭐</div>
+          <div className="onboarding-title">Add a favorite player</div>
+          <div className="onboarding-sub">Track season stats and game logs for any player across all four major leagues.</div>
+          <button className="btn-primary" onClick={() => setShowPicker(true)}>+ Add Your First Player</button>
         </div>
       )}
 

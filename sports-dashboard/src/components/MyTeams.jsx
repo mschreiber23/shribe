@@ -217,9 +217,11 @@ export default function MyTeams() {
       )}
 
       {favorites.teams.length === 0 && !showPicker && !editMode && (
-        <div className="empty-state">
-          <div className="empty-icon">🏆</div>
-          <p>No teams added. Click "+ Add Team" to get started.</p>
+        <div className="onboarding-prompt">
+          <div className="onboarding-icon">🏆</div>
+          <div className="onboarding-title">Add your favorite teams</div>
+          <div className="onboarding-sub">Pick up to 4 teams across MLB, NBA, NFL, and NHL to follow their scores and standings.</div>
+          <button className="btn-primary" onClick={() => setShowPicker(true)}>+ Add Your First Team</button>
         </div>
       )}
 

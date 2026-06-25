@@ -1052,6 +1052,22 @@ body {
 }
 .mt-date-today:hover { background: var(--accent2); }
 
+/* ── Onboarding Prompt ── */
+.onboarding-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 20px;
+  background: var(--bg2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.onboarding-icon { font-size: 40px; }
+.onboarding-title { font-size: 17px; font-weight: 700; color: var(--text); }
+.onboarding-sub { font-size: 13px; color: var(--text2); max-width: 280px; line-height: 1.5; }
+
 /* ── Edit Mode Panel ── */
 .edit-panel {
   background: var(--bg2);
