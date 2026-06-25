@@ -63,7 +63,7 @@ function accumulateStats(games) {
 }
 
 function RecentABTracker({ gamelog }) {
-  const [searchMode, setSearchMode] = useState('ab'); // 'ab' | 'games'
+  const [searchMode, setSearchMode] = useState('games'); // 'games' | 'ab'
   const [abInput,    setAbInput]    = useState('20');
   const [gamesInput, setGamesInput] = useState('10');
 
@@ -106,16 +106,16 @@ function RecentABTracker({ gamelog }) {
         <div className="ab-tracker-search-row">
           <div className="ab-tracker-mode-tabs">
             <button
-              className={`ab-tracker-mode-tab ${searchMode === 'ab' ? 'ab-tracker-mode-active' : ''}`}
-              onClick={() => setSearchMode('ab')}
-            >
-              🔍 ABs
-            </button>
-            <button
               className={`ab-tracker-mode-tab ${searchMode === 'games' ? 'ab-tracker-mode-active' : ''}`}
               onClick={() => setSearchMode('games')}
             >
               🔍 Games
+            </button>
+            <button
+              className={`ab-tracker-mode-tab ${searchMode === 'ab' ? 'ab-tracker-mode-active' : ''}`}
+              onClick={() => setSearchMode('ab')}
+            >
+              🔍 ABs
             </button>
           </div>
           <div className="ab-tracker-input-wrap">
@@ -534,15 +534,22 @@ export default function PlayerPage() {
 
     seasons.forEach(({ year, data }) => {
       const splitData = splitsBySeason[year];
-      // Pick the right stats source based on active tab
       const baseStats = getStats(data, sportKey);
-      const s = careerTab === 'rhp' && splitData?.rhp
-        ? splitData.rhp
-        : careerTab === 'lhp' && splitData?.lhp
-        ? splitData.lhp
-        : careerTab === 'opp' && vsTeamAbbr && splitData?.opp?.[vsTeamAbbr]
-        ? splitData.opp[vsTeamAbbr]
-        : baseStats;
+
+      // For split tabs, skip seasons where split data doesn't exist
+      let s;
+      if (careerTab === 'rhp') {
+        if (!splitData?.rhp) return; // skip years with no RHP data
+        s = splitData.rhp;
+      } else if (careerTab === 'lhp') {
+        if (!splitData?.lhp) return; // skip years with no LHP data
+        s = splitData.lhp;
+      } else if (careerTab === 'opp' && vsTeamAbbr) {
+        if (!splitData?.opp?.[vsTeamAbbr]) return; // skip years with no data vs this team
+        s = splitData.opp[vsTeamAbbr];
+      } else {
+        s = baseStats;
+      }
       cols.forEach(({ key }) => {
         const val = s[key];
         if (val == null || val === '—') return;
