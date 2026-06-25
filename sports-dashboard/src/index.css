@@ -1403,6 +1403,27 @@ body {
 .lv-down-dist { font-size: 11px; color: var(--text); font-weight: 700; }
 @media (max-width: 640px) { .lv-body { flex-direction: column; } .lv-players { flex-direction: row; gap: 12px; } .lv-last-play { max-width: 100%; } }
 
+/* ── Pre-game ESPN-style bar ── */
+.pregame-bar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--border); }
+.pregame-top { display: flex; align-items: center; }
+.pregame-time { font-size: 13px; font-weight: 800; color: var(--text); }
+.pregame-tv { font-size: 12px; color: var(--text2); }
+.pregame-body { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.pregame-teams { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 140px; }
+.pregame-team { display: flex; align-items: center; gap: 8px; }
+.pregame-my-team .pregame-name { color: var(--team-accent, var(--accent)); }
+.pregame-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.pregame-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.pregame-record { font-size: 11px; color: var(--text2); }
+.pregame-pitchers { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 140px; }
+.pregame-pitchers-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2); margin-bottom: 2px; }
+.pregame-pitcher { display: flex; align-items: center; gap: 8px; }
+.pregame-pitcher-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
+.pregame-pitcher-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.pregame-pitcher-record { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.pregame-gamecast-btn { background: transparent; border: 1px solid var(--border); color: var(--text2); padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; align-self: center; transition: all 0.15s; }
+.pregame-gamecast-btn:hover { border-color: var(--accent2); color: var(--text); }
+
 .show-all-btn {
   background: transparent;
   border: 1px solid var(--border);

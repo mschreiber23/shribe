@@ -13,6 +13,7 @@ function getScore(c) {
 
 /* ── Score display for non-live ─────────────────────── */
 function GameScore({ game, teamId, sport, onOpen }) {
+  const navigate = useNavigate();
   if (!game) return <div className="tr2-no-game">No game scheduled</div>;
 
   const comp = game.competitions?.[0];
@@ -26,17 +27,64 @@ function GameScore({ game, teamId, sport, onOpen }) {
   const shortDetail = status?.type?.shortDetail || '';
   const showScore = isFinal;
 
+  if (isPre) {
+    const probables = competitors.map((c) => {
+      const prob = c.probables?.[0];
+      if (!prob) return null;
+      const ath = prob.athlete || {};
+      return { team: c.team?.abbreviation, name: ath.shortName || ath.displayName, jersey: ath.jersey, headshot: ath.headshot?.href, record: prob.record || '' };
+    }).filter(Boolean);
+    const broadcast = comp?.broadcasts?.[0]?.names?.join('/') || '';
+    const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
+
+    return (
+      <div className="pregame-bar">
+        <div className="pregame-top">
+          <span className="pregame-time">{timeStr}</span>
+          {broadcast && <span className="pregame-tv"> · {broadcast}</span>}
+        </div>
+        <div className="pregame-body">
+          <div className="pregame-teams">
+            {[away, home].filter(Boolean).map((c) => (
+              <div key={c.team?.id} className={`pregame-team ${c.team?.id === String(teamId) ? 'pregame-my-team' : ''}`}>
+                {c.team?.logo && <img src={c.team.logo} alt="" className="pregame-logo" />}
+                <div>
+                  <div className="pregame-name">{c.team?.shortDisplayName || c.team?.displayName}</div>
+                  <div className="pregame-record">({c.records?.[0]?.summary}{c.records?.[1]?.summary ? `, ${c.records[1].summary} ${c.homeAway === 'home' ? 'Home' : 'Away'}` : ''})</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {probables.length > 0 && (
+            <div className="pregame-pitchers">
+              <div className="pregame-pitchers-label">PROBABLE PITCHERS</div>
+              {probables.map((p, i) => (
+                <div key={i} className="pregame-pitcher">
+                  {p.headshot && <img src={p.headshot} alt="" className="pregame-pitcher-avatar" />}
+                  <div>
+                    <div className="pregame-pitcher-name">{p.name}{p.jersey ? ` #${p.jersey}` : ''} · {p.team}</div>
+                    {p.record && <div className="pregame-pitcher-record">{p.record}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}#tab=Preview`)}>Gamecast</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <button className="tr2-game" onClick={onOpen}>
       <div className="tr2-status">
         {isFinal && <span className="badge badge-final">Final</span>}
-        {isPre && <span className="tr2-time">{shortDetail}</span>}
       </div>
       <div className="tr2-matchup">
         <TeamScoreRow competitor={away} teamId={teamId} showScore={showScore} />
         <TeamScoreRow competitor={home} teamId={teamId} showScore={showScore} />
       </div>
-      <div className="tr2-tap-hint">{isPre ? 'Preview →' : 'Box Score →'}</div>
+      <div className="tr2-tap-hint">Box Score →</div>
     </button>
   );
 }
