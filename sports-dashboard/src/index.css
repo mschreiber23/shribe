@@ -1366,149 +1366,89 @@ body {
 .hidden-teams-toggle:hover { border-color: var(--accent2); color: var(--text); }
 
 /* ── Today's Scores ── */
-.ts-header-row {
-  display: flex;
-  align-items: center;
+.ts-section { gap: 0 !important; }
+
+.ts-ticker-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 6px 8px; overflow: hidden;
 }
 
-.ts-reorder-panel {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+.ts-sport-select {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  padding: 5px 8px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  cursor: pointer; outline: none; flex-shrink: 0; min-width: 58px;
 }
 
-.ts-reorder-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+.ts-date-nav { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+
+.ts-date-btn {
+  background: transparent; border: none; color: var(--text2);
+  font-size: 16px; cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.1s;
 }
-.ts-reorder-row:last-child { border-bottom: none; }
+.ts-date-btn:hover { color: var(--text); }
 
-.ts-reorder-sport { font-size: 14px; font-weight: 700; }
-
-.ts-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
-  gap: 12px;
+.ts-date-label {
+  font-size: 11px; font-weight: 700; color: var(--text); cursor: pointer;
+  white-space: nowrap; position: relative; user-select: none;
+  padding: 3px 4px; border-radius: 6px; transition: background 0.1s;
 }
+.ts-date-label:hover { background: var(--bg3); }
 
-.ts-header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.ts-ticker-scroll {
+  display: flex; gap: 6px; overflow-x: auto; flex: 1;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
+.ts-ticker-scroll::-webkit-scrollbar { display: none; }
 
-.ts-live-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--live-bg);
-  color: var(--live);
-  border: 1px solid rgba(34,197,94,0.3);
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
+.ts-no-games { font-size: 12px; color: var(--text2); padding: 4px 8px; white-space: nowrap; }
+
+.ticker-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 9px; cursor: pointer; text-align: left; color: inherit;
+  flex-shrink: 0; min-width: 120px; display: flex; flex-direction: column; gap: 4px;
+  transition: border-color 0.15s;
 }
+.ticker-card:hover { border-color: rgba(255,255,255,0.25); }
+.ticker-card-mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg3)); }
 
-.ts-chevron {
-  font-size: 11px;
-  color: var(--text2);
-  flex-shrink: 0;
-}
+.ticker-status { display: flex; align-items: center; gap: 5px; min-height: 16px; }
+.ticker-live { display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; color: var(--live); }
+.ticker-final { font-size: 10px; font-weight: 700; color: var(--text2); }
+.ticker-time { font-size: 10px; color: var(--text2); white-space: nowrap; }
+.ticker-broadcast { font-size: 9px; color: var(--text2); margin-left: auto; }
 
-.ts-tabs {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
+.ticker-teams { display: flex; flex-direction: column; gap: 3px; }
+.ticker-team { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.ticker-team-left { display: flex; align-items: center; gap: 4px; }
+.ticker-logo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
+.ticker-abbr { font-size: 12px; font-weight: 700; color: var(--text2); }
+.ticker-my-team .ticker-abbr { color: var(--accent2); }
+.ticker-winner .ticker-abbr { color: var(--text); font-weight: 800; }
+.ticker-record { font-size: 9px; color: var(--text2); }
+.ticker-score { font-size: 14px; font-weight: 900; color: var(--text2); font-variant-numeric: tabular-nums; min-width: 16px; text-align: right; }
+.ticker-score-win { color: var(--live); }
+.ticker-winner .ticker-score { color: var(--text); }
+.ticker-context { font-size: 9px; color: var(--text2); text-align: center; }
 
-.ts-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  padding: 7px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.ts-tab:hover { border-color: var(--accent2); color: var(--text); }
-.ts-tab-active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-.ts-live-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--live);
-  animation: pulse 1.4s ease-in-out infinite;
-  flex-shrink: 0;
+.ticker-skeleton {
+  width: 120px; height: 60px; flex-shrink: 0;
+  background: var(--bg3); border-radius: 8px; animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.ts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+.ts-expand-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--text2);
+  width: 28px; height: 28px; border-radius: 8px; font-size: 14px; cursor: pointer;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
 }
+.ts-expand-btn:hover { border-color: var(--accent2); color: var(--text); }
 
-.ts-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
-  text-align: left;
-  color: inherit;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.15s, transform 0.1s;
+.ts-expanded {
+  background: var(--bg2); border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 12px 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px;
 }
-.ts-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
-.ts-card-live { border-color: rgba(34,197,94,0.3); background: color-mix(in srgb, var(--live) 4%, var(--bg2)); }
-.ts-card-mine { border-color: var(--accent); border-width: 2px; }
-
-.ts-status { min-height: 20px; }
-.ts-time { font-size: 11px; color: var(--text2); }
-
-.ts-team-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ts-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
-.ts-abbr { font-size: 13px; font-weight: 700; color: var(--text2); min-width: 32px; }
-.ts-record { font-size: 10px; color: var(--text2); flex: 1; }
-.ts-score { font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--text); min-width: 28px; text-align: right; }
-.ts-winner { color: var(--text) !important; }
-.ts-winner.ts-score { color: var(--live) !important; }
-.ts-venue { font-size: 10px; color: var(--text2); margin-top: 2px; }
-
-.ts-skeleton-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-@media (max-width: 640px) {
-  .ts-grid { grid-template-columns: repeat(2, 1fr); }
-  .ts-skeleton-row { grid-template-columns: repeat(2, 1fr); }
-}
+.ts-expanded-header { display: flex; align-items: center; justify-content: space-between; }
+.ts-expanded-title { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; }
 
 /* ── Stat Leaders ── */
 .sl-cat-tabs {
