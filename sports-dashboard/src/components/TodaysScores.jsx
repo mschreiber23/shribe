@@ -48,11 +48,17 @@ function TickerCard({ game, sport, myTeamIds }) {
       className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
     >
-      {/* Top status — only for live/final */}
+      {/* Top status row */}
       <div className="ticker-status">
         {isLive && <span className="ticker-live"><span className="live-dot" />{shortDetail}</span>}
         {isFinal && <span className="ticker-final">Final</span>}
-        {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
+        {isPre && (
+          <span className="ticker-date">
+            {new Date(game.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+          </span>
+        )}
+        {/* Show broadcast only for live or pre-game, not final */}
+        {broadcast && !isFinal && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
 
       {/* Teams */}

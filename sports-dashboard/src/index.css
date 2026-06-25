@@ -1420,6 +1420,7 @@ body {
 .ticker-status { display: flex; align-items: center; gap: 5px; min-height: 14px; }
 .ticker-live { display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; color: var(--live); }
 .ticker-final { font-size: 10px; font-weight: 700; color: var(--text2); }
+.ticker-date { font-size: 10px; font-weight: 700; color: var(--text2); }
 .ticker-broadcast { font-size: 9px; color: var(--text2); margin-left: auto; }
 
 .ticker-teams { display: flex; flex-direction: column; gap: 4px; }
