@@ -6,7 +6,6 @@ import InstallBanner from './components/InstallBanner';
 import MyTeams from './components/MyTeams';
 import PlayerRoster from './components/PlayerRoster';
 import TodaysScores from './components/TodaysScores';
-import StatLeaders from './components/StatLeaders';
 import TeamPage from './pages/TeamPage';
 import BoxScorePage from './pages/BoxScorePage';
 import PlayerPage from './pages/PlayerPage';
@@ -23,8 +22,7 @@ function Dashboard() {
     <main className="main">
       <TodaysScores />
       <MyTeams />
-      <PlayerRoster />
-      <StatLeaders />
+        <PlayerRoster />
     </main>
   );
 }
