@@ -2,6 +2,99 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getScoreboard, getGameBoxscore } from '../api/espn';
 
+/* ── Recent AB Tracker ───────────────────────────────── */
+function RecentABTracker({ gamelog }) {
+  const [targetABs, setTargetABs] = useState(20);
+
+  // Accumulate games from most recent until we hit target AB count
+  const accumulated = (() => {
+    let ab = 0, h = 0, hr = 0, rbi = 0, bb = 0, so = 0, doubles = 0, triples = 0, r = 0, sb = 0;
+    const gamesUsed = [];
+
+    for (const g of gamelog) {
+      if (ab >= targetABs) break;
+      const gAB  = parseInt(g.stats['AB']  || 0);
+      const gH   = parseInt(g.stats['H']   || 0);
+      const gHR  = parseInt(g.stats['HR']  || 0);
+      const gRBI = parseInt(g.stats['RBI'] || 0);
+      const gBB  = parseInt(g.stats['BB']  || 0);
+      const gSO  = parseInt(g.stats['SO'] || g.stats['K'] || 0);
+      const g2B  = parseInt(g.stats['2B']  || 0);
+      const g3B  = parseInt(g.stats['3B']  || 0);
+      const gR   = parseInt(g.stats['R']   || 0);
+      const gSB  = parseInt(g.stats['SB']  || 0);
+
+      ab  += gAB;
+      h   += gH;
+      hr  += gHR;
+      rbi += gRBI;
+      bb  += gBB;
+      so  += gSO;
+      doubles += g2B;
+      triples += g3B;
+      r   += gR;
+      sb  += gSB;
+      gamesUsed.push(g);
+    }
+
+    const avg = ab > 0 ? (h / ab).toFixed(3).replace(/^0\./, '.') : '.000';
+    const obp = (ab + bb) > 0 ? ((h + bb) / (ab + bb)).toFixed(3).replace(/^0\./, '.') : '.000';
+    const singles = h - doubles - triples - hr;
+    const tb = singles + 2 * doubles + 3 * triples + 4 * hr;
+    const slg = ab > 0 ? (tb / ab).toFixed(3).replace(/^0\./, '.') : '.000';
+    const ops = ab > 0
+      ? ((parseFloat(obp.startsWith('.') ? '0'+obp : obp) + parseFloat(slg.startsWith('.') ? '0'+slg : slg))).toFixed(3).replace(/^0\./, '.')
+      : '.000';
+
+    return { ab, h, hr, rbi, bb, so, r, sb, avg, obp, slg, ops, games: gamesUsed.length };
+  })();
+
+  const stats = [
+    { label: 'AB',  value: accumulated.ab },
+    { label: 'H',   value: accumulated.h },
+    { label: 'AVG', value: accumulated.avg },
+    { label: 'OBP', value: accumulated.obp },
+    { label: 'SLG', value: accumulated.slg },
+    { label: 'OPS', value: accumulated.ops },
+    { label: 'HR',  value: accumulated.hr },
+    { label: 'RBI', value: accumulated.rbi },
+    { label: 'BB',  value: accumulated.bb },
+    { label: 'SO',  value: accumulated.so },
+    { label: 'R',   value: accumulated.r },
+    { label: 'SB',  value: accumulated.sb },
+  ];
+
+  const HL_STATS = ['AVG','OBP','SLG','OPS','HR','RBI'];
+
+  return (
+    <div className="pp-stats-section">
+      <div className="pp-stats-title-row">
+        <span className="pp-stats-title">Recent AB Tracker</span>
+        <select
+          className="ab-tracker-select"
+          value={targetABs}
+          onChange={(e) => setTargetABs(Number(e.target.value))}
+        >
+          {[20,30,40,50,60,70,80,90,100].map((n) => (
+            <option key={n} value={n}>Last {n} ABs</option>
+          ))}
+        </select>
+      </div>
+      <div className="ab-tracker-meta">
+        {accumulated.games} game{accumulated.games !== 1 ? 's' : ''} · {accumulated.ab} AB
+      </div>
+      <div className="ab-tracker-grid">
+        {stats.map((s) => (
+          <div key={s.label} className={`ab-tracker-stat ${HL_STATS.includes(s.label) ? 'ab-tracker-hl' : ''}`}>
+            <div className="ab-tracker-value">{s.value}</div>
+            <div className="ab-tracker-label">{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Position detection helpers ─────────────────────── */
 const QB_POS  = ['QB'];
 const RB_POS  = ['RB','HB','FB'];
@@ -402,6 +495,11 @@ export default function PlayerPage() {
               </table>
             </div>
           </div>
+
+          {/* Recent AB Tracker — MLB batters only */}
+          {sport === 'mlb' && sportKey === 'mlb_batting' && gamelog.length > 0 && (
+            <RecentABTracker gamelog={gamelog} />
+          )}
 
           {/* Game Log */}
           {gamelog.length > 0 && (
