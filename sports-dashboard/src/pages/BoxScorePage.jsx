@@ -199,9 +199,9 @@ function MlbGamecast({ data, rosters, situation, competitors, status }) {
             )}
           </div>
 
-          {/* Teams score bar */}
-          <div className="gc-score-row">
-            {[away, home].filter(Boolean).map((c) => (
+      {/* Teams score bar — away on top, home on bottom */}
+      <div className="gc-score-row">
+        {[away, home].filter(Boolean).sort((a,b) => a.homeAway==='away' ? -1 : 1).map((c) => (
               <div key={c.team?.id} className="gc-team-score-row">
                 {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="gc-team-logo" />}
                 <span className="gc-team-abbr">{c.team?.abbreviation}</span>
@@ -513,7 +513,13 @@ function TeamStats({ group, sport }) {
 /* ─── Line Score ─────────────────────────────────────── */
 function LineScore({ competitors, sport }) {
   if (!['mlb','nhl'].includes(sport)) return null;
-  const maxPeriods = Math.max(...competitors.map((c) => (c.linescores||[]).length), sport === 'mlb' ? 9 : 3);
+  // Always show away on top, home on bottom (standard convention)
+  const sorted = [...competitors].sort((a, b) => {
+    if (a.homeAway === 'away') return -1;
+    if (b.homeAway === 'away') return 1;
+    return 0;
+  });
+  const maxPeriods = Math.max(...sorted.map((c) => (c.linescores||[]).length), sport === 'mlb' ? 9 : 3);
   const cols = Array.from({length: maxPeriods}, (_, i) => i + 1);
   return (
     <div className="bsp-linescore-wrap">
@@ -528,7 +534,7 @@ function LineScore({ competitors, sport }) {
           </tr>
         </thead>
         <tbody>
-          {competitors.map((c) => (
+          {sorted.map((c) => (
             <tr key={c.team?.id}>
               <td className="bsp-ls-td bsp-ls-team-col">
                 {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="bsp-ls-logo" />}
