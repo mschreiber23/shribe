@@ -29,7 +29,7 @@ export default function useLiveSituation(sport, game) {
   const rosters = summary.rosters || [];
   const bs = summary.boxscore || {};
 
-  // Build player lookup map
+  // Build player lookup map from rosters
   const playerMap = {};
   rosters.forEach((r) => {
     (r.roster || []).forEach((entry) => {
@@ -37,6 +37,20 @@ export default function useLiveSituation(sport, game) {
       playerMap[String(a.id)] = { ...a, jersey: entry.jersey };
     });
   });
+
+  // Also add all pitching athletes from boxscore (rosters only have batters)
+  for (const group of bs.players || []) {
+    for (const sg of group.statistics || []) {
+      if ((sg.type || sg.name || '') === 'pitching') {
+        for (const ath of sg.athletes || []) {
+          const a = ath.athlete || {};
+          if (a.id && !playerMap[String(a.id)]) {
+            playerMap[String(a.id)] = { ...a };
+          }
+        }
+      }
+    }
+  }
 
   // Get pitcher stats from boxscore
   const getPitcherStats = (pitcherId) => {
@@ -49,10 +63,7 @@ export default function useLiveSituation(sport, game) {
           );
           if (found) {
             const stats = found.stats || [];
-            const get = (l) => {
-              const i = labels.indexOf(l);
-              return i !== -1 ? stats[i] : null;
-            };
+            const get = (l) => { const i = labels.indexOf(l); return i !== -1 ? stats[i] : null; };
             return { IP: get('IP'), ER: get('ER'), H: get('H'), K: get('K'), BB: get('BB') };
           }
         }
@@ -63,7 +74,7 @@ export default function useLiveSituation(sport, game) {
 
   const pitcher = playerMap[String(sit.pitcher?.playerId)];
   const batter = playerMap[String(sit.batter?.playerId)];
-  const pitcherStats = pitcher ? getPitcherStats(sit.pitcher?.playerId) : null;
+  const pitcherStats = getPitcherStats(sit.pitcher?.playerId);
 
   // Get last play from plays array
   const plays = summary.plays || [];
