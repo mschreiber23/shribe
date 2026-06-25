@@ -3,10 +3,11 @@ import usePlayerStats from '../hooks/usePlayerStats';
 import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
 
-/* ── Stat extraction (unchanged logic) ─────────────── */
+/* ── Stat extraction — exactly 4 stats per position ─── */
 function extractSeasonStats(statsData, sport) {
   if (!statsData) return [];
   const categories = statsData.splits?.categories || [];
+  const position = (statsData._position || '').toUpperCase();
 
   const getCatStats = (cat) => {
     if (!cat) return {};
@@ -15,83 +16,112 @@ function extractSeasonStats(statsData, sport) {
     return result;
   };
 
+  const mergeAll = () => {
+    const s = {};
+    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
+    return s;
+  };
+
   if (sport === 'mlb') {
-    const batting  = categories.find((c) => c.name === 'batting');
     const pitching = categories.find((c) => c.name === 'pitching');
-    const s = getCatStats(pitching || batting || categories[0]);
-    if (pitching) return [
-      { label: 'ERA', value: s['ERA'] }, { label: 'W', value: s['W'] },
-      { label: 'SO',  value: s['SO'] },  { label: 'IP',  value: s['IP'] },
-      { label: 'L',   value: s['L'] },   { label: 'WHIP',value: s['WHIP'] },
-    ];
+    const batting  = categories.find((c) => c.name === 'batting');
+    if (pitching) {
+      const s = getCatStats(pitching);
+      const g = getCatStats(categories.find((c) => c.name === 'general'));
+      const w = g['WINS'] || s['W'] || '—';
+      const l = s['L'] || '—';
+      return [
+        { label: 'W-L',  value: w && l && w !== '—' ? `${w}-${l}` : '—' },
+        { label: 'ERA',  value: s['ERA'] },
+        { label: 'WHIP', value: s['WHIP'] },
+        { label: 'SO',   value: s['SO'] },
+      ];
+    }
+    const s = getCatStats(batting || categories[0]);
     return [
-      { label: 'AVG', value: s['AVG'] }, { label: 'OPS', value: s['OPS'] },
-      { label: 'HR',  value: s['HR'] },  { label: 'RBI', value: s['RBI'] },
-      { label: 'R',   value: s['R'] },   { label: 'SB',  value: s['SB'] },
+      { label: 'AVG', value: s['AVG'] },
+      { label: 'OBP', value: s['OBP'] },
+      { label: 'HR',  value: s['HR'] },
+      { label: 'RBI', value: s['RBI'] },
     ];
   }
 
   if (sport === 'nba') {
-    // Use pre-merged stats from bio + defensive (set by getPlayerStats)
     const merged = statsData._merged;
-    if (merged) {
-      return [
-        { label: 'PTS', value: merged['PTS'] }, { label: 'REB', value: merged['REB'] },
-        { label: 'AST', value: merged['AST'] }, { label: 'STL', value: merged['STL'] },
-        { label: 'BLK', value: merged['BLK'] }, { label: 'FG%', value: merged['FG%'] },
-      ];
-    }
-    const s = {};
-    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
-    const off = categories.find((c) => c.name === 'offensive');
-    if (off) Object.assign(s, getCatStats(off));
+    const s = merged || mergeAll();
+    const stl = parseFloat(s['STL'] || 0);
+    const blk = parseFloat(s['BLK'] || 0);
+    const stocks = (stl + blk).toFixed(1);
     return [
-      { label: 'PTS', value: s['PTS'] }, { label: 'REB', value: s['REB'] },
-      { label: 'AST', value: s['AST'] }, { label: 'STL', value: s['STL'] },
-      { label: 'BLK', value: s['BLK'] }, { label: 'FG%', value: s['FG%'] },
+      { label: 'PTS',    value: s['PTS'] },
+      { label: 'REB',    value: s['REB'] },
+      { label: 'AST',    value: s['AST'] },
+      { label: 'STOCKS', value: stocks === '0.0' ? '—' : stocks },
     ];
   }
 
   if (sport === 'nfl') {
-    const position = (statsData._position || '').toUpperCase();
     const passing   = categories.find((c) => c.name?.includes('pass'));
     const rushing   = categories.find((c) => c.name?.includes('rush'));
     const receiving = categories.find((c) => c.name?.includes('receiv'));
     const general   = categories.find((c) => c.name === 'general');
-    const gp = getCatStats(general)['GP'] || '';
+    const gp = getCatStats(general)['GP'] || '—';
 
-    const QB_POS = ['QB'];
-    const RB_POS = ['RB', 'HB', 'FB'];
-    const REC_POS = ['WR', 'TE', 'FB'];
-
-    if (QB_POS.includes(position) || (!position && passing)) {
+    if (['QB'].includes(position) || (!position && passing)) {
       const s = getCatStats(passing);
-      return [{ label: 'GP', value: gp }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'INT', value: s['INT'] }, { label: 'RTG', value: s['RTG'] }];
+      return [
+        { label: 'GP',  value: gp },
+        { label: 'YDS', value: s['YDS'] },
+        { label: 'TD',  value: s['TD'] },
+        { label: 'INT', value: s['INT'] },
+      ];
     }
-    if (RB_POS.includes(position) || (!position && rushing && !passing)) {
+    if (['RB','HB','FB'].includes(position) || (!position && rushing && !passing)) {
       const s = getCatStats(rushing);
-      const r = getCatStats(receiving);
-      return [{ label: 'GP', value: gp }, { label: 'CAR', value: s['CAR'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'REC', value: r['REC'] }];
+      return [
+        { label: 'GP',  value: gp },
+        { label: 'CAR', value: s['CAR'] },
+        { label: 'YDS', value: s['YDS'] },
+        { label: 'TD',  value: s['TD'] },
+      ];
     }
-    if (REC_POS.includes(position) || (!position && receiving)) {
-      const s = getCatStats(receiving);
-      return [{ label: 'GP', value: gp }, { label: 'REC', value: s['REC'] }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }, { label: 'AVG', value: s['AVG'] }];
-    }
-    const src = passing || rushing || receiving || categories[0];
-    const s = getCatStats(src);
-    return [{ label: 'GP', value: gp }, { label: 'YDS', value: s['YDS'] }, { label: 'TD', value: s['TD'] }];
+    // WR / TE
+    const s = getCatStats(receiving);
+    return [
+      { label: 'GP',  value: gp },
+      { label: 'REC', value: s['REC'] },
+      { label: 'YDS', value: s['YDS'] },
+      { label: 'TD',  value: s['TD'] },
+    ];
   }
 
   if (sport === 'nhl') {
-    const s = {};
-    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
-    const off = categories.find((c) => c.name === 'offensive');
-    if (off) Object.assign(s, getCatStats(off));
-    return [{ label: 'G', value: s['G'] }, { label: 'A', value: s['A'] }, { label: 'PTS', value: s['PTS'] }, { label: '+/-', value: s['+/-'] }];
+    const NHL_GOALIE = ['G', 'GK'];
+    const s = mergeAll();
+    const off = getCatStats(categories.find((c) => c.name === 'offensive'));
+    Object.assign(s, off);
+
+    if (NHL_GOALIE.includes(position)) {
+      const def = getCatStats(categories.find((c) => c.name === 'defensive'));
+      const gen = getCatStats(categories.find((c) => c.name === 'general'));
+      return [
+        { label: 'W',   value: gen['WINS'] || s['W'] },
+        { label: 'GAA', value: def['GAA'] || s['GAA'] },
+        { label: 'SV%', value: def['SV%'] || s['SV%'] },
+        { label: 'SO',  value: def['SO'] || s['SO'] },
+      ];
+    }
+    // Skaters
+    return [
+      { label: 'G',   value: s['G'] },
+      { label: 'A',   value: s['A'] },
+      { label: 'PTS', value: s['PTS'] },
+      { label: '+/-', value: s['+/-'] },
+    ];
   }
 
   const s = getCatStats(categories[0]);
-  return Object.entries(s).slice(0, 6).map(([label, value]) => ({ label, value }));
+  return Object.entries(s).slice(0, 4).map(([label, value]) => ({ label, value }));
 }
 
 /* ── Trading Card Component ─────────────────────────── */
