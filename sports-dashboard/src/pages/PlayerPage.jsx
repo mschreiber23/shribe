@@ -77,7 +77,7 @@ function RecentABTracker({ gamelog }) {
             value={targetABs}
             onChange={(e) => setTargetABs(Number(e.target.value))}
           >
-            {[20,30,40,50,60,70,80,90,100].map((n) => (
+            {[20,30,40,50,60,70,80,90,100,150,200,250,300,400,500].map((n) => (
               <option key={n} value={n}>Last {n} ABs</option>
             ))}
           </select>
