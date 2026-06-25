@@ -4,7 +4,7 @@ import PlayerCard from './PlayerCard';
 import { getTeamRoster, searchTeams, SPORTS } from '../api/espn';
 
 export default function PlayerRoster() {
-  const { favorites, addPlayer, removePlayer, reorderPlayer } = useFavorites();
+  const { favorites, addPlayer, removePlayer, reorderPlayer, togglePlayerVisibility } = useFavorites();
 
   const [editMode, setEditMode]       = useState(false);
   const [showPicker, setShowPicker]   = useState(false);
@@ -109,18 +109,27 @@ export default function PlayerRoster() {
         <div className="edit-panel">
           <div className="edit-panel-label">Tap — to remove · use arrows to reorder</div>
           {favorites.players.map((player, idx) => (
-            <div key={player.id} className="edit-team-row">
+            <div key={player.id} className={`edit-team-row ${player.hidden ? 'edit-row-hidden' : ''}`}>
               <button className="edit-remove-btn" onClick={() => removePlayer(player.id)} title="Remove">−</button>
               <div className="edit-team-info">
-                {player.headshot && <img src={player.headshot} alt="" className="edit-team-logo" style={{ borderRadius: '50%' }} />}
+                {player.headshot && <img src={player.headshot} alt="" className="edit-team-logo" style={{ borderRadius: '50%', opacity: player.hidden ? 0.4 : 1 }} />}
                 <div>
-                  <div className="edit-team-name">{player.displayName}</div>
+                  <div className="edit-team-name" style={{ opacity: player.hidden ? 0.5 : 1 }}>{player.displayName}</div>
                   <div className="edit-team-sport">{player.position} · {SPORTS[player.sport]?.label}</div>
                 </div>
               </div>
-              <div className="edit-reorder-btns">
-                <button className="edit-reorder-btn" onClick={() => reorderPlayer(idx, idx - 1)} disabled={idx === 0}>▲</button>
-                <button className="edit-reorder-btn" onClick={() => reorderPlayer(idx, idx + 1)} disabled={idx === favorites.players.length - 1}>▼</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <button
+                  className={`edit-visibility-btn ${player.hidden ? 'edit-visibility-hidden' : 'edit-visibility-visible'}`}
+                  onClick={() => togglePlayerVisibility(player.id)}
+                  title={player.hidden ? 'Show on dashboard' : 'Hide from dashboard'}
+                >
+                  {player.hidden ? '👁‍🗨' : '👁'}
+                </button>
+                <div className="edit-reorder-btns">
+                  <button className="edit-reorder-btn" onClick={() => reorderPlayer(idx, idx - 1)} disabled={idx === 0}>▲</button>
+                  <button className="edit-reorder-btn" onClick={() => reorderPlayer(idx, idx + 1)} disabled={idx === favorites.players.length - 1}>▼</button>
+                </div>
               </div>
             </div>
           ))}
@@ -246,7 +255,7 @@ export default function PlayerRoster() {
 
       {!editMode && (
         <div className="players-grid">
-          {favorites.players.map((player) => (
+          {favorites.players.filter((p) => !p.hidden).map((player) => (
             <PlayerCard key={player.id} player={player} sport={player.sport} />
           ))}
         </div>

@@ -136,11 +136,19 @@ export function FavoritesProvider({ children, userId }) {
       return { ...f, players };
     });
 
+  const togglePlayerVisibility = (playerId) =>
+    setFavorites((f) => ({
+      ...f,
+      players: f.players.map((p) =>
+        p.id === playerId ? { ...p, hidden: !p.hidden } : p
+      ),
+    }));
+
   return (
     <FavoritesContext.Provider value={{
       favorites, sportOrder,
       addTeam, removeTeam, reorderTeam,
-      addPlayer, removePlayer, reorderPlayer,
+      addPlayer, removePlayer, reorderPlayer, togglePlayerVisibility,
       reorderSport,
     }}>
       {children}
