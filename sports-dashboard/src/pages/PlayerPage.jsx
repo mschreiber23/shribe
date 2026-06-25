@@ -244,9 +244,18 @@ function getStats(data, sportKey) {
   if (sportKey === 'nba') {
     const result = {};
     cats.forEach((cat) => (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; }));
-    // Offensive overrides general for accuracy
     const off = cats.find((c) => c.name === 'offensive');
     if (off) (off.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+
+    // Core API returns per-48-min rates — convert to per-game using MIN
+    const minPerGame = parseFloat(result['MIN'] || 0);
+    if (minPerGame > 0) {
+      const factor = minPerGame / 48;
+      ['PTS','REB','AST','STL','BLK','TO'].forEach((k) => {
+        const v = parseFloat(result[k] || 0);
+        if (v > 0) result[k] = (v * factor).toFixed(1);
+      });
+    }
     return result;
   }
 
