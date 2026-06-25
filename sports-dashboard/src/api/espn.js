@@ -56,6 +56,14 @@ export async function getAthleteInfo(sport, athleteId) {
   };
 }
 
+export async function getPlayerSplits(sport, playerId, year) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/splits?season=${year}`
+  );
+  return data;
+}
+
 export async function getPlayerGameLog(sport, playerId) {
   const { league } = SPORTS[sport];
   const year = new Date().getFullYear();

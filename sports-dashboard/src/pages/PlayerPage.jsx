@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getScoreboard, getGameBoxscore } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore } from '../api/espn';
 
 /* Format a stat value:
    - Rate stats (.265, 0.923, 1.023, 48.4%) → keep 3 decimals for baseball rates, 1 decimal for % rates
@@ -317,6 +317,8 @@ export default function PlayerPage() {
   const [seasons, setSeasons] = useState([]);
   const [gamelog, setGamelog] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [careerTab, setCareerTab] = useState('totals'); // 'totals' | 'rhp' | 'lhp'
+  const [splitsBySeason, setSplitsBySeason] = useState({}); // { year: { rhp: {...}, lhp: {...} } }
 
   // Derive sport key after bio loads
   const position = (bio?.athlete?.position?.abbreviation || '').toUpperCase();
@@ -429,10 +431,35 @@ export default function PlayerPage() {
             .filter((r) => r.status === 'fulfilled')
             .map((r) => r.value)
             .filter((r) => hasStats(r.data, sk));
-          setSeasons(valid);
-        })
-        .finally(() => setLoading(false));
-    }).catch(() => setLoading(false));
+        setSeasons(valid);
+
+        // For MLB batters: also fetch vs RHP / vs LHP splits for each season
+        if (sport === 'mlb' && !['P','SP','RP','CL','MR','SU'].includes(pos)) {
+          const splitYears = years.filter((y) => valid.some((v) => v.year === y));
+          const splitsMap = {};
+          Promise.allSettled(
+            splitYears.map((y) =>
+              getPlayerSplits(sport, playerId, y).then((data) => {
+                const labels = data.labels || [];
+                const cats = data.splitCategories || [];
+                const breakdown = cats.find((c) => c.name === 'byBreakdown');
+                const toStatObj = (statsArr) =>
+                  Object.fromEntries(labels.map((l, i) => [l, statsArr[i] ?? '—']));
+                if (breakdown) {
+                  const rhpSplit = breakdown.splits?.find((s) => s.displayName?.includes('Right'));
+                  const lhpSplit = breakdown.splits?.find((s) => s.displayName?.includes('Left'));
+                  splitsMap[y] = {
+                    rhp: rhpSplit ? toStatObj(rhpSplit.stats || []) : null,
+                    lhp: lhpSplit ? toStatObj(lhpSplit.stats || []) : null,
+                  };
+                }
+              }).catch(() => {})
+            )
+          ).then(() => setSplitsBySeason({ ...splitsMap }));
+        }
+      })
+      .finally(() => setLoading(false));
+  }).catch(() => setLoading(false));
   }, [sport, playerId]);
 
   const athlete = bio?.athlete || {};
@@ -552,7 +579,27 @@ export default function PlayerPage() {
 
           {/* Career stats table */}
           <div className="pp-stats-section">
-            <div className="pp-stats-title">{careerTitle}</div>
+            <div className="pp-career-header">
+              <div className="pp-stats-title">{careerTitle}</div>
+              {/* RHP/LHP tabs — MLB batters only */}
+              {sport === 'mlb' && sportKey === 'mlb_batting' && Object.keys(splitsBySeason).length > 0 && (
+                <div className="pp-career-tabs">
+                  {[
+                    { key: 'totals', label: 'Career Stats Totals' },
+                    { key: 'rhp',    label: 'vs RHP' },
+                    { key: 'lhp',    label: 'vs LHP' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      className={`pp-career-tab ${careerTab === tab.key ? 'pp-career-tab-active' : ''}`}
+                      onClick={() => setCareerTab(tab.key)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="pp-table-wrap">
               <table className="pp-table">
                 <thead>
@@ -563,7 +610,13 @@ export default function PlayerPage() {
                 </thead>
                 <tbody>
                   {seasons.map(({ year, data }) => {
-                    const s = getStats(data, sportKey);
+                    const totalStats = getStats(data, sportKey);
+                    const splitData = splitsBySeason[year];
+                    const s = careerTab === 'rhp' && splitData?.rhp
+                      ? splitData.rhp
+                      : careerTab === 'lhp' && splitData?.lhp
+                      ? splitData.lhp
+                      : totalStats;
                     const isCurrent = year === new Date().getFullYear();
                     return (
                       <tr key={year} className={`pp-tr ${isCurrent ? 'pp-tr-current' : ''}`}>

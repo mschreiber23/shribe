@@ -1700,6 +1700,37 @@ body {
   font-weight: 700;
 }
 
+/* ── Career Batting Tabs ── */
+.pp-career-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pp-career-tabs {
+  display: flex;
+  background: var(--bg3);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 0;
+}
+
+.pp-career-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.pp-career-tab:hover { color: var(--text); }
+.pp-career-tab-active { background: var(--accent); color: #fff; }
+
 /* ── Player Page ── */
 .pp-page { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 
