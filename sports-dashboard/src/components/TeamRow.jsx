@@ -69,12 +69,17 @@ function TeamScoreRow({ competitor, teamId, showScore }) {
 
 /* ── Small base diamond ─────────────────────────────── */
 function SmallDiamond({ onFirst, onSecond, onThird }) {
+  // Simple rotated squares — use polygon approach to avoid clipping
   return (
-    <svg viewBox="0 0 36 36" className="lv-diamond">
-      <rect x="12" y="1" width="12" height="12" rx="2" className={`lv-base ${onSecond ? 'lv-base-on' : ''}`} transform="rotate(45 18 7)" />
-      <rect x="1" y="12" width="12" height="12" rx="2" className={`lv-base ${onThird ? 'lv-base-on' : ''}`} transform="rotate(45 7 18)" />
-      <rect x="23" y="12" width="12" height="12" rx="2" className={`lv-base ${onFirst ? 'lv-base-on' : ''}`} transform="rotate(45 29 18)" />
-      <rect x="12" y="23" width="12" height="12" rx="2" className="lv-base" transform="rotate(45 18 29)" />
+    <svg viewBox="0 0 48 48" className="lv-diamond" style={{ overflow: 'visible' }}>
+      {/* Home plate (bottom) */}
+      <polygon points="24,40 30,34 24,28 18,34" className="lv-base" />
+      {/* First base (right) */}
+      <polygon points="38,24 44,18 38,12 32,18" className={`lv-base ${onFirst ? 'lv-base-on' : ''}`} />
+      {/* Second base (top) */}
+      <polygon points="24,20 30,14 24,8 18,14" className={`lv-base ${onSecond ? 'lv-base-on' : ''}`} />
+      {/* Third base (left) */}
+      <polygon points="10,24 16,18 10,12 4,18" className={`lv-base ${onThird ? 'lv-base-on' : ''}`} />
     </svg>
   );
 }
