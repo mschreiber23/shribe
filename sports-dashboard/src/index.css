@@ -3109,6 +3109,6 @@ body {
   .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
   .header-nav { justify-content: flex-start; }
   .main { padding: 16px 14px 40px; }
-  .scores-grid, .players-grid { grid-template-columns: 1fr; }
+  .scores-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-pills { grid-template-columns: repeat(3, 1fr); }
 }
