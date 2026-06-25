@@ -168,28 +168,31 @@ export default function TodaysScores() {
     <section className="section ts-section">
       {/* ── Ticker bar ── */}
       <div className="ts-ticker-bar">
-        {/* Sport dropdown */}
-        <select
-          className="ts-sport-select"
-          value={activeSport}
-          onChange={(e) => { setActiveSport(e.target.value); setGames([]); }}
-        >
-          {sportOrder.map((s) => (
-            <option key={s} value={s}>{SPORTS[s]?.label}</option>
-          ))}
-        </select>
+        {/* Row 1: sport selector + expand button */}
+        <div className="ts-top-row">
+          <select
+            className="ts-sport-select"
+            value={activeSport}
+            onChange={(e) => { setActiveSport(e.target.value); setGames([]); }}
+          >
+            {sportOrder.map((s) => (
+              <option key={s} value={s}>{SPORTS[s]?.label}</option>
+            ))}
+          </select>
 
-        {/* Date selector */}
-        <div className="ts-date-nav">
-          <button className="ts-date-btn" onClick={() => shiftDate(-1)}>‹</button>
-          <label className="ts-date-label">
-            {formatDateLabel(selectedDate)}
-            <input type="date" className="mt-date-input" value={selectedDate.toISOString().slice(0,10)} onChange={(e) => setSelectedDate(new Date(e.target.value + 'T12:00:00'))} />
-          </label>
-          <button className="ts-date-btn" onClick={() => shiftDate(1)}>›</button>
+          {/* Date selector */}
+          <div className="ts-date-nav">
+            <button className="ts-date-btn" onClick={() => shiftDate(-1)}>‹</button>
+            <span className="ts-date-label">{formatDateLabel(selectedDate)}</span>
+            <button className="ts-date-btn" onClick={() => shiftDate(1)}>›</button>
+          </div>
+
+          <button className="ts-expand-btn" onClick={() => setExpanded((v) => !v)} title={expanded ? 'Collapse' : 'Full Scoreboard'}>
+            {expanded ? '✕' : '⊞'}
+          </button>
         </div>
 
-        {/* Horizontal scrolling ticker */}
+        {/* Row 2: horizontal scrolling ticker */}
         <div className="ts-ticker-scroll">
           {loading && [1,2,3,4].map((i) => <div key={i} className="ticker-skeleton" />)}
           {!loading && games.length === 0 && <span className="ts-no-games">No games</span>}
@@ -197,11 +200,6 @@ export default function TodaysScores() {
             <TickerCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} />
           ))}
         </div>
-
-        {/* Full scoreboard toggle */}
-        <button className="ts-expand-btn" onClick={() => setExpanded((v) => !v)} title={expanded ? 'Collapse' : 'Full Scoreboard'}>
-          {expanded ? '✕' : '⊞'}
-        </button>
       </div>
 
       {/* ── Expanded full grid ── */}
