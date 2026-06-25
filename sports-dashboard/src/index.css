@@ -2730,6 +2730,12 @@ body {
 }
 .standings-th-team { text-align: left; min-width: 100px; padding-left: 14px; }
 .standings-th-hl { color: var(--text); }
+.standings-th-sortable { cursor: pointer; user-select: none; transition: color 0.1s; }
+.standings-th-sortable:hover { color: var(--text); }
+.standings-th-sorted { color: var(--accent2) !important; }
+.standings-td-sorted { background: rgba(168,85,247,0.05); }
+.standings-sort-icon { font-size: 9px; opacity: 0.5; margin-left: 2px; }
+.standings-th-sorted .standings-sort-icon { opacity: 1; color: var(--accent2); }
 
 .standings-tr {
   border-bottom: 1px solid var(--border);
