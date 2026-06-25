@@ -105,6 +105,7 @@ function PreviewTab({ data, competitors, status, sport }) {
                       <div className="preview-pitcher-sub">#{ath?.jersey} · {ath?.throws?.displayValue}-HP</div>
                       <div className="preview-pitcher-stats">
                         {statMap['W'] && statMap['L'] && <span className="preview-stat-pill">{statMap['W']}-{statMap['L']}</span>}
+                        {(statMap['FI'] || statMap['PI']) && <span className="preview-stat-pill">{statMap['FI'] || 0}.{statMap['PI'] || 0} IP</span>}
                         {statMap['ERA'] && <span className="preview-stat-pill">{statMap['ERA']} ERA</span>}
                         {statMap['WHIP'] && <span className="preview-stat-pill">{statMap['WHIP']} WHIP</span>}
                         {statMap['K'] && <span className="preview-stat-pill">{statMap['K']} K</span>}
