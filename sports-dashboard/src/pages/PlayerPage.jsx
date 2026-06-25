@@ -202,7 +202,7 @@ const CAREER_COLS = {
     { key: 'GP', label: 'G' }, { key: 'W', label: 'W', hl: true }, { key: 'L', label: 'L' },
     { key: 'SV', label: 'SV' }, { key: 'IP', label: 'IP', hl: true },
     { key: 'ERA', label: 'ERA', hl: true }, { key: 'WHIP', label: 'WHIP', hl: true },
-    { key: 'SO', label: 'SO', hl: true }, { key: 'BB', label: 'BB' },
+    { key: 'K', label: 'K', hl: true }, { key: 'BB', label: 'BB' },
     { key: 'H', label: 'H' }, { key: 'HR', label: 'HR' },
   ],
   nba: [
@@ -269,6 +269,9 @@ function getStats(data, sportKey) {
     const cat = cats.find((c) => c.name === 'pitching') || cats.find((c) => c.name === 'batting') || cats[0];
     const result = {};
     (cat?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    // Alias K → SO and SO → K so both keys work
+    if (result['K'] && !result['SO']) result['SO'] = result['K'];
+    if (result['SO'] && !result['K']) result['K'] = result['SO'];
     return result;
   }
 

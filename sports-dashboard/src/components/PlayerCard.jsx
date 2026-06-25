@@ -34,7 +34,7 @@ function extractSeasonStats(statsData, sport) {
         { label: 'W-L',  value: w && l && w !== '—' ? `${w}-${l}` : '—' },
         { label: 'ERA',  value: s['ERA'] },
         { label: 'WHIP', value: s['WHIP'] },
-        { label: 'SO',   value: s['SO'] },
+        { label: 'K',    value: s['K'] || s['SO'] },
       ];
     }
     const s = getCatStats(batting || categories[0]);
