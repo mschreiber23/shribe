@@ -12,8 +12,7 @@ function getScore(c) {
 }
 
 /* ── Score display for non-live ─────────────────────── */
-function GameScore({ game, teamId }) {
-  const navigate = useNavigate();
+function GameScore({ game, teamId, sport, onOpen }) {
   if (!game) return <div className="tr2-no-game">No game scheduled</div>;
 
   const comp = game.competitions?.[0];
@@ -25,27 +24,24 @@ function GameScore({ game, teamId }) {
   const isFinal = state === 'post';
   const isPre   = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
+  const showScore = isFinal;
 
   return (
-    <button className="tr2-game" onClick={() => (isFinal) && navigate(`/boxscore/mlb/${game.id}`)}>
-      {/* Status */}
+    <button className="tr2-game" onClick={onOpen}>
       <div className="tr2-status">
         {isFinal && <span className="badge badge-final">Final</span>}
         {isPre && <span className="tr2-time">{shortDetail}</span>}
       </div>
-
-      {/* Teams */}
       <div className="tr2-matchup">
-        <TeamScoreRow competitor={away} teamId={teamId} />
-        <TeamScoreRow competitor={home} teamId={teamId} />
+        <TeamScoreRow competitor={away} teamId={teamId} showScore={showScore} />
+        <TeamScoreRow competitor={home} teamId={teamId} showScore={showScore} />
       </div>
-
-      {isFinal && <div className="tr2-tap-hint">Box Score →</div>}
+      <div className="tr2-tap-hint">{isPre ? 'Preview →' : 'Box Score →'}</div>
     </button>
   );
 }
 
-function TeamScoreRow({ competitor, teamId }) {
+function TeamScoreRow({ competitor, teamId, showScore }) {
   const team = competitor?.team || {};
   const isMine = team.id === String(teamId);
   const score = getScore(competitor);
@@ -64,7 +60,7 @@ function TeamScoreRow({ competitor, teamId }) {
           )}
         </div>
       </div>
-      {score != null && (
+      {showScore && score != null && (
         <span className={`tr2-score ${won ? 'tr2-winner-score' : ''}`}>{score}</span>
       )}
     </div>
@@ -158,8 +154,10 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
           <div className="tr2-no-game">Loading…</div>
         ) : isLive ? (
           <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} onBoxScore={goToBoxScore} />
+        ) : game ? (
+          <GameScore game={game} teamId={team.id} sport={sport} onOpen={goToBoxScore} />
         ) : (
-          <GameScore game={game} teamId={team.id} />
+          <div className="tr2-no-game">No game today</div>
         )}
       </div>
     </div>
