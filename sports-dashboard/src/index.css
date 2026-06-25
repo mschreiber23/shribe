@@ -1436,8 +1436,14 @@ body {
 .ticker-winner .ticker-score { color: var(--text); }
 
 .ticker-bottom { min-height: 14px; display: flex; align-items: center; }
-.ticker-time { font-size: 10px; color: var(--text2); white-space: nowrap; }
-.ticker-context-text { font-size: 9px; color: var(--text2); }
+.ticker-pregame-time { font-size: 11px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.ticker-record-right { font-size: 9px; color: var(--text2); margin-left: auto; }
+.ticker-card-live-style { border-color: rgba(34,197,94,0.2); }
+.ticker-situation { display: flex; align-items: center; gap: 5px; }
+.mini-diamond { width: 22px; height: 22px; flex-shrink: 0; }
+.mini-base { fill: var(--bg2); stroke: rgba(255,255,255,0.25); stroke-width: 1.5; }
+.mini-base-on { fill: #f59e0b; stroke: #fbbf24; }
+.ticker-outs { font-size: 9px; color: var(--text2); font-weight: 600; white-space: nowrap; }
 
 .ticker-skeleton {
   width: 128px; height: 82px; flex-shrink: 0;

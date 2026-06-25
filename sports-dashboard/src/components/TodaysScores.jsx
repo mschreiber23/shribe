@@ -27,6 +27,18 @@ function formatDateLabel(date) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/* ── Mini base diamond ───────────────────────────────── */
+function MiniDiamond({ onFirst, onSecond, onThird }) {
+  return (
+    <svg viewBox="0 0 24 24" className="mini-diamond">
+      <rect x="9" y="1" width="6" height="6" rx="1" className={`mini-base ${onSecond ? 'mini-base-on' : ''}`} transform="rotate(45 12 4)" />
+      <rect x="1" y="9" width="6" height="6" rx="1" className={`mini-base ${onThird ? 'mini-base-on' : ''}`} transform="rotate(45 4 12)" />
+      <rect x="17" y="9" width="6" height="6" rx="1" className={`mini-base ${onFirst ? 'mini-base-on' : ''}`} transform="rotate(45 20 12)" />
+      <rect x="9" y="17" width="6" height="6" rx="1" className="mini-base" transform="rotate(45 12 20)" />
+    </svg>
+  );
+}
+
 /* ── Compact ticker card ──────────────────────────────── */
 function TickerCard({ game, sport, myTeamIds }) {
   const navigate = useNavigate();
@@ -42,26 +54,69 @@ function TickerCard({ game, sport, myTeamIds }) {
   const shortDetail = status?.type?.shortDetail || '';
   const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const sit = comp?.situation || {};
+  const outs = sit.outs ?? null;
+  const onFirst = !!sit.onFirst;
+  const onSecond = !!sit.onSecond;
+  const onThird = !!sit.onThird;
 
-  return (
-    <button
-      className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
-    >
-      {/* Top status row */}
+  /* ── PRE-GAME layout ── */
+  if (isPre) return (
+    <button className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
-        {isLive && <span className="ticker-live"><span className="live-dot" />{shortDetail}</span>}
-        {isFinal && <span className="ticker-final">Final</span>}
-        {isPre && (
-          <span className="ticker-date">
-            {new Date(game.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
-          </span>
-        )}
-        {/* Show broadcast only for live or pre-game, not final */}
-        {broadcast && !isFinal && <span className="ticker-broadcast">{broadcast}</span>}
+        <span className="ticker-pregame-time">{shortDetail}</span>
+        {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
+      <div className="ticker-teams">
+        {[away, home].filter(Boolean).map((c) => (
+          <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
+            <div className="ticker-team-left">
+              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="ticker-logo" />}
+              <span className="ticker-abbr">{c.team?.abbreviation}</span>
+            </div>
+            {c.records?.[0]?.summary && <span className="ticker-record-right">{c.records[0].summary}</span>}
+          </div>
+        ))}
+      </div>
+      <div className="ticker-bottom" />
+    </button>
+  );
 
-      {/* Teams */}
+  /* ── LIVE layout ── */
+  if (isLive) return (
+    <button className={`ticker-card ticker-card-live-style ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="ticker-status">
+        <span className="ticker-live"><span className="live-dot" />{shortDetail}</span>
+        {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
+      </div>
+      <div className="ticker-teams">
+        {[away, home].filter(Boolean).map((c) => (
+          <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
+            <div className="ticker-team-left">
+              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="ticker-logo" />}
+              <span className="ticker-abbr">{c.team?.abbreviation}</span>
+            </div>
+            <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
+          </div>
+        ))}
+      </div>
+      <div className="ticker-bottom">
+        {outs !== null && (
+          <div className="ticker-situation">
+            <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
+            <span className="ticker-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+
+  /* ── FINAL layout ── */
+  return (
+    <button className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="ticker-status">
+        <span className="ticker-final">Final</span>
+      </div>
       <div className="ticker-teams">
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`ticker-team ${c.winner ? 'ticker-winner' : ''} ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
@@ -72,18 +127,11 @@ function TickerCard({ game, sport, myTeamIds }) {
                 {c.records?.[0]?.summary && <span className="ticker-record"> {c.records[0].summary}</span>}
               </div>
             </div>
-            {(isLive || isFinal) && (
-              <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
-            )}
+            <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
           </div>
         ))}
       </div>
-
-      {/* Bottom — game time for pre-game, context for live */}
-      <div className="ticker-bottom">
-        {isPre && <span className="ticker-time">{shortDetail}</span>}
-        {isLive && status?.type?.detail && <span className="ticker-context-text">{status.type.detail}</span>}
-      </div>
+      <div className="ticker-bottom" />
     </button>
   );
 }
