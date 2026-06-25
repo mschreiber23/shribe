@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
 
 /* Format a stat value:
    - Rate stats (.265, 0.923, 1.023, 48.4%) → keep 3 decimals for baseball rates, 1 decimal for % rates
@@ -317,8 +317,10 @@ export default function PlayerPage() {
   const [seasons, setSeasons] = useState([]);
   const [gamelog, setGamelog] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [careerTab, setCareerTab] = useState('totals'); // 'totals' | 'rhp' | 'lhp'
-  const [splitsBySeason, setSplitsBySeason] = useState({}); // { year: { rhp: {...}, lhp: {...} } }
+  const [careerTab, setCareerTab] = useState('totals'); // 'totals' | 'rhp' | 'lhp' | 'opp'
+  const [splitsBySeason, setSplitsBySeason] = useState({});
+  const [vsTeamAbbr, setVsTeamAbbr] = useState(''); // e.g. "PHI"
+  const [mlbTeams, setMlbTeams] = useState([]);
 
   // Derive sport key after bio loads
   const position = (bio?.athlete?.position?.abbreviation || '').toUpperCase();
@@ -445,12 +447,21 @@ export default function PlayerPage() {
                 const breakdown = cats.find((c) => c.name === 'byBreakdown');
                 const toStatObj = (statsArr) =>
                   Object.fromEntries(labels.map((l, i) => [l, statsArr[i] ?? '—']));
-                if (breakdown) {
-                  const rhpSplit = breakdown.splits?.find((s) => s.displayName?.includes('Right'));
-                  const lhpSplit = breakdown.splits?.find((s) => s.displayName?.includes('Left'));
+                // Opponent splits
+                const oppCat = cats.find((c) => c.name === 'byOpponent');
+                const oppMap = {};
+                (oppCat?.splits || []).forEach((s) => {
+                  const abbr = s.abbreviation?.replace('vs. ', '') || '';
+                  if (abbr) oppMap[abbr] = toStatObj(s.stats || []);
+                });
+
+                if (breakdown || oppCat) {
+                  const rhpSplit = breakdown?.splits?.find((s) => s.displayName?.includes('Right'));
+                  const lhpSplit = breakdown?.splits?.find((s) => s.displayName?.includes('Left'));
                   splitsMap[y] = {
                     rhp: rhpSplit ? toStatObj(rhpSplit.stats || []) : null,
                     lhp: lhpSplit ? toStatObj(lhpSplit.stats || []) : null,
+                    opp: oppMap,
                   };
                 }
               }).catch(() => {})
@@ -461,6 +472,13 @@ export default function PlayerPage() {
       .finally(() => setLoading(false));
   }).catch(() => setLoading(false));
   }, [sport, playerId]);
+
+  // Load MLB teams for vs Team picker
+  useEffect(() => {
+    if (careerTab === 'opp' && mlbTeams.length === 0 && sport === 'mlb') {
+      searchTeams('mlb', '').then(setMlbTeams).catch(() => {});
+    }
+  }, [careerTab, sport]);
 
   const athlete = bio?.athlete || {};
   const summary = athlete.statsSummary?.statistics || [];
@@ -588,6 +606,7 @@ export default function PlayerPage() {
                     { key: 'totals', label: 'Career Stats Totals' },
                     { key: 'rhp',    label: 'vs RHP' },
                     { key: 'lhp',    label: 'vs LHP' },
+                    { key: 'opp',    label: 'vs Team' },
                   ].map((tab) => (
                     <button
                       key={tab.key}
@@ -600,6 +619,24 @@ export default function PlayerPage() {
                 </div>
               )}
             </div>
+            {careerTab === 'opp' && (
+              <div style={{ padding: '0 0 8px' }}>
+                <select
+                  className="ab-tracker-select"
+                  value={vsTeamAbbr}
+                  onChange={(e) => setVsTeamAbbr(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 13 }}
+                >
+                  <option value="">Select a team…</option>
+                  {mlbTeams.map((t) => (
+                    <option key={t.id} value={t.abbreviation}>
+                      {t.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="pp-table-wrap">
               <table className="pp-table">
                 <thead>
@@ -616,8 +653,15 @@ export default function PlayerPage() {
                       ? splitData.rhp
                       : careerTab === 'lhp' && splitData?.lhp
                       ? splitData.lhp
+                      : careerTab === 'opp' && vsTeamAbbr && splitData?.opp?.[vsTeamAbbr]
+                      ? splitData.opp[vsTeamAbbr]
+                      : careerTab === 'opp' && vsTeamAbbr
+                      ? null // no data vs this team in this year
                       : totalStats;
                     const isCurrent = year === new Date().getFullYear();
+                    // Skip years with no data for selected opponent
+                    if (s === null) return null;
+
                     return (
                       <tr key={year} className={`pp-tr ${isCurrent ? 'pp-tr-current' : ''}`}>
                         <td className="pp-td pp-td-season">{year}</td>
