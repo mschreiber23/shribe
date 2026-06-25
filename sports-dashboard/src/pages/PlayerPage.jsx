@@ -488,15 +488,23 @@ export default function PlayerPage() {
     if (!seasons.length) return {};
 
     const rateKeys = ['AVG','OBP','SLG','OPS','ERA','WHIP','FG%','3P%','FT%','GAA','SV%','RTG','RAVG'];
-    // NBA: GP sums, everything else averages across seasons
     const isNba = sportKey === 'nba';
     const NBA_AVG_KEYS = ['MIN','PTS','REB','AST','STL','BLK','FG%','3P%','FT%','TO'];
 
     const totals = {};
     const counts = {};
 
-    seasons.forEach(({ data }) => {
-      const s = getStats(data, sportKey);
+    seasons.forEach(({ year, data }) => {
+      const splitData = splitsBySeason[year];
+      // Pick the right stats source based on active tab
+      const baseStats = getStats(data, sportKey);
+      const s = careerTab === 'rhp' && splitData?.rhp
+        ? splitData.rhp
+        : careerTab === 'lhp' && splitData?.lhp
+        ? splitData.lhp
+        : careerTab === 'opp' && vsTeamAbbr && splitData?.opp?.[vsTeamAbbr]
+        ? splitData.opp[vsTeamAbbr]
+        : baseStats;
       cols.forEach(({ key }) => {
         const val = s[key];
         if (val == null || val === '—') return;
@@ -523,11 +531,30 @@ export default function PlayerPage() {
       });
     }
 
-    // Rate stats: use most recent season's value
-    const lastStats = getStats(seasons[seasons.length - 1].data, sportKey);
-    rateKeys.forEach((k) => {
-      if (lastStats[k] && lastStats[k] !== '—') totals[k] = lastStats[k];
-    });
+    // For MLB batting splits: recalculate rate stats from accumulated counting totals
+    if ((sportKey === 'mlb_batting') && (careerTab === 'rhp' || careerTab === 'lhp' || careerTab === 'opp')) {
+      const ab = totals['AB'] || 0, h = totals['H'] || 0;
+      const bb = totals['BB'] || 0, hbp = totals['HBP'] || 0;
+      const d2 = totals['2B'] || 0, d3 = totals['3B'] || 0, hr = totals['HR'] || 0;
+      if (ab > 0) {
+        const avg = h / ab;
+        const obp = (h + bb + hbp) / (ab + bb + hbp);
+        const singles = h - d2 - d3 - hr;
+        const tb = singles + 2*d2 + 3*d3 + 4*hr;
+        const slg = tb / ab;
+        const ops = obp + slg;
+        totals['AVG'] = avg < 1 ? avg.toFixed(3).replace(/^0/, '') : avg.toFixed(3);
+        totals['OBP'] = obp < 1 ? obp.toFixed(3).replace(/^0/, '') : obp.toFixed(3);
+        totals['SLG'] = slg < 1 ? slg.toFixed(3).replace(/^0/, '') : slg.toFixed(3);
+        totals['OPS'] = ops < 1 ? ops.toFixed(3).replace(/^0/, '') : ops.toFixed(3);
+      }
+    } else {
+      // Rate stats: use most recent season's value
+      const lastStats = getStats(seasons[seasons.length - 1].data, sportKey);
+      rateKeys.forEach((k) => {
+        if (lastStats[k] && lastStats[k] !== '—') totals[k] = lastStats[k];
+      });
+    }
 
     return totals;
   })();
