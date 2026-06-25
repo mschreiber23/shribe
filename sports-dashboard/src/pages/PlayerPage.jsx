@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getScoreboard, getGameBoxscore } from '../api/espn';
 
+/* Round any numeric display value to max 1 decimal place */
+function roundStat(val) {
+  if (val == null || val === '—' || val === '') return val;
+  const n = parseFloat(String(val).replace(/,/g, ''));
+  if (isNaN(n)) return val;
+  // If the value is already a clean integer, keep it
+  if (Number.isInteger(n)) return String(Math.round(n));
+  // Round to 1 decimal
+  return n.toFixed(1);
+}
+
 /* ── Recent AB Tracker ───────────────────────────────── */
 function RecentABTracker({ gamelog }) {
   const [targetABs, setTargetABs] = useState(20);
@@ -77,7 +88,7 @@ function RecentABTracker({ gamelog }) {
             value={targetABs}
             onChange={(e) => setTargetABs(Number(e.target.value))}
           >
-            {[20,30,40,50,60,70,80,90,100,150,200,250,300,400,500].map((n) => (
+            {[20,30,40,50,60,70,80,90,100,125,150,162,200,250,300,400,500].map((n) => (
               <option key={n} value={n}>Last {n} ABs</option>
             ))}
           </select>
@@ -358,7 +369,8 @@ export default function PlayerPage() {
           }
         } catch {}
       }
-      setGamelog(games.slice(0, 25));
+      // Full gamelog for AB tracker (up to full season), display capped at 25
+      setGamelog(games.slice(0, 162));
     }).catch(() => {});
 
     // Season stats — fetch from debut year to current
@@ -459,7 +471,9 @@ export default function PlayerPage() {
                     <div key={s.abbreviation} className="pp-highlight-pill">
                       <div className="pp-hl-value">{s.displayValue}</div>
                       <div className="pp-hl-label">{s.abbreviation}</div>
-                      {s.rankDisplayValue && <div className="pp-hl-rank">{s.rankDisplayValue}</div>}
+                      {s.rankDisplayValue && (
+                        <span className="pp-hl-rank-pill">{s.rankDisplayValue}</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -487,7 +501,7 @@ export default function PlayerPage() {
                         <td className="pp-td pp-td-season">{year}</td>
                         {cols.map((c) => (
                           <td key={c.key} className={`pp-td ${c.hl ? 'pp-td-hl' : ''}`}>
-                            {s[c.key] ?? '—'}
+                            {roundStat(s[c.key]) ?? '—'}
                           </td>
                         ))}
                       </tr>
@@ -498,7 +512,7 @@ export default function PlayerPage() {
                       <td className="pp-td pp-td-season pp-career-label">Career</td>
                       {cols.map((c) => (
                         <td key={c.key} className={`pp-td ${c.hl ? 'pp-td-hl' : ''}`}>
-                          {careerTotals[c.key] !== undefined ? careerTotals[c.key] : '—'}
+                          {careerTotals[c.key] !== undefined ? roundStat(careerTotals[c.key]) : '—'}
                         </td>
                       ))}
                     </tr>
@@ -516,7 +530,7 @@ export default function PlayerPage() {
           {/* Game Log */}
           {gamelog.length > 0 && (
             <div className="pp-stats-section">
-              <div className="pp-stats-title">Last {gamelog.length} Games</div>
+              <div className="pp-stats-title">Last 25 Games</div>
               <div className="pp-table-wrap">
                 <table className="pp-table">
                   <thead>
@@ -528,7 +542,7 @@ export default function PlayerPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {gamelog.map((g, i) => {
+                    {gamelog.slice(0, 25).map((g, i) => {
                       const date = g.date ? new Date(g.date) : null;
                       const dateStr = date
                         ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
