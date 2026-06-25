@@ -64,7 +64,10 @@ function TickerCard({ game, sport, myTeamIds }) {
   if (isPre) return (
     <button className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
-        <span className="ticker-pregame-time">{shortDetail}</span>
+        <span className="ticker-pregame-time">
+          {/* Strip "6/25 - " date prefix, keep just the time */}
+          {shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}
+        </span>
         {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
       <div className="ticker-teams">
