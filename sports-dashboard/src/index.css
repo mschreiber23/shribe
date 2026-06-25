@@ -1358,6 +1358,7 @@ body {
 .lv-top { color: #60a5fa; }
 .lv-bot { color: #f97316; }
 .lv-broadcast { font-size: 11px; color: var(--text2); }
+.lv-top-section { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
 .lv-body { display: flex; gap: 12px; flex-wrap: wrap; }
 .lv-teams-section { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; }
 .lv-rhe-header { display: flex; margin-bottom: 2px; }

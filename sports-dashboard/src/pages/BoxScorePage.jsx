@@ -595,6 +595,16 @@ export default function BoxScorePage() {
   const [activeTab, setActiveTab] = useState('Gamecast');
   const [bsTeam, setBsTeam] = useState(0);
 
+  // Allow deep-linking to a specific tab via URL hash param e.g. #tab=Box Score
+  useEffect(() => {
+    const hash = window.location.hash;
+    const match = hash.match(/tab=([^&]+)/);
+    if (match) {
+      const tab = decodeURIComponent(match[1]);
+      setActiveTab(tab);
+    }
+  }, []);
+
   const comp   = data?.header?.competitions?.[0];
   const comps  = comp?.competitors || [];
   const status = comp?.status;

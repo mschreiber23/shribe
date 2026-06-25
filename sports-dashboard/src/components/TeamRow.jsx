@@ -92,7 +92,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
   const lastPlay = liveData?.lastPlay;
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
 
-  const goTo = (tab) => navigate(`/boxscore/${sport}/${game.id}`);
+  const goTo = (tab) => navigate(`/boxscore/${sport}/${game.id}#tab=${encodeURIComponent(tab)}`);
 
   // ── MLB (baseball) ──────────────────────────────────────────
   if (sport === 'mlb') {
@@ -107,7 +107,8 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           <span className={`lv-inning ${isBot ? 'lv-bot' : 'lv-top'}`}>{isBot ? '▼' : '▲'} {shortDetail}</span>
           {broadcast && <span className="lv-broadcast">{broadcast}</span>}
         </div>
-        <div className="lv-body">
+        {/* Row: Teams+RHE on left, Diamond+count on right */}
+        <div className="lv-top-section">
           <div className="lv-teams-section">
             <div className="lv-rhe-header">
               <div className="lv-rhe-spacer" />
@@ -129,18 +130,18 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
             ))}
             {broadcast && <div className="lv-broadcast-bottom">{broadcast}</div>}
           </div>
-          <div className="lv-center">
-            <div className="lv-diamond-count">
-              <SmallDiamond onFirst={!!sit.onFirst} onSecond={!!sit.onSecond} onThird={!!sit.onThird} />
-              <div className="lv-count-col">
-                <div className="lv-count-row"><span className="lv-cl">B</span>{Array.from({length:4}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.balls??0)?'lv-dot-g':''}`}/>)}</div>
-                <div className="lv-count-row"><span className="lv-cl">S</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.strikes??0)?'lv-dot-y':''}`}/>)}</div>
-                <div className="lv-count-row"><span className="lv-cl">O</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.outs??0)?'lv-dot-r':''}`}/>)}</div>
-              </div>
+          <div className="lv-diamond-count">
+            <SmallDiamond onFirst={!!sit.onFirst} onSecond={!!sit.onSecond} onThird={!!sit.onThird} />
+            <div className="lv-count-col">
+              <div className="lv-count-row"><span className="lv-cl">B</span>{Array.from({length:4}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.balls??0)?'lv-dot-g':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">S</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.strikes??0)?'lv-dot-y':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">O</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.outs??0)?'lv-dot-r':''}`}/>)}</div>
             </div>
-            {lastPlay && <div className="lv-last-play"><span className="lv-lp-label">LAST PLAY</span><span className="lv-lp-text">{lastPlay}</span></div>}
-            <button className="lv-pbp-link" onClick={() => goTo('pbp')}>Play-by-Play →</button>
           </div>
+        </div>
+        {lastPlay && <div className="lv-last-play"><span className="lv-lp-label">LAST PLAY</span><span className="lv-lp-text">{lastPlay}</span></div>}
+        <button className="lv-pbp-link" onClick={() => goTo('Play-by-Play')}>Play-by-Play →</button>
+        <div className="lv-body">
           <div className="lv-players">
             {pitcher && (
               <div className="lv-player">
@@ -169,8 +170,8 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           </div>
         </div>
         <div className="lv-actions">
-          <button className="lv-btn" onClick={() => goTo('gamecast')}>Gamecast</button>
-          <button className="lv-btn" onClick={() => goTo('boxscore')}>Box Score</button>
+          <button className="lv-btn" onClick={() => goTo('Gamecast')}>Gamecast</button>
+          <button className="lv-btn" onClick={() => goTo('Box Score')}>Box Score</button>
         </div>
       </div>
     );
@@ -210,8 +211,8 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           )}
         </div>
         <div className="lv-actions">
-          <button className="lv-btn" onClick={() => goTo('gamecast')}>Gamecast</button>
-          <button className="lv-btn" onClick={() => goTo('boxscore')}>Box Score</button>
+          <button className="lv-btn" onClick={() => goTo('Gamecast')}>Gamecast</button>
+          <button className="lv-btn" onClick={() => goTo('Box Score')}>Box Score</button>
         </div>
       </div>
     );
@@ -253,8 +254,8 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           )}
         </div>
         <div className="lv-actions">
-          <button className="lv-btn" onClick={() => goTo('gamecast')}>Gamecast</button>
-          <button className="lv-btn" onClick={() => goTo('boxscore')}>Box Score</button>
+          <button className="lv-btn" onClick={() => goTo('Gamecast')}>Gamecast</button>
+          <button className="lv-btn" onClick={() => goTo('Box Score')}>Box Score</button>
         </div>
       </div>
     );
@@ -294,8 +295,8 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
         )}
       </div>
       <div className="lv-actions">
-        <button className="lv-btn" onClick={() => goTo('gamecast')}>Gamecast</button>
-        <button className="lv-btn" onClick={() => goTo('boxscore')}>Box Score</button>
+        <button className="lv-btn" onClick={() => goTo('Gamecast')}>Gamecast</button>
+        <button className="lv-btn" onClick={() => goTo('Box Score')}>Box Score</button>
       </div>
     </div>
   );
