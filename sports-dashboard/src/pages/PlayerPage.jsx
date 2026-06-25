@@ -69,41 +69,39 @@ function RecentABTracker({ gamelog }) {
 
   return (
     <div className="pp-stats-section">
-      <div className="pp-stats-title-row">
-        <div className="pp-stats-title">Recent AB Tracker</div>
-        <select
-          className="ab-tracker-select"
-          value={targetABs}
-          onChange={(e) => setTargetABs(Number(e.target.value))}
-        >
-          {[20,30,40,50,60,70,80,90,100].map((n) => (
-            <option key={n} value={n}>Last {n} ABs</option>
+      <div className="ab-tracker-inner">
+        <div className="pp-stats-title-row">
+          <div className="pp-stats-title">Recent AB Tracker</div>
+          <select
+            className="ab-tracker-select"
+            value={targetABs}
+            onChange={(e) => setTargetABs(Number(e.target.value))}
+          >
+            {[20,30,40,50,60,70,80,90,100].map((n) => (
+              <option key={n} value={n}>Last {n} ABs</option>
+            ))}
+          </select>
+        </div>
+        <div className="ab-tracker-meta">
+          <span className="ab-tracker-meta-pill">{accumulated.ab} AB</span>
+          <span className="ab-tracker-meta-pill">{accumulated.games} game{accumulated.games !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="ab-tracker-rate-row">
+          {rateStats.map((s) => (
+            <div key={s.label} className="ab-tracker-rate-stat">
+              <div className="ab-tracker-rate-value">{s.value}</div>
+              <div className="ab-tracker-label">{s.label}</div>
+            </div>
           ))}
-        </select>
-      </div>
-      <div className="ab-tracker-meta">
-        <span className="ab-tracker-meta-pill">{accumulated.ab} AB</span>
-        <span className="ab-tracker-meta-pill">{accumulated.games} game{accumulated.games !== 1 ? 's' : ''}</span>
-      </div>
-
-      {/* Rate stats — featured top row */}
-      <div className="ab-tracker-rate-row">
-        {rateStats.map((s) => (
-          <div key={s.label} className="ab-tracker-rate-stat">
-            <div className="ab-tracker-rate-value">{s.value}</div>
-            <div className="ab-tracker-label">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Counting stats — bottom */}
-      <div className="ab-tracker-count-row">
-        {countingStats.map((s) => (
-          <div key={s.label} className="ab-tracker-count-stat">
-            <div className="ab-tracker-count-value">{s.value}</div>
-            <div className="ab-tracker-label">{s.label}</div>
-          </div>
-        ))}
+        </div>
+        <div className="ab-tracker-count-row">
+          {countingStats.map((s) => (
+            <div key={s.label} className="ab-tracker-count-stat">
+              <div className="ab-tracker-count-value">{s.value}</div>
+              <div className="ab-tracker-label">{s.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -1424,6 +1424,13 @@ body {
 .sl-skeleton:last-child { border-bottom: none; }
 
 /* ── Recent AB Tracker ── */
+.ab-tracker-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
 .pp-stats-title-row {
   display: flex;
   align-items: center;
@@ -1448,6 +1455,7 @@ body {
 .ab-tracker-meta {
   display: flex;
   gap: 8px;
+  margin-top: -6px;
 }
 
 .ab-tracker-meta-pill {
@@ -1456,19 +1464,19 @@ body {
   color: var(--text2);
   background: var(--bg3);
   border: 1px solid var(--border);
-  padding: 3px 10px;
+  padding: 3px 12px;
   border-radius: 20px;
 }
 
-/* Rate stats — featured top row */
+/* Rate stats — featured top card */
 .ab-tracker-rate-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  background: color-mix(in srgb, var(--accent) 6%, var(--bg3));
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  gap: 0;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg3));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: 14px;
-  padding: 18px 12px;
+  padding: 20px 16px;
 }
 
 .ab-tracker-rate-stat { text-align: center; }
@@ -1481,7 +1489,7 @@ body {
   line-height: 1;
 }
 
-/* Counting stats — smaller secondary row */
+/* Counting stats */
 .ab-tracker-count-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
