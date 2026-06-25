@@ -2644,6 +2644,34 @@ body {
 }
 
 /* ── Standings Page ── */
+/* View sub-tabs */
+.standings-view-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  flex-wrap: wrap;
+}
+
+.standings-view-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  min-width: fit-content;
+}
+.standings-view-tab:hover { color: var(--text); }
+.standings-view-tab-active { background: var(--accent); color: #fff; }
+
 .standings-skeleton { display: flex; flex-direction: column; gap: 16px; }
 .standings-groups { display: flex; flex-direction: column; gap: 20px; }
 

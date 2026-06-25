@@ -177,11 +177,11 @@ export async function getTeamNews(sport, teamId, limit = 10) {
   return data.articles || [];
 }
 
-export async function getStandings(sport) {
+export async function getStandings(sport, level = 3) {
   const { league } = SPORTS[sport];
   const year = new Date().getFullYear();
   const tryYear = async (y) => {
-    const params = `level=3${sport === 'nfl' ? `&season=${y}` : ''}`;
+    const params = `level=${level}${sport === 'nfl' ? `&season=${y}` : ''}`;
     const { data } = await axios.get(
       `https://site.web.api.espn.com/apis/v2/sports/${league}/standings?${params}`
     );
