@@ -27,6 +27,133 @@ function BaseDiamond({ onFirst, onSecond, onThird, size = 44 }) {
   );
 }
 
+/* ─── PREVIEW TAB ──────────────────────────────────── */
+const WEATHER_ICONS = { '1':'☀️','2':'⛅','3':'🌥','4':'☁️','5':'🌧','6':'🌦','7':'🌩','8':'❄️','11':'🌫','12':'🌧','13':'🌨','14':'⛈','15':'⛈','16':'❄️','17':'⛈','18':'🌧','19':'🌨','20':'🌨','21':'🌨','22':'❄️','23':'🌬','25':'🌧','26':'🌧','29':'🌧','30':'🌡️','31':'🧊','32':'☀️','33':'🌙','34':'⛅','35':'⛅','36':'🌥','37':'🌧','38':'⛈','39':'🌧','40':'🌧','41':'❄️','42':'❄️','43':'❄️','44':'⛅' };
+
+function PreviewTab({ data, competitors, status, sport }) {
+  const gameInfo = data?.gameInfo || {};
+  const weather = gameInfo.venue ? gameInfo : null;
+  const venue = gameInfo.venue?.fullName;
+  const wx = gameInfo.weather;
+  const predictor = data?.predictor;
+  const lastFiveGames = data?.lastFiveGames || [];
+
+  const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
+  const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
+
+  return (
+    <div className="preview-wrap">
+      {/* Game info */}
+      {(venue || wx) && (
+        <div className="preview-card">
+          {venue && <div className="preview-info-row"><span className="preview-label">🏟 Venue</span><span>{venue}</span></div>}
+          {wx?.temperature && (
+            <div className="preview-info-row">
+              <span className="preview-label">{WEATHER_ICONS[wx.conditionId] || '🌤'} Weather</span>
+              <span>{wx.temperature}°F{wx.gust ? `, ${wx.gust}mph wind` : ''}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Win probability */}
+      {predictor?.homeTeam && (
+        <div className="preview-card">
+          <div className="preview-card-title">Win Probability</div>
+          <div className="preview-prob-row">
+            <div className="preview-prob-team">
+              {teamLogo(away?.team) && <img src={teamLogo(away.team)} alt="" className="preview-team-logo" />}
+              <span>{away?.team?.abbreviation}</span>
+              <span className="preview-prob-pct">{predictor.awayTeam?.gameProjection}%</span>
+            </div>
+            <div className="preview-prob-bar">
+              <div className="preview-prob-fill-away" style={{ width: `${predictor.awayTeam?.gameProjection}%` }} />
+              <div className="preview-prob-fill-home" style={{ width: `${predictor.homeTeam?.gameProjection}%` }} />
+            </div>
+            <div className="preview-prob-team preview-prob-team-right">
+              <span className="preview-prob-pct">{predictor.homeTeam?.gameProjection}%</span>
+              <span>{home?.team?.abbreviation}</span>
+              {teamLogo(home?.team) && <img src={teamLogo(home.team)} alt="" className="preview-team-logo" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MLB: Starting pitchers */}
+      {sport === 'mlb' && (
+        <div className="preview-card">
+          <div className="preview-card-title">Starting Pitchers</div>
+          <div className="preview-pitchers">
+            {[away, home].filter(Boolean).map((c) => {
+              const probable = c.probables?.[0];
+              if (!probable) return null;
+              const ath = probable.athlete;
+              const stats = probable.statistics?.splits?.categories || [];
+              const statMap = {};
+              stats.forEach((s) => { statMap[s.abbreviation] = s.displayValue; });
+              return (
+                <div key={c.team?.id} className="preview-pitcher">
+                  <div className="preview-pitcher-header">
+                    {c.team?.logo && <img src={c.team.logo} alt="" className="preview-pitcher-team" />}
+                    <span className="preview-pitcher-team-abbr">{c.team?.abbreviation}</span>
+                    <span className="preview-pitcher-ha">{c.homeAway === 'home' ? 'Home' : 'Away'}</span>
+                  </div>
+                  <div className="preview-pitcher-row">
+                    {ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-pitcher-avatar" />}
+                    <div className="preview-pitcher-info">
+                      <div className="preview-pitcher-name">{ath?.fullName}</div>
+                      <div className="preview-pitcher-sub">#{ath?.jersey} · {ath?.throws?.displayValue}-HP</div>
+                      <div className="preview-pitcher-stats">
+                        {statMap['W'] && statMap['L'] && <span className="preview-stat-pill">{statMap['W']}-{statMap['L']}</span>}
+                        {statMap['ERA'] && <span className="preview-stat-pill">{statMap['ERA']} ERA</span>}
+                        {statMap['WHIP'] && <span className="preview-stat-pill">{statMap['WHIP']} WHIP</span>}
+                        {statMap['K'] && <span className="preview-stat-pill">{statMap['K']} K</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Last 5 games */}
+      {lastFiveGames.length > 0 && (
+        <div className="preview-card">
+          <div className="preview-card-title">Recent Form</div>
+          <div className="preview-last5">
+            {lastFiveGames.map((teamData) => {
+              const teamInfo = teamData.team;
+              const events = (teamData.events || []).slice(-5);
+              return (
+                <div key={teamInfo?.id} className="preview-last5-team">
+                  <div className="preview-last5-header">
+                    {teamInfo?.id === away?.team?.id
+                      ? teamLogo(away.team) && <img src={teamLogo(away.team)} alt="" className="preview-team-logo" />
+                      : teamLogo(home?.team) && <img src={teamLogo(home.team)} alt="" className="preview-team-logo" />}
+                    <span className="preview-last5-abbr">{teamInfo?.abbreviation}</span>
+                  </div>
+                  <div className="preview-last5-games">
+                    {events.map((e, i) => {
+                      const won = e.gameResult === 'W';
+                      return (
+                        <div key={i} className={`preview-last5-dot ${won ? 'preview-dot-w' : 'preview-dot-l'}`} title={`${e.atVs} ${e.opponent?.abbreviation}: ${e.score}`}>
+                          {won ? 'W' : 'L'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── GAMECAST TAB ──────────────────────────────────── */
 function CountDots({ filled, total, color }) {
   return (
@@ -476,12 +603,20 @@ export default function BoxScorePage() {
   const homeGroup = players.find((p) => p.team?.id === home?.team?.id) || players[1];
   const groups = [awayGroup, homeGroup].filter(Boolean);
 
-  // Auto-select Gamecast for live games, Box Score for final
-  useEffect(() => {
-    if (!loading && !isLive) setActiveTab('Box Score');
-  }, [loading, isLive]);
+  const isPre = status?.type?.state === 'pre';
 
-  const tabs = isLive
+  // Auto-select best tab based on game state
+  useEffect(() => {
+    if (!loading) {
+      if (isPre) setActiveTab('Preview');
+      else if (!isLive) setActiveTab('Box Score');
+      else setActiveTab('Gamecast');
+    }
+  }, [loading, isLive, isPre]);
+
+  const tabs = isPre
+    ? ['Preview']
+    : isLive
     ? ['Gamecast', 'Box Score', 'Play-by-Play']
     : ['Box Score', 'Play-by-Play', 'Gamecast'];
 
@@ -512,6 +647,10 @@ export default function BoxScorePage() {
 
           {/* Tab content */}
           <div className="bsp-tab-content">
+            {activeTab === 'Preview' && (
+              <PreviewTab data={data} competitors={comps} status={status} sport={sport} />
+            )}
+
             {activeTab === 'Gamecast' && (
               sport === 'mlb'
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} />
