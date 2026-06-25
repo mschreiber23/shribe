@@ -1426,7 +1426,7 @@ body {
 /* ── Recent AB Tracker ── */
 .pp-stats-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -1446,49 +1446,58 @@ body {
 .ab-tracker-select:focus { border-color: var(--accent2); }
 
 .ab-tracker-meta {
-  font-size: 12px;
-  color: var(--text2);
-  margin-top: 3px;
+  display: flex;
+  gap: 8px;
 }
 
-/* Rate stats: AVG / OBP / SLG / OPS — big featured row */
+.ab-tracker-meta-pill {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* Rate stats — featured top row */
 .ab-tracker-rate-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 10px;
   background: color-mix(in srgb, var(--accent) 6%, var(--bg3));
   border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
-  border-radius: 12px;
-  padding: 14px 10px;
+  border-radius: 14px;
+  padding: 18px 12px;
 }
 
 .ab-tracker-rate-stat { text-align: center; }
 
 .ab-tracker-rate-value {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
   color: var(--accent2);
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
-/* Counting stats: AB, H, HR, RBI etc — smaller secondary row */
+/* Counting stats — smaller secondary row */
 .ab-tracker-count-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  gap: 10px;
 }
 
 .ab-tracker-count-stat {
   background: var(--bg3);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 6px;
+  border-radius: 12px;
+  padding: 12px 8px;
   text-align: center;
 }
 
 .ab-tracker-count-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -1499,8 +1508,8 @@ body {
   font-size: 10px;
   color: var(--text2);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-top: 5px;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
   font-weight: 700;
 }
 
