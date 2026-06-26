@@ -77,33 +77,66 @@ async function getMlbSchedule() {
   return data.dates?.[0]?.games || [];
 }
 
-// Get projected lineup from the team's active roster.
-// Simple single-API-call approach — no schedule/boxscore complexity, no home/away bugs.
-// Batting order is estimated by position; confirmed lineups override this when posted.
-const POS_ORDER = { C:1, '1B':2, '2B':3, '3B':4, SS:5, LF:6, CF:7, RF:8, DH:9, OF:10 };
+// Get projected lineup from the most recent game's actual boxscore batting order.
+// Uses the boxscore endpoint (explicit home/away separation by team.id).
+// Includes a `signal` for AbortController so stale requests can be cancelled.
+async function getProjectedLineup(teamId, signal) {
+  const teamNum = Number(teamId);
+  const end   = new Date(); end.setDate(end.getDate() - 1);
+  const start = new Date(); start.setDate(start.getDate() - 21);
+  const fmt   = (d) => d.toISOString().slice(0, 10);
 
-async function getProjectedLineup(teamId) {
-  const year = new Date().getFullYear();
-  try {
-    const data = await mlbFetch(
-      `${STATSAPI}/teams/${teamId}/roster?rosterType=active&season=${year}`
-    );
-    const roster = data.roster || [];
-    const players = roster
-      .filter((p) => p.position?.type !== 'Pitcher')
-      .sort((a, b) => (POS_ORDER[a.position?.abbreviation] || 99) - (POS_ORDER[b.position?.abbreviation] || 99))
-      .slice(0, 9)
-      .map((p) => ({
-        id: p.person?.id,
-        fullName: p.person?.fullName || '',
-        useName:  p.person?.useName  || '',
-        primaryPosition: p.position || {},
-        batSide: {},
-      }));
-    return { players, confirmed: false, fromDate: 'roster' };
-  } catch {
-    return { players: [], confirmed: false, fromDate: null };
+  const schedule = await fetch(
+    `${STATSAPI}/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(start)}&endDate=${fmt(end)}&gameType=R`,
+    { signal }
+  ).then((r) => r.json());
+
+  // Walk dates newest-first
+  for (const dateObj of [...(schedule.dates || [])].reverse()) {
+    for (const game of [...(dateObj.games || [])].reverse()) {
+      if (game.status?.abstractGameState !== 'Final') continue;
+
+      // Verify this game actually involves our team (schedule API should guarantee it,
+      // but be explicit to catch any API anomalies)
+      const homeId = Number(game.teams?.home?.team?.id);
+      const awayId = Number(game.teams?.away?.team?.id);
+      if (homeId !== teamNum && awayId !== teamNum) continue;
+
+      try {
+        const bs = await fetch(`${STATSAPI}/game/${game.gamePk}/boxscore`, { signal })
+          .then((r) => r.json());
+
+        // Pick the team's side by directly matching team.id
+        const homeTeam = bs.teams?.home;
+        const awayTeam = bs.teams?.away;
+        const teamBs = Number(homeTeam?.team?.id) === teamNum ? homeTeam : awayTeam;
+        if (!teamBs || Number(teamBs.team?.id) !== teamNum) continue;
+
+        const battingOrder = teamBs.battingOrder || [];
+        const playerMap    = teamBs.players || {};
+        if (battingOrder.length === 0) continue;
+
+        const players = battingOrder.map((id) => {
+          const entry = playerMap[`ID${id}`];
+          return entry ? {
+            id:              entry.person?.id,
+            fullName:        entry.person?.fullName || '',
+            useName:         entry.person?.useName  || '',
+            primaryPosition: entry.position || {},
+            batSide:         entry.person?.batSide || {},
+          } : null;
+        }).filter(Boolean);
+
+        if (players.length > 0) {
+          return { players, confirmed: false, fromDate: dateObj.date };
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') throw e; // propagate cancellation
+        continue;
+      }
+    }
   }
+  return { players: [], confirmed: false, fromDate: null };
 }
 
 /* ── MLB ID resolution (fallback for pitcher only) ─────────────────── */
@@ -1095,6 +1128,7 @@ export default function DFSPage() {
   const pitchingTeamId = pitchingMlb?.team?.id;
 
   // Load lineup when game/side changes
+  // AbortController ensures stale fetches (from previous game clicks) are cancelled
   useEffect(() => {
     if (!selectedMlb) return;
     setLineup({ players: [], confirmed: false, fromDate: null });
@@ -1109,15 +1143,23 @@ export default function DFSPage() {
     if (confirmedPlayers?.length > 0) {
       setLineup({ players: confirmedPlayers, confirmed: true, fromDate: null });
       setLineupLoading(false);
-    } else if (teamId) {
-      // Fall back to most recent game's boxscore batting order as projection
-      getProjectedLineup(teamId).then((result) => {
+      return;
+    }
+
+    if (!teamId) { setLineupLoading(false); return; }
+
+    // Use AbortController to cancel if game/side changes before fetch completes
+    const controller = new AbortController();
+    getProjectedLineup(teamId, controller.signal)
+      .then((result) => {
         setLineup(result);
         setLineupLoading(false);
-      }).catch(() => setLineupLoading(false));
-    } else {
-      setLineupLoading(false);
-    }
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') setLineupLoading(false);
+      });
+
+    return () => controller.abort(); // cancel on cleanup (game/side changed)
   }, [selectedMlb?.gamePk, activeSide]);
 
   // Load pitcher splits + hand when pitcher changes
