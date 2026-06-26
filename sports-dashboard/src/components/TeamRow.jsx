@@ -32,7 +32,9 @@ function GameScore({ game, teamId, sport, onOpen }) {
       const prob = c.probables?.[0];
       if (!prob) return null;
       const ath = prob.athlete || {};
-      return { team: c.team?.abbreviation, name: ath.shortName || ath.displayName, jersey: ath.jersey, headshot: ath.headshot?.href, record: prob.record || '' };
+      // headshot can be a string URL or an object with href
+      const headshot = typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href;
+      return { id: ath.id, team: c.team?.abbreviation, name: ath.shortName || ath.displayName, jersey: ath.jersey, headshot, record: prob.record || '' };
     }).filter(Boolean);
     const broadcast = comp?.broadcasts?.[0]?.names?.join('/') || '';
     const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
@@ -59,10 +61,10 @@ function GameScore({ game, teamId, sport, onOpen }) {
             <div className="pregame-pitchers">
               <div className="pregame-pitchers-label">PROBABLE PITCHERS</div>
               {probables.map((p, i) => (
-                <div key={i} className="pregame-pitcher">
-                  {p.headshot && <img src={p.headshot} alt="" className="pregame-pitcher-avatar" />}
+                <div key={i} className="pregame-pitcher" onClick={() => p.id && navigate(`/player/${sport}/${p.id}`)} style={{ cursor: p.id ? 'pointer' : 'default' }}>
+                  {p.headshot && <img src={p.headshot} alt="" className="pregame-pitcher-avatar" onError={(e) => { e.target.style.display='none'; }} />}
                   <div>
-                    <div className="pregame-pitcher-name">{p.name}{p.jersey ? ` #${p.jersey}` : ''} · {p.team}</div>
+                    <div className="pregame-pitcher-name" style={{ color: p.id ? 'var(--accent2)' : 'var(--text)' }}>{p.name}{p.jersey ? ` #${p.jersey}` : ''} · {p.team}</div>
                     {p.record && <div className="pregame-pitcher-record">{p.record}</div>}
                   </div>
                 </div>
@@ -192,24 +194,24 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
         <div className="lv-body">
           <div className="lv-players">
             {pitcher && (
-              <div className="lv-player">
+              <div className="lv-player" onClick={() => pitcher.id && navigate(`/player/${sport}/${pitcher.id}`)} style={{ cursor: pitcher.id ? 'pointer' : 'default' }}>
                 <div className="lv-player-role">PITCHING</div>
                 <div className="lv-player-row">
                   {pitcher.headshot?.href && <img src={pitcher.headshot.href} alt="" className="lv-avatar" />}
                   <div>
-                    <div className="lv-player-name">{pitcher.shortName || pitcher.displayName}{pitcher.jersey && <span className="lv-jersey"> #{pitcher.jersey}</span>}</div>
+                    <div className="lv-player-name" style={{ color: 'var(--accent2)' }}>{pitcher.shortName || pitcher.displayName}{pitcher.jersey && <span className="lv-jersey" style={{ color: 'var(--text2)' }}> #{pitcher.jersey}</span>}</div>
                     {pitcherStats && <div className="lv-player-stats">{[pitcherStats.IP&&`${pitcherStats.IP} IP`,pitcherStats.ER!==null&&`${pitcherStats.ER} ER`,pitcherStats.H!==null&&`${pitcherStats.H} H`,pitcherStats.K!==null&&`${pitcherStats.K} K`,pitcherStats.BB!==null&&`${pitcherStats.BB} BB`].filter(Boolean).join(', ')}</div>}
                   </div>
                 </div>
               </div>
             )}
             {batter && (
-              <div className="lv-player">
+              <div className="lv-player" onClick={() => batter.id && navigate(`/player/${sport}/${batter.id}`)} style={{ cursor: batter.id ? 'pointer' : 'default' }}>
                 <div className="lv-player-role">BATTING</div>
                 <div className="lv-player-row">
                   {batter.headshot?.href && <img src={batter.headshot.href} alt="" className="lv-avatar" />}
                   <div>
-                    <div className="lv-player-name">{batter.shortName || batter.displayName}{batter.jersey && <span className="lv-jersey"> #{batter.jersey}</span>}</div>
+                    <div className="lv-player-name" style={{ color: 'var(--accent2)' }}>{batter.shortName || batter.displayName}{batter.jersey && <span className="lv-jersey" style={{ color: 'var(--text2)' }}> #{batter.jersey}</span>}</div>
                     {batterStats && <div className="lv-player-stats">{batterStats['H-AB'] || '0-0'}{batterStats.HR > 0 ? `, ${batterStats.HR} HR` : ''}{batterStats.RBI > 0 ? `, ${batterStats.RBI} RBI` : ''}</div>}
                   </div>
                 </div>
