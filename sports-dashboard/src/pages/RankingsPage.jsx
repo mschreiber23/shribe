@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const STATSAPI = 'https://statsapi.mlb.com/api/v1';
 const BS = 'https://baseballsavant.mlb.com';
@@ -134,6 +135,36 @@ function formTag(seasonXwoba, recentXwoba, recentPA) {
   if (diff <= -0.060) return { icon: '❄️❄️', cls: 'form-cold2' };
   if (diff <= -0.030) return { icon: '❄️',  cls: 'form-cold' };
   return { icon: '', cls: '' };
+}
+
+/* ── ESPN ID resolution ──────────────────────────────────────────────── */
+// Fetch all ESPN MLB team abbreviation → ESPN team ID mapping
+async function fetchEspnTeamIds() {
+  const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams?limit=50');
+  const data = await res.json();
+  const map = {};
+  for (const t of (data.sports?.[0]?.leagues?.[0]?.teams || [])) {
+    const team = t.team;
+    if (team?.abbreviation && team?.id) map[team.abbreviation.toUpperCase()] = team.id;
+  }
+  return map;
+}
+
+// Fetch ESPN roster for a team and return normName → espnAthleteId map
+async function fetchEspnRoster(espnTeamId) {
+  const res = await fetch(
+    `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams/${espnTeamId}/roster`
+  );
+  const data = await res.json();
+  const map = {};
+  for (const group of (data.athletes || [])) {
+    const items = Array.isArray(group) ? group : (group.items || group.athletes || []);
+    for (const a of items) {
+      const name = a.fullName || a.displayName || '';
+      if (name && a.id) map[normName(name)] = String(a.id);
+    }
+  }
+  return map;
 }
 
 /* ── DraftKings salary CSV parser ───────────────────────────────────── */
@@ -275,8 +306,10 @@ export default function RankingsPage() {
   const [filterHand, setFilterHand] = useState('');
   const [sortCol, setSortCol]     = useState('score');
   const [sortDir, setSortDir]     = useState('desc');
-  const [salaryMap, setSalaryMap] = useState({});  // normName → { name, salary }
+  const [salaryMap, setSalaryMap]   = useState({});
+  const [espnIdMap, setEspnIdMap]   = useState({});  // normName → espnAthleteId
   const fileInputRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleDkUpload = (e) => {
     const file = e.target.files?.[0];
@@ -409,6 +442,23 @@ export default function RankingsPage() {
           setLoading(false);
           setProgress('');
         }
+
+        // Background: resolve ESPN athlete IDs for clickable player links
+        if (!cancelled) {
+          const teamAbbrs = [...new Set(allRows.map(r => r.teamAbbr))];
+          fetchEspnTeamIds().then(async (espnTeamIdMap) => {
+            const combined = {};
+            await Promise.allSettled(
+              teamAbbrs.map(async (abbr) => {
+                const espnTeamId = espnTeamIdMap[abbr];
+                if (!espnTeamId) return;
+                const rosterMap = await fetchEspnRoster(espnTeamId).catch(() => ({}));
+                Object.assign(combined, rosterMap);
+              })
+            );
+            if (!cancelled) setEspnIdMap(combined);
+          }).catch(() => {});
+        }
       } catch (e) {
         if (!cancelled) { setLoading(false); setProgress(''); }
       }
@@ -539,7 +589,17 @@ export default function RankingsPage() {
                 <tr key={`${r.batterId}-${r.pitcherId}`} className="rank-tr">
                   <td className="rank-td rank-td-num">{i + 1}</td>
                   <td className="rank-td rank-td-player">
-                    <span className="rank-player-name">{r.playerName}</span>
+                    {espnIdMap[r.playerNameNorm] ? (
+                      <span
+                        className="rank-player-name rank-player-link"
+                        onClick={() => navigate(`/player/mlb/${espnIdMap[r.playerNameNorm]}`)}
+                        title="View player profile"
+                      >
+                        {r.playerName}
+                      </span>
+                    ) : (
+                      <span className="rank-player-name">{r.playerName}</span>
+                    )}
                     {r.formIcon && (
                       <span className="rank-form-icon" title={`Recent xwOBA: ${r.recentXwoba?.toFixed(3)} (${r.recentPA} PA last 14d)`}>
                         {r.formIcon}
