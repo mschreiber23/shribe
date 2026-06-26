@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getScoreboard, getGameBoxscore, SPORTS } from '../api/espn';
+// No ESPN imports needed — logos constructed directly from MLB team IDs
 
 /* ── CSV helpers (same as StatcastPage) ─────────────────────────────── */
 function parseCSV(text) {
@@ -235,25 +235,29 @@ function fmt(val, key) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-/* ── Game + roster helpers ──────────────────────────────────────────── */
-function getTeamLogo(team) {
-  const logos = team?.logos || [];
-  const dark = logos.find((l) => l.rel?.includes('dark'));
-  return dark?.href || logos[0]?.href || team?.logo || null;
+/* ── Logo helper — constructed directly from MLB team ID ─────────────── */
+// Bypasses ESPN game matching (which has ordering issues) by using the ESPN
+// CDN URL pattern directly from the MLB team ID → abbreviation lookup.
+function mlbTeamLogo(teamId) {
+  const abbr = (MLB_ABBR[teamId] || 'mlb').toLowerCase();
+  return `https://a.espncdn.com/i/teamlogos/mlb/500-dark/${abbr}.png`;
 }
-
-// Get batting lineup order from ESPN boxscore rosters
-function extractLineup(rosters, teamId) {
-  const teamRoster = rosters?.find((r) => String(r.team?.id) === String(teamId));
-  if (!teamRoster) return [];
-  const entries = teamRoster.entries || [];
-  // Sort by lineup slot; slot 0 means not in lineup
-  const starters = entries
-    .filter((e) => e.lineup?.slot > 0)
-    .sort((a, b) => (a.lineup?.slot || 99) - (b.lineup?.slot || 99));
-  if (starters.length > 0) return starters;
-  // Fallback: return all athletes from roster entries
-  return entries.slice(0, 9);
+function mlbTeamLogoFallback(teamId) {
+  const abbr = (MLB_ABBR[teamId] || 'mlb').toLowerCase();
+  return `https://a.espncdn.com/i/teamlogos/mlb/500/${abbr}.png`;
+}
+function TeamLogo({ teamId, className }) {
+  const dark = mlbTeamLogo(teamId);
+  const orig = mlbTeamLogoFallback(teamId);
+  if (!teamId) return null;
+  return (
+    <img
+      src={dark}
+      onError={(e) => { if (e.target.src !== orig) { e.target.onerror = null; e.target.src = orig; } }}
+      alt=""
+      className={className}
+    />
+  );
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -432,7 +436,6 @@ function PitcherSplitsTable({ splits }) {
 export default function DFSPage() {
   const navigate = useNavigate();
   const [mlbGames, setMlbGames]           = useState([]);   // from MLB Stats API
-  const [espnGames, setEspnGames]         = useState([]);   // from ESPN (for logos/status)
   const [selectedIdx, setSelectedIdx]     = useState(0);
   const [activeSide, setActiveSide]       = useState('away');
   const [throwsFilter, setThrowsFilter]   = useState('all');
@@ -453,8 +456,6 @@ export default function DFSPage() {
       + String(today.getMonth() + 1).padStart(2, '0')
       + String(today.getDate()).padStart(2, '0');
 
-    // ESPN for logos, status, probable pitchers display
-    getScoreboard('mlb', dateStr).then(setEspnGames).catch(() => {});
     // MLB Stats API for lineups + confirmed lineup data
     getMlbSchedule().then((games) => {
       setMlbGames(games);
@@ -463,7 +464,6 @@ export default function DFSPage() {
   }, []);
 
   const selectedMlb = mlbGames[selectedIdx] || null;
-  const selectedEspn = espnGames[selectedIdx] || null;
 
   // Derive teams from selected MLB game
   const mlbAway = selectedMlb?.teams?.away;
@@ -476,27 +476,12 @@ export default function DFSPage() {
   const probPitcher = probPitcherRaw ? {
     id: String(probPitcherRaw.id),
     name: probPitcherRaw.fullName || '',
-    hand: null, // resolved below from ESPN
     headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${probPitcherRaw.id}/headshot/67/current`,
-    record: '',
   } : null;
 
-  // Get pitcher hand from ESPN data
-  const espnComp = selectedEspn?.competitions?.[0];
-  const espnCompetitors = espnComp?.competitors || [];
-  const espnPitchingTeam = activeSide === 'away'
-    ? espnCompetitors.find((c) => c.homeAway === 'home')
-    : espnCompetitors.find((c) => c.homeAway === 'away');
-  const espnProb = espnPitchingTeam?.probables?.[0];
-  if (probPitcher && espnProb) {
-    probPitcher.hand = espnProb.athlete?.throwHand?.abbreviation || null;
-    probPitcher.record = espnProb.record || '';
-  }
-
-  // Get team logos from ESPN
-  const espnBattingTeam  = activeSide === 'away'
-    ? espnCompetitors.find((c) => c.homeAway === 'away')
-    : espnCompetitors.find((c) => c.homeAway === 'home');
+  // Team IDs for logos (constructed directly from MLB ID, no ESPN game matching needed)
+  const battingTeamId  = battingMlb?.team?.id;
+  const pitchingTeamId = pitchingMlb?.team?.id;
 
   // Load lineup when game/side changes
   useEffect(() => {
@@ -541,8 +526,7 @@ export default function DFSPage() {
   }, [probPitcher?.id, selectedIdx, activeSide]);
 
   // Load batter Statcast stats when batting team / throws filter changes
-  const battingTeamId = battingMlb?.team?.id;
-  const battingAbbr   = battingTeamId ? MLB_ABBR[battingTeamId] : null;
+  const battingAbbr = battingTeamId ? MLB_ABBR[battingTeamId] : null;
   useEffect(() => {
     if (!battingAbbr) return;
     setBatterLoading(true);
@@ -554,15 +538,10 @@ export default function DFSPage() {
       .finally(() => setBatterLoading(false));
   }, [battingAbbr, throwsFilter]);
 
-  // Auto-set throws filter based on pitcher handedness
+  // Auto-set throws filter based on pitcher handedness (from fetched pitcherHand)
   useEffect(() => {
-    const hand = probPitcher?.hand;
-    if (hand === 'L' || hand === 'R') setThrowsFilter(hand);
-  }, [probPitcher?.hand, selectedIdx, activeSide]);
-
-  // Team logo helper using ESPN data
-  const battingEspnTeam = espnBattingTeam?.team;
-  const pitchingEspnTeam = espnPitchingTeam?.team;
+    if (pitcherHand === 'L' || pitcherHand === 'R') setThrowsFilter(pitcherHand);
+  }, [pitcherHand]);
 
   return (
     <div className="dfs-page">
@@ -599,9 +578,9 @@ export default function DFSPage() {
           {/* ── Team tab switcher ──────────────────────────────────── */}
           <div className="dfs-team-tabs">
             {[
-              { side: 'away', mlbTeam: mlbAway?.team, espnTeam: espnCompetitors.find(c=>c.homeAway==='away')?.team },
-              { side: 'home', mlbTeam: mlbHome?.team, espnTeam: espnCompetitors.find(c=>c.homeAway==='home')?.team },
-            ].map(({ side, mlbTeam, espnTeam }) => {
+              { side: 'away', mlbTeam: mlbAway?.team },
+              { side: 'home', mlbTeam: mlbHome?.team },
+            ].map(({ side, mlbTeam }) => {
               const abbr = MLB_SHORT[mlbTeam?.id] || mlbTeam?.name?.split(' ').slice(-1)[0] || '?';
               return (
                 <button
@@ -609,9 +588,7 @@ export default function DFSPage() {
                   className={`dfs-team-tab ${activeSide === side ? 'dfs-team-tab-active' : ''}`}
                   onClick={() => setActiveSide(side)}
                 >
-                  {getTeamLogo(espnTeam) && (
-                    <img src={getTeamLogo(espnTeam)} alt="" className="dfs-tab-logo" />
-                  )}
+                  <TeamLogo teamId={mlbTeam?.id} className="dfs-tab-logo" />
                   {abbr} Batters
                 </button>
               );
@@ -625,9 +602,7 @@ export default function DFSPage() {
             <div className="dfs-panel dfs-panel-batters">
               <div className="dfs-panel-header">
                 <div className="dfs-panel-team">
-                  {getTeamLogo(battingEspnTeam) && (
-                    <img src={getTeamLogo(battingEspnTeam)} alt="" className="dfs-panel-logo" />
-                  )}
+                  <TeamLogo teamId={battingTeamId} className="dfs-panel-logo" />
                   <div>
                     <div className="dfs-panel-name">{battingMlb?.team?.name}</div>
                     <div className="dfs-panel-sub">
@@ -668,9 +643,7 @@ export default function DFSPage() {
             <div className="dfs-panel dfs-panel-pitcher">
               <div className="dfs-panel-header">
                 <div className="dfs-panel-team">
-                  {getTeamLogo(pitchingEspnTeam) && (
-                    <img src={getTeamLogo(pitchingEspnTeam)} alt="" className="dfs-panel-logo" />
-                  )}
+                  <TeamLogo teamId={pitchingTeamId} className="dfs-panel-logo" />
                   <div>
                     <div className="dfs-panel-name">{pitchingMlb?.team?.name}</div>
                     <div className="dfs-panel-sub">Starting Pitcher</div>
