@@ -63,6 +63,14 @@ async function fetchBattedBall(mlbId, year) {
   return rows.find((r) => String(r.id) === String(mlbId)) || null;
 }
 
+// Sprint speed leaderboard — current year
+async function fetchSprintSpeed(mlbId, year) {
+  const url = `${BS}/sprint_speed_leaderboard?year=${year}&position=&team=&min=0&csv=1`;
+  const text = await bsFetch(url);
+  const { rows } = parseCSV(text);
+  return rows.find((r) => String(r.player_id) === String(mlbId)) || null;
+}
+
 // Resolve MLB player ID from name
 async function resolveMlbId(firstName, lastName) {
   const name = `${firstName} ${lastName}`;
@@ -91,7 +99,8 @@ const PCT_STATS = [
   { pctCol: 'k_percent',     statCol: 'k_percent',              label: 'K%',            unit: '%',   fmt: 'num1' },
   { pctCol: 'bb_percent',    statCol: 'bb_percent',             label: 'BB%',           unit: '%',   fmt: 'num1' },
   { pctCol: 'whiff_percent', statCol: 'swing_miss_percent',     label: 'Whiff%',        unit: '%',   fmt: 'num1' },
-  { pctCol: 'sprint_speed',  statCol: null,                     label: 'Sprint Speed',  unit: ' ft/s', fmt: 'num1' },
+  { pctCol: 'chase_percent', statCol: null,                     label: 'Chase%',        unit: '%',   fmt: 'num1' },
+  { pctCol: 'sprint_speed',  statCol: '_sprint_speed',          label: 'Sprint Speed',  unit: ' ft/s', fmt: 'num1' },
 ];
 
 function pctColor(pct) {
@@ -191,6 +200,7 @@ export default function StatcastPage() {
   const [percs, setPercs]       = useState(null);   // percentile row
   const [yearRows, setYearRows] = useState([]);     // Statcast stats by year
   const [bbRow, setBbRow]       = useState(null);   // batted ball current year
+  const [sprintRow, setSprintRow] = useState(null); // sprint speed current year
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
 
@@ -224,17 +234,19 @@ export default function StatcastPage() {
       setMlbId(id);
 
       // 2. Fetch in parallel
-      const [percRes, yearRes, bbRes] = await Promise.allSettled([
+      const [percRes, yearRes, bbRes, sprintRes] = await Promise.allSettled([
         fetchPercentiles(id, year),
         fetchStatcastYears(id),
         fetchBattedBall(id, year),
+        fetchSprintSpeed(id, year),
       ]);
 
-      if (percRes.status === 'fulfilled') setPercs(percRes.value);
-      if (yearRes.status === 'fulfilled') setYearRows(yearRes.value || []);
-      if (bbRes.status  === 'fulfilled') setBbRow(bbRes.value);
+      if (percRes.status   === 'fulfilled') setPercs(percRes.value);
+      if (yearRes.status   === 'fulfilled') setYearRows(yearRes.value || []);
+      if (bbRes.status     === 'fulfilled') setBbRow(bbRes.value);
+      if (sprintRes.status === 'fulfilled') setSprintRow(sprintRes.value);
 
-      const allFailed = [percRes, yearRes, bbRes].every((r) => r.status === 'rejected');
+      const allFailed = [percRes, yearRes, bbRes, sprintRes].every((r) => r.status === 'rejected');
       if (allFailed) setError('Could not load Statcast data from Baseball Savant.');
 
       setLoading(false);
@@ -254,9 +266,11 @@ export default function StatcastPage() {
     : 'https://baseballsavant.mlb.com';
 
   // Build the most-recent year's raw stat row for circle values
-  const currentYearRow = yearRows.find((r) => String(r.year) === String(year))
-                       || yearRows[0]
-                       || {};
+  const currentYearRow = {
+    ...(yearRows.find((r) => String(r.year) === String(year)) || yearRows[0] || {}),
+    // Inject sprint speed from its own endpoint
+    _sprint_speed: sprintRow?.sprint_speed ?? null,
+  };
 
   // Statcast stats table columns
   const statCols = [
