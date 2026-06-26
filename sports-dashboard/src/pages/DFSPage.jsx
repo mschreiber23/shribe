@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard } from '../api/espn';
 
@@ -165,6 +165,14 @@ async function fetchTeamBatters(teamAbbr, pitcherThrows) {
 async function fetchPitcherHand(mlbId) {
   const data = await mlbFetch(`${STATSAPI}/people/${mlbId}`);
   return data.people?.[0]?.pitchHand?.code || null;
+}
+
+async function fetchBvpStats(batterId, pitcherId) {
+  const data = await mlbFetch(
+    `${STATSAPI}/people/${batterId}/stats?stats=vsPlayer&opposingPlayerId=${pitcherId}&group=hitting&sportId=1`
+  );
+  const splits = data.stats?.find((s) => s.type?.displayName === 'vsPlayer')?.splits || [];
+  return splits[0]?.stat || null;
 }
 
 async function fetchPitcherSeasonStats(mlbId) {
@@ -442,8 +450,117 @@ function PitcherSplitsTable({ splits }) {
 /* ─────────────────────────────────────────────────────────────────────
    Main DFS Page
    ───────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   BvP History Tab
+   ───────────────────────────────────────────────────────────────────── */
+const BVP_COLS = [
+  { key: 'atBats',      label: 'AB' },
+  { key: 'hits',        label: 'H' },
+  { key: 'doubles',     label: '2B' },
+  { key: 'triples',     label: '3B' },
+  { key: 'homeRuns',    label: 'HR' },
+  { key: 'rbi',         label: 'RBI' },
+  { key: 'strikeOuts',  label: 'K' },
+  { key: 'baseOnBalls', label: 'BB' },
+  { key: 'avg',         label: 'AVG', rate: true },
+  { key: 'obp',         label: 'OBP', rate: true },
+  { key: 'slg',         label: 'SLG', rate: true },
+  { key: 'ops',         label: 'OPS', rate: true },
+];
+
+function BvPTab({ lineup, pitcherId, pitcherName }) {
+  const [rows, setRows]       = useState([]);   // [{ player, stat }]
+  const [loading, setLoading] = useState(false);
+  const lastKey = useRef('');
+
+  useEffect(() => {
+    const key = `${lineup?.map(p=>p.id).join(',')}|${pitcherId}`;
+    if (!pitcherId || !lineup?.length || key === lastKey.current) return;
+    lastKey.current = key;
+    setLoading(true);
+    setRows([]);
+
+    Promise.allSettled(
+      lineup.map((player) =>
+        fetchBvpStats(player.id, pitcherId)
+          .then((stat) => ({ player, stat }))
+          .catch(() => ({ player, stat: null }))
+      )
+    ).then((results) => {
+      setRows(results.map((r) => r.value).filter(Boolean));
+      setLoading(false);
+    });
+  }, [lineup, pitcherId]);
+
+  if (loading) return (
+    <div className="dfs-loading" style={{ padding: '24px 14px' }}>
+      <div className="auth-spinner" />
+      <span>Loading career BvP history…</span>
+    </div>
+  );
+
+  if (!pitcherId) return (
+    <div className="dfs-empty">No starting pitcher announced — BvP history unavailable.</div>
+  );
+
+  return (
+    <div className="bvp-wrap">
+      <div className="bvp-subtitle">
+        Career stats vs <strong>{pitcherName || 'pitcher'}</strong>
+      </div>
+      <div className="dfs-table-wrap">
+        <table className="dfs-table bvp-table">
+          <thead>
+            <tr>
+              <th className="dfs-th dfs-th-num">#</th>
+              <th className="dfs-th dfs-th-player">Player</th>
+              {BVP_COLS.map((c) => (
+                <th key={c.key} className={`dfs-th ${c.rate ? 'bvp-th-rate' : ''}`}>{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ player, stat }, i) => {
+              const pos  = player.primaryPosition?.abbreviation || '';
+              const noHistory = !stat || (parseInt(stat.atBats) === 0 && !stat.hits);
+              return (
+                <tr key={player.id} className="dfs-player-row">
+                  <td className="dfs-td dfs-td-num">{i + 1}</td>
+                  <td className="dfs-td dfs-td-player">
+                    <span className="dfs-player-name">{player.fullName || player.useName}</span>
+                    {pos && <span className="dfs-player-meta"> {pos}</span>}
+                  </td>
+                  {noHistory ? (
+                    <td colSpan={BVP_COLS.length} className="bvp-no-history">
+                      No history between batter and pitcher
+                    </td>
+                  ) : (
+                    BVP_COLS.map((c) => {
+                      const val = stat?.[c.key];
+                      const display = val != null ? (c.rate ? val : String(val)) : '—';
+                      return (
+                        <td key={c.key} className={`dfs-td ${c.rate ? 'bvp-td-rate' : ''}`}>
+                          {display}
+                        </td>
+                      );
+                    })
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Main DFS Page
+   ───────────────────────────────────────────────────────────────────── */
 export default function DFSPage() {
   const navigate = useNavigate();
+  const [dfsTab, setDfsTab]               = useState('shriebiq'); // 'shriebiq' | 'bvp'
   const [mlbGames, setMlbGames]           = useState([]);   // from MLB Stats API
   const [selectedIdx, setSelectedIdx]     = useState(0);
   const [activeSide, setActiveSide]       = useState('away');
@@ -629,7 +746,23 @@ export default function DFSPage() {
 
       {selectedMlb && (
         <>
-          {/* ── Team tab switcher ──────────────────────────────────── */}
+          {/* ── Page tab switcher: ShribeIQ | BvP History ─────────── */}
+          <div className="dfs-page-tabs">
+            {[
+              { key: 'shriebiq', label: '⚡ ShribeIQ' },
+              { key: 'bvp',      label: '🆚 BvP History' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                className={`dfs-page-tab ${dfsTab === key ? 'dfs-page-tab-active' : ''}`}
+                onClick={() => setDfsTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Team tab switcher (both tabs) ─────────────────────── */}
           <div className="dfs-team-tabs">
             {[
               { side: 'away', mlbTeam: mlbAway?.team },
@@ -649,8 +782,8 @@ export default function DFSPage() {
             })}
           </div>
 
-          {/* ── Main two-panel layout ─────────────────────────────── */}
-          <div className="dfs-panels">
+          {/* ── ShribeIQ tab: two-panel matchup layout ────────────── */}
+          {dfsTab === 'shriebiq' && <div className="dfs-panels">
 
             {/* ── LEFT: Batter panel ─────────────────────────────── */}
             <div className="dfs-panel dfs-panel-batters">
@@ -760,7 +893,16 @@ export default function DFSPage() {
                 </>
               )}
             </div>
-          </div>
+          </div>}
+
+          {/* ── BvP History tab ───────────────────────────────────── */}
+          {dfsTab === 'bvp' && (
+            <BvPTab
+              lineup={lineup.players}
+              pitcherId={probPitcher?.id}
+              pitcherName={probPitcher?.name}
+            />
+          )}
         </>
       )}
 

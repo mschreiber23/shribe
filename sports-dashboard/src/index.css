@@ -3753,6 +3753,32 @@ body {
 .dfs-cell-bad      { background: rgba(239, 68, 68,  0.22); color: #ef4444; font-weight: 700; }
 .dfs-cell-bad-lg   { background: rgba(239, 68, 68,  0.35); color: #dc2626; font-weight: 800; }
 
+/* ── DFS page-level tab (ShribeIQ / BvP) ─────────────────────────── */
+.dfs-page-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+}
+.dfs-page-tab {
+  flex: 1; padding: 9px 16px; border-radius: calc(var(--radius) - 2px);
+  font-size: 13px; font-weight: 700; color: var(--text2);
+  background: transparent; border: none; cursor: pointer; transition: all 0.15s;
+}
+.dfs-page-tab:hover { color: var(--text); }
+.dfs-page-tab-active { background: var(--accent); color: #fff; }
+
+/* BvP History tab */
+.bvp-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.bvp-subtitle { padding: 12px 16px 8px; font-size: 13px; color: var(--text2); border-bottom: 1px solid var(--border); }
+.bvp-subtitle strong { color: var(--text); }
+.bvp-table { min-width: 700px; }
+.bvp-th-rate { color: var(--accent2) !important; }
+.bvp-td-rate { font-weight: 700; color: var(--text); }
+.bvp-no-history { color: var(--text2); font-size: 11px; font-style: italic; text-align: left; padding-left: 12px; }
+
 /* Lineup status badges */
 .dfs-confirmed-badge {
   display: inline-flex; align-items: center; gap: 4px;
