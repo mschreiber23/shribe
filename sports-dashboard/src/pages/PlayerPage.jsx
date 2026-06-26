@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
 
 /* Format a stat value:
@@ -687,6 +687,15 @@ export default function PlayerPage() {
               </div>
             )}
           </div>
+
+          {/* Statcast button — MLB batters only */}
+          {sport === 'mlb' && sportKey === 'mlb_batting' && (
+            <Link to={`/statcast/mlb/${playerId}`} className="pp-statcast-btn">
+              <span className="pp-statcast-icon">⚡</span>
+              View Statcast Data
+              <span className="pp-statcast-badge">Powered by Baseball Savant</span>
+            </Link>
+          )}
 
           {/* Career stats table */}
           <div className="pp-stats-section">

@@ -15,6 +15,7 @@ import ScoresPage from './pages/ScoresPage';
 import StandingsPage from './pages/StandingsPage';
 import LeadersPage from './pages/LeadersPage';
 import ProfilePage from './pages/ProfilePage';
+import StatcastPage from './pages/StatcastPage';
 import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
@@ -57,9 +58,10 @@ function AppShell({ userId }) {
             <Route path="/standings" element={<main className="main"><StandingsPage /></main>} />
             <Route path="/leaders"   element={<main className="main"><LeadersPage /></main>} />
             <Route path="/me"        element={<main className="main"><ProfilePage /></main>} />
-            <Route path="/player/:sport/:playerId" element={<main className="main"><PlayerPage /></main>} />
-            <Route path="/boxscore/:sport/:gameId" element={<main className="main"><BoxScorePage /></main>} />
-            <Route path="/team/:sport/:teamId"     element={<main className="main"><TeamPage /></main>} />
+            <Route path="/player/:sport/:playerId"          element={<main className="main"><PlayerPage /></main>} />
+            <Route path="/statcast/mlb/:playerId"            element={<main className="main"><StatcastPage /></main>} />
+            <Route path="/boxscore/:sport/:gameId"           element={<main className="main"><BoxScorePage /></main>} />
+            <Route path="/team/:sport/:teamId"               element={<main className="main"><TeamPage /></main>} />
           </Routes>
         </div>
         <BottomNav />
