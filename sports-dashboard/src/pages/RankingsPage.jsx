@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const STATSAPI = 'https://statsapi.mlb.com/api/v1';
 const BS = 'https://baseballsavant.mlb.com';
@@ -85,6 +85,83 @@ async function fetchTeamBattersForRankings(abbr, pitcherThrows) {
   return map;
 }
 
+/* ── DraftKings salary CSV parser ───────────────────────────────────── */
+// Normalize names for fuzzy matching (removes accents, suffixes, punctuation)
+function normName(name) {
+  return (name || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // strip diacritics
+    .replace(/\s+(jr\.?|sr\.?|ii|iii|iv)[\s.]*$/i, '') // strip suffixes
+    .toLowerCase().replace(/[^a-z]/g, '');               // letters only
+}
+
+function parseDkCsv(text) {
+  // DraftKings format:
+  // Position,Name + ID,Name,ID,Roster Position,Salary,Game Info,TeamAbbrev,AvgPointsPerGame
+  const lines = text.split('\n').filter(l => l.trim());
+  // Find header line
+  const headerIdx = lines.findIndex(l => l.includes('Salary') && l.includes('Name'));
+  if (headerIdx === -1) return {};
+  const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
+  const nameIdx   = headers.findIndex(h => h === 'name');
+  const salaryIdx = headers.findIndex(h => h === 'salary');
+  const teamIdx   = headers.findIndex(h => h.includes('team'));
+
+  const salaryMap = {}; // normName → { name, salary, team }
+  for (const line of lines.slice(headerIdx + 1)) {
+    if (!line.trim()) continue;
+    // Handle quoted fields
+    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    const name   = cols[nameIdx]   || '';
+    const salary = parseInt((cols[salaryIdx] || '').replace(/[^0-9]/g, '')) || 0;
+    const team   = cols[teamIdx]   || '';
+    if (name && salary > 0) {
+      salaryMap[normName(name)] = { name, salary, team };
+    }
+  }
+  return salaryMap;
+}
+
+/* ── DK Fantasy Points Projection ───────────────────────────────────── */
+// DraftKings MLB batter scoring:
+//   1B=3, 2B=5, 3B=8, HR=10, BB/HBP=2, RBI=2, R=2, SB=5
+// We estimate expected DK pts from Statcast metrics.
+function projDkPts(batter, pitcherRow) {
+  const s = (v, d = 0) => { const n = parseFloat(v); return isNaN(n) ? d : n; };
+
+  const xwoba = s(batter.xwoba,   0.320);
+  const brl   = s(batter.barrels_per_bbe_percent, 8) / 100;
+  const bb    = s(batter.bb_percent,   8.5) / 100;
+  const k     = s(batter.k_percent,    22)  / 100;
+  const iso   = s(batter.iso,          0.165);
+  const pXwoba = s(pitcherRow?.xwoba,  0.320);
+  const pK     = s(pitcherRow?.k_percent, 22) / 100;
+
+  // Base projection: calibrated so .320 xwOBA → ~7.4 pts, .400 → ~11 pts
+  const base = xwoba * 45 - 7.0;
+
+  // Power bonus: barrel% above avg drives HR/XBH (worth 5-10 DK pts each)
+  const brlBonus  = (brl - 0.08) * 15;
+
+  // BB bonus: each walk is guaranteed 2 DK pts
+  const bbBonus   = (bb - 0.085) * 10;
+
+  // ISO bonus: extra base hit ability
+  const isoBonus  = (iso - 0.165) * 5;
+
+  // K penalty: strikeouts waste plate appearances
+  const kPenalty  = (k - 0.22) * 8;
+
+  // Pitcher quality multiplier: tougher pitchers suppress all stats
+  // Easy pitcher (.400 xwOBA) → 1.25×, Average (.320) → 1.0×, Ace (.240) → 0.75×
+  const pitcherMult = 0.70 + (pXwoba / 0.400) * 0.60;
+
+  // Pitcher strikeout rate penalty: high-K pitcher → fewer balls in play → lower pts
+  const pitcherKPenalty = (pK - 0.22) * 3;
+
+  const raw = (base + brlBonus + bbBonus + isoBonus - kPenalty - pitcherKPenalty) * pitcherMult;
+  return Math.max(0.5, Math.round(raw * 10) / 10);
+}
+
 /* ── Scoring formula ─────────────────────────────────────────────────── */
 // Score each batter-pitcher matchup on a ~0-100 scale.
 // Higher = better offensive matchup for this batter today.
@@ -147,6 +224,21 @@ export default function RankingsPage() {
   const [filterHand, setFilterHand] = useState('');
   const [sortCol, setSortCol]     = useState('score');
   const [sortDir, setSortDir]     = useState('desc');
+  const [salaryMap, setSalaryMap] = useState({});  // normName → { name, salary }
+  const fileInputRef = useRef(null);
+
+  const handleDkUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const parsed = parseDkCsv(ev.target.result || '');
+      setSalaryMap(parsed);
+      setSortCol('value'); // auto-sort by value once salaries loaded
+      setSortDir('desc');
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -215,28 +307,29 @@ export default function RankingsPage() {
           Object.entries(byId).forEach(([batterId, batter]) => {
             // Minimum 100 AB this season to qualify for rankings
             if ((parseInt(batter.abs) || 0) < 100) return;
-            const score = calcScore(batter, pitcherRow);
+            const score    = calcScore(batter, pitcherRow);
+            const projPts  = projDkPts(batter, pitcherRow);
             const playerName = (batter.player_name || '').split(',').map(s => s.trim()).reverse().join(' ');
             allRows.push({
               batterId,
               playerName,
+              playerNameNorm: normName(playerName),
               teamAbbr: abbr,
               pitcherName: pitcher.fullName || '',
               pitcherId,
               pitcherHand: pitcherHand || '?',
-              score: Math.round(score * 10) / 10,
-              pa:    batter.pa,
-              xwoba: batter.xwoba,
-              woba:  batter.woba,
-              hh:    batter.hardhit_percent,
-              brl:   batter.barrels_per_bbe_percent,
-              kpct:  batter.k_percent,
-              bbpct: batter.bb_percent,
-              iso:   batter.iso,
-              // Pitcher context
+              score:  Math.round(score * 10) / 10,
+              projPts,
+              pa:     batter.pa,
+              xwoba:  batter.xwoba,
+              woba:   batter.woba,
+              hh:     batter.hardhit_percent,
+              brl:    batter.barrels_per_bbe_percent,
+              kpct:   batter.k_percent,
+              bbpct:  batter.bb_percent,
+              iso:    batter.iso,
               pXwoba: pitcherRow?.xwoba,
               pKpct:  pitcherRow?.k_percent,
-              pHH:    pitcherRow?.hardhit_percent,
             });
           });
         });
@@ -255,14 +348,23 @@ export default function RankingsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  /* ── Merge salary data into rows ── */
+  const enriched = rankings.map(r => {
+    const dk = salaryMap[r.playerNameNorm] || null;
+    const salary = dk?.salary || 0;
+    const value  = salary > 0 ? Math.round((r.projPts / (salary / 1000)) * 100) / 100 : null;
+    return { ...r, salary, value };
+  });
+  const hasSalaries = enriched.some(r => r.salary > 0);
+
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
     else { setSortCol(col); setSortDir('desc'); }
   };
 
-  const teams = [...new Set(rankings.map(r => r.teamAbbr))].sort();
+  const teams = [...new Set(enriched.map(r => r.teamAbbr))].sort();
 
-  const filtered = rankings.filter(r => {
+  const filtered = enriched.filter(r => {
     if (filterTeam && r.teamAbbr !== filterTeam) return false;
     if (filterHand && r.pitcherHand !== filterHand) return false;
     return true;
@@ -298,18 +400,33 @@ export default function RankingsPage() {
         )}
       </div>
 
-      {/* Filters */}
+      {/* Filters + DK Upload */}
       {!loading && (
-        <div className="rank-filters">
-          <select className="dfs-arsenal-select" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
-            <option value="">All Teams</option>
-            {teams.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select className="dfs-arsenal-select" value={filterHand} onChange={e => setFilterHand(e.target.value)}>
-            <option value="">All Pitchers</option>
-            <option value="L">vs LHP</option>
-            <option value="R">vs RHP</option>
-          </select>
+        <div className="rank-controls">
+          <div className="rank-filters">
+            <select className="dfs-arsenal-select" value={filterTeam} onChange={e => setFilterTeam(e.target.value)}>
+              <option value="">All Teams</option>
+              {teams.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select className="dfs-arsenal-select" value={filterHand} onChange={e => setFilterHand(e.target.value)}>
+              <option value="">All Pitchers</option>
+              <option value="L">vs LHP</option>
+              <option value="R">vs RHP</option>
+            </select>
+          </div>
+          <div className="rank-dk-upload">
+            <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }}
+              onChange={handleDkUpload} />
+            <button className={`rank-upload-btn ${hasSalaries ? 'rank-upload-btn-active' : ''}`}
+              onClick={() => fileInputRef.current?.click()}>
+              {hasSalaries ? `✓ DK Salaries Loaded` : '📥 Import DraftKings Salaries (.csv)'}
+            </button>
+            {!hasSalaries && (
+              <div className="rank-upload-hint">
+                Download from DK contest lobby → Export Salaries → Upload here
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -334,6 +451,9 @@ export default function RankingsPage() {
                 <th className="rank-th rank-th-player">Batter</th>
                 <th className="rank-th">Team</th>
                 <th className="rank-th rank-th-pitcher">Opposing Pitcher</th>
+                {hasSalaries && <ColHeader col="salary"  label="Salary" />}
+                {hasSalaries && <ColHeader col="projPts" label="Proj Pts" />}
+                {hasSalaries && <ColHeader col="value"   label="Pts/$K" />}
                 <ColHeader col="score"  label="Score" />
                 <ColHeader col="xwoba"  label="xwOBA" />
                 <ColHeader col="woba"   label="wOBA" />
@@ -357,6 +477,25 @@ export default function RankingsPage() {
                     <span>{r.pitcherName.split(' ').map((w,i)=>i===0?w[0]+'.':w).join(' ')}</span>
                     <span className={`rank-hand rank-hand-${r.pitcherHand?.toLowerCase()}`}>{r.pitcherHand}</span>
                   </td>
+                  {hasSalaries && (
+                    <td className="rank-td rank-salary">
+                      {r.salary > 0 ? `$${r.salary.toLocaleString()}` : '—'}
+                    </td>
+                  )}
+                  {hasSalaries && (
+                    <td className="rank-td rank-proj">
+                      {r.projPts > 0 ? r.projPts : '—'}
+                    </td>
+                  )}
+                  {hasSalaries && (
+                    <td className="rank-td">
+                      {r.value != null ? (
+                        <span className={`rank-value-badge ${r.value >= 3.5 ? 'rank-badge-elite' : r.value >= 2.5 ? 'rank-badge-good' : r.value >= 2.0 ? 'rank-badge-avg' : 'rank-badge-poor'}`}>
+                          {r.value}x
+                        </span>
+                      ) : '—'}
+                    </td>
+                  )}
                   <td className="rank-td">
                     <span className={`rank-score-badge ${scoreBadgeClass(r.score)}`}>{r.score}</span>
                   </td>
