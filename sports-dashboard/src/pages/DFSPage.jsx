@@ -918,30 +918,42 @@ const BVP_COLS = [
   { key: 'ops',         label: 'OPS', rate: true },
 ];
 
-function BvPTab({ lineup, pitcherId, pitcherName }) {
+function BvPTab({ lineup, pitcherId, pitcherName, battingTeamId }) {
   // ALL hooks must be at the top — before any conditional returns
-  const [rows, setRows]       = useState([]);
+  const [roster, setRoster]   = useState([]);   // all position players on the team
+  const [rows, setRows]       = useState([]);   // BvP stat rows for each player
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
 
+  // Fetch full active roster when team changes
   useEffect(() => {
-    // Always clear stale rows immediately so the old game's data never shows
-    setRows([]);
+    if (!battingTeamId) return;
+    const year = new Date().getFullYear();
+    setRoster([]);
+    mlbFetch(`${STATSAPI}/teams/${battingTeamId}/roster?rosterType=active&season=${year}`)
+      .then((data) => {
+        const pos = (data.roster || [])
+          .filter((p) => p.position?.type !== 'Pitcher')
+          .map((p) => ({
+            id: p.person?.id,
+            fullName: p.person?.fullName || '',
+            primaryPosition: p.position || {},
+          }));
+        setRoster(pos);
+      })
+      .catch(() => {});
+  }, [battingTeamId]);
 
-    if (!pitcherId) {
-      setLoading(false);
-      return;
-    }
-    if (!lineup?.length) {
-      setLoading(true); // Have pitcher, waiting for lineup to load
-      return;
-    }
+  // Fetch BvP stats for every roster player when pitcher or roster changes
+  useEffect(() => {
+    setRows([]);
+    if (!pitcherId) { setLoading(false); return; }
+    if (!roster.length) { setLoading(true); return; }
 
     setLoading(true);
-
     Promise.allSettled(
-      lineup.map((player) =>
+      roster.map((player) =>
         fetchBvpStats(player.id, pitcherId)
           .then((stat) => ({ player, stat }))
           .catch(() => ({ player, stat: null }))
@@ -950,7 +962,10 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
       setRows(results.map((r) => r.value).filter(Boolean));
       setLoading(false);
     });
-  }, [lineup, pitcherId]);
+  }, [roster, pitcherId]);
+
+  // Build a map of player id → batting order position (1-9)
+  const lineupMap = new Map((lineup || []).map((p, i) => [String(p.id), i + 1]));
 
   if (!pitcherId && !loading) return (
     <div className="dfs-empty" style={{ padding: '20px 16px' }}>No starting pitcher announced — BvP history unavailable.</div>
@@ -971,13 +986,23 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
     if (sortKey === key) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
     else { setSortKey(key); setSortDir('desc'); }
   };
+
+  // Default: lineup players (by batting slot 1-9) first, then bench alphabetically
+  const defaultSorted = [...rows].sort((a, b) => {
+    const ao = lineupMap.get(String(a.player.id));
+    const bo = lineupMap.get(String(b.player.id));
+    if (ao && bo) return ao - bo;
+    if (ao) return -1;
+    if (bo) return 1;
+    return (a.player.fullName || '').localeCompare(b.player.fullName || '');
+  });
   const sortedRows = sortKey
-    ? [...rows].sort((a, b) => {
+    ? [...defaultSorted].sort((a, b) => {
         const va = parseFloat(a.stat?.[sortKey]) || 0;
         const vb = parseFloat(b.stat?.[sortKey]) || 0;
         return sortDir === 'desc' ? vb - va : va - vb;
       })
-    : rows;
+    : defaultSorted;
 
   return (
     <div className="bvp-wrap">
@@ -1000,14 +1025,20 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
           </thead>
           <tbody>
             {sortedRows.map(({ player, stat }, i) => {
-              const pos  = player.primaryPosition?.abbreviation || '';
-              const noHistory = !stat || (parseInt(stat.atBats) === 0 && !stat.hits);
+              const pos        = player.primaryPosition?.abbreviation || '';
+              const lineupSlot = lineupMap.get(String(player.id));
+              const noHistory  = !stat || (parseInt(stat.atBats) === 0 && !stat.hits);
               return (
-                <tr key={player.id} className="dfs-player-row">
+                <tr key={player.id} className={`dfs-player-row ${lineupSlot ? 'bvp-lineup-row' : ''}`}>
                   <td className="dfs-td dfs-td-num dfs-sticky-num">{i + 1}</td>
                   <td className="dfs-td dfs-td-player dfs-sticky-player">
-                    <span className="dfs-player-name">{player.fullName || player.useName}</span>
+                    <span className="dfs-player-name">{player.fullName}</span>
                     {pos && <span className="dfs-player-meta"> {pos}</span>}
+                    {lineupSlot && (
+                      <span className="bvp-lineup-badge" title="In projected lineup">
+                        #{lineupSlot}
+                      </span>
+                    )}
                   </td>
                   {noHistory ? (
                     <td colSpan={BVP_COLS.length} className="bvp-no-history">
@@ -1441,6 +1472,7 @@ export default function DFSPage() {
               lineup={lineup.players}
               pitcherId={probPitcher?.id}
               pitcherName={probPitcher?.name}
+              battingTeamId={battingTeamId}
             />
           )}
         </>
