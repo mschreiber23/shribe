@@ -528,6 +528,8 @@ export default function PlayerPage() {
   const athlete = bio?.athlete || {};
   const summary = athlete.statsSummary?.statistics || [];
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
+  const teamColor = athlete.team?.color ? `#${athlete.team.color}` : null;
+  const teamAltColor = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
 
   const careerTotals = (() => {
     if (!seasons.length) return {};
@@ -611,8 +613,12 @@ export default function PlayerPage() {
     return totals;
   })();
 
+  const pageStyle = teamColor
+    ? { '--accent': teamColor, '--accent2': teamColor }
+    : {};
+
   return (
-    <div className="pp-page">
+    <div className="pp-page" style={pageStyle}>
       <button className="tp-back" onClick={() => navigate(-1)}>← Back</button>
 
       {loading && <div className="tp-loading">Loading…</div>}
@@ -620,9 +626,15 @@ export default function PlayerPage() {
       {!loading && athlete.displayName && (
         <>
           <div className="pp-header">
+            {/* Colored top strip using team color */}
+            {teamColor && (
+              <div className="pp-team-stripe" style={{ background: teamColor }} />
+            )}
             <div className="pp-hero">
               {athlete.headshot?.href && (
-                <img src={athlete.headshot.href} alt={athlete.displayName} className="pp-headshot" />
+                <img src={athlete.headshot.href} alt={athlete.displayName} className="pp-headshot"
+                  style={teamColor ? { background: `linear-gradient(to bottom, color-mix(in srgb, ${teamColor} 30%, transparent), var(--bg3))` } : {}}
+                />
               )}
               <div className="pp-bio">
                 <div className="pp-name">

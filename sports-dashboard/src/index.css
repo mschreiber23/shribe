@@ -1927,6 +1927,11 @@ body {
   overflow: hidden;
 }
 
+.pp-team-stripe {
+  height: 4px;
+  width: 100%;
+}
+
 .pp-hero {
   display: flex;
   gap: 0;
@@ -1971,14 +1976,14 @@ body {
 .pp-stat-highlights {
   border-top: 1px solid var(--border);
   padding: 14px 20px;
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg2));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
 }
 .pp-highlights-label {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: var(--accent2);
+  color: var(--accent);
   margin-bottom: 10px;
 }
 .pp-highlights-grid {
