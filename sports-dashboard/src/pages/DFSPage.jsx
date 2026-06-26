@@ -167,6 +167,15 @@ async function fetchPitcherHand(mlbId) {
   return data.people?.[0]?.pitchHand?.code || null;
 }
 
+async function fetchPitcherSeasonStats(mlbId) {
+  const year = new Date().getFullYear();
+  const data = await mlbFetch(
+    `${STATSAPI}/people/${mlbId}/stats?stats=statsSingleSeason&group=pitching&season=${year}&sportId=1`
+  );
+  const splits = data.stats?.[0]?.splits || [];
+  return splits[0]?.stat || null;
+}
+
 async function fetchPitcherSplits(mlbId) {
   const year = new Date().getFullYear();
   // NOTE: pitcherID param is ignored by the endpoint — must fetch full leaderboard
@@ -441,9 +450,10 @@ export default function DFSPage() {
   const [throwsFilter, setThrowsFilter]   = useState('all');
   const [batterStats, setBatterStats]     = useState({ byId: {}, byName: {} });
   const [batterLoading, setBatterLoading] = useState(false);
-  const [pitcherSplits, setPitcherSplits] = useState(null);
-  const [pitcherLoading, setPitcherLoading] = useState(false);
-  const [pitcherHand, setPitcherHand]     = useState(null);
+  const [pitcherSplits, setPitcherSplits]     = useState(null);
+  const [pitcherLoading, setPitcherLoading]   = useState(false);
+  const [pitcherHand, setPitcherHand]         = useState(null);
+  const [pitcherSeasonStat, setPitcherSeasonStat] = useState(null);
   const [lineup, setLineup]               = useState({ players: [], confirmed: false, fromDate: null });
   const [lineupLoading, setLineupLoading] = useState(false);
   const [espnPitcherMap, setEspnPitcherMap] = useState({}); // teamName → ESPN pitcher
@@ -551,8 +561,8 @@ export default function DFSPage() {
     setPitcherLoading(true);
     setPitcherSplits(null);
     setPitcherHand(null);
+    setPitcherSeasonStat(null);
 
-    // For ESPN fallback, hand is already available — no extra fetch needed
     const handPromise = probPitcher.source === 'espn' && espnFallback?.hand
       ? Promise.resolve(espnFallback.hand)
       : fetchPitcherHand(probPitcher.id);
@@ -560,9 +570,11 @@ export default function DFSPage() {
     Promise.allSettled([
       fetchPitcherSplits(probPitcher.id),
       handPromise,
-    ]).then(([splitsRes, handRes]) => {
-      if (splitsRes.status === 'fulfilled') setPitcherSplits(splitsRes.value);
-      if (handRes.status === 'fulfilled')   setPitcherHand(handRes.value);
+      fetchPitcherSeasonStats(probPitcher.id),
+    ]).then(([splitsRes, handRes, seasonRes]) => {
+      if (splitsRes.status === 'fulfilled')  setPitcherSplits(splitsRes.value);
+      if (handRes.status === 'fulfilled')    setPitcherHand(handRes.value);
+      if (seasonRes.status === 'fulfilled')  setPitcherSeasonStat(seasonRes.value);
       setPitcherLoading(false);
     });
   }, [probPitcher?.id, selectedIdx, activeSide]);
@@ -683,7 +695,8 @@ export default function DFSPage() {
 
             {/* ── RIGHT: Pitcher panel ───────────────────────────── */}
             <div className="dfs-panel dfs-panel-pitcher">
-              <div className="dfs-panel-header">
+              {/* Header — team info left, pitcher info right, both in same row */}
+              <div className="dfs-panel-header dfs-pitcher-header">
                 <div className="dfs-panel-team">
                   <TeamLogo teamId={pitchingTeamId} className="dfs-panel-logo" />
                   <div>
@@ -691,29 +704,48 @@ export default function DFSPage() {
                     <div className="dfs-panel-sub">Starting Pitcher</div>
                   </div>
                 </div>
-              </div>
 
-              {probPitcher ? (
-                <div className="dfs-pitcher-card">
-                  <img src={probPitcher.headshot} alt="" className="dfs-pitcher-avatar"
-                    onError={(e) => { e.target.style.display = 'none'; }} />
-                  <div className="dfs-pitcher-info">
-                    <div className="dfs-pitcher-name">
-                      {probPitcher.name}
-                      {(pitcherHand || probPitcher.hand) && (
-                        <span className={`dfs-pitcher-arm dfs-pitcher-arm-${(pitcherHand || probPitcher.hand)?.toLowerCase()}`}>
-                          {(pitcherHand || probPitcher.hand) === 'L' ? 'LHP' : 'RHP'}
-                        </span>
+                {probPitcher ? (
+                  <div className="dfs-pitcher-inline">
+                    {probPitcher.headshot && (
+                      <img
+                        src={probPitcher.headshot}
+                        alt=""
+                        className="dfs-pitcher-avatar-sm"
+                        onError={(e) => {
+                          // Try ESPN CDN fallback if MLB photo fails
+                          const espn = `https://a.espncdn.com/i/headshots/mlb/players/full/${probPitcher.id}.png`;
+                          if (e.target.src !== espn) { e.target.onerror = null; e.target.src = espn; }
+                          else { e.target.style.display = 'none'; }
+                        }}
+                      />
+                    )}
+                    <div className="dfs-pitcher-inline-info">
+                      <div className="dfs-pitcher-name-row">
+                        <span className="dfs-pitcher-name-text">{probPitcher.name}</span>
+                        {(pitcherHand || probPitcher.hand) && (
+                          <span className={`dfs-pitcher-arm dfs-pitcher-arm-${(pitcherHand || probPitcher.hand)?.toLowerCase()}`}>
+                            {(pitcherHand || probPitcher.hand) === 'L' ? 'LHP' : 'RHP'}
+                          </span>
+                        )}
+                      </div>
+                      {pitcherSeasonStat && (
+                        <div className="dfs-pitcher-season-stats">
+                          {pitcherSeasonStat.wins != null && pitcherSeasonStat.losses != null && (
+                            <span>{pitcherSeasonStat.wins}-{pitcherSeasonStat.losses}</span>
+                          )}
+                          {pitcherSeasonStat.inningsPitched && <span>{pitcherSeasonStat.inningsPitched} IP</span>}
+                          {pitcherSeasonStat.strikeOuts != null && <span>{pitcherSeasonStat.strikeOuts} K</span>}
+                          {pitcherSeasonStat.era && <span>{pitcherSeasonStat.era} ERA</span>}
+                          {pitcherSeasonStat.whip && <span>{pitcherSeasonStat.whip} WHIP</span>}
+                        </div>
                       )}
                     </div>
-                    <div className="dfs-pitcher-meta">
-                      {probPitcher.record && <span>{probPitcher.record}</span>}
-                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="dfs-empty">No probable pitcher announced yet.</div>
-              )}
+                ) : (
+                  <div className="dfs-empty" style={{ padding: '4px 0' }}>No starter announced</div>
+                )}
+              </div>
 
               {probPitcher && (
                 <>
