@@ -1,9 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
+import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 
 /* ─── helpers ──────────────────────────────────────── */
 function teamLogo(team) { return team?.logo || team?.logos?.[0]?.href || null; }
+
+function darkUrl(url) {
+  if (!url) return url;
+  return url.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/, '$1$2-dark$3');
+}
+function LogoImg({ team, url, className, style }) {
+  const dark = team ? getTeamLogo(team) : darkUrl(url);
+  const orig = team ? getTeamLogoFallback(team) : url;
+  if (!dark && !orig) return null;
+  return (
+    <img src={dark || orig} onError={(e) => { if (orig && e.target.src !== orig) { e.target.onerror = null; e.target.src = orig; } }}
+      alt="" className={className} style={style} />
+  );
+}
 function getScore(c) {
   const s = c?.score;
   if (s == null) return null;
@@ -62,7 +77,7 @@ function PreviewTab({ data, competitors, status, sport }) {
           <div className="preview-card-title">Win Probability</div>
           <div className="preview-prob-row">
             <div className="preview-prob-team">
-              {teamLogo(away?.team) && <img src={teamLogo(away.team)} alt="" className="preview-team-logo" />}
+              <LogoImg team={away?.team} className="preview-team-logo" />
               <span>{away?.team?.abbreviation}</span>
               <span className="preview-prob-pct">{predictor.awayTeam?.gameProjection}%</span>
             </div>
@@ -73,7 +88,7 @@ function PreviewTab({ data, competitors, status, sport }) {
             <div className="preview-prob-team preview-prob-team-right">
               <span className="preview-prob-pct">{predictor.homeTeam?.gameProjection}%</span>
               <span>{home?.team?.abbreviation}</span>
-              {teamLogo(home?.team) && <img src={teamLogo(home.team)} alt="" className="preview-team-logo" />}
+              <LogoImg team={home?.team} className="preview-team-logo" />
             </div>
           </div>
         </div>
@@ -94,7 +109,7 @@ function PreviewTab({ data, competitors, status, sport }) {
               return (
                 <div key={c.team?.id} className="preview-pitcher">
                   <div className="preview-pitcher-header">
-                    {c.team?.logo && <img src={c.team.logo} alt="" className="preview-pitcher-team" />}
+                    <LogoImg team={c.team} className="preview-pitcher-team" />
                     <span className="preview-pitcher-team-abbr">{c.team?.abbreviation}</span>
                     <span className="preview-pitcher-ha">{c.homeAway === 'home' ? 'Home' : 'Away'}</span>
                   </div>
@@ -131,8 +146,8 @@ function PreviewTab({ data, competitors, status, sport }) {
                 <div key={teamInfo?.id} className="preview-last5-team">
                   <div className="preview-last5-header">
                     {teamInfo?.id === away?.team?.id
-                      ? teamLogo(away.team) && <img src={teamLogo(away.team)} alt="" className="preview-team-logo" />
-                      : teamLogo(home?.team) && <img src={teamLogo(home.team)} alt="" className="preview-team-logo" />}
+                      ? <LogoImg team={away?.team} className="preview-team-logo" />
+                      : <LogoImg team={home?.team} className="preview-team-logo" />}
                     <span className="preview-last5-abbr">{teamInfo?.abbreviation}</span>
                   </div>
                   <div className="preview-last5-games">
@@ -204,7 +219,7 @@ function MlbGamecast({ data, rosters, situation, competitors, status }) {
       <div className="gc-score-row">
         {[away, home].filter(Boolean).sort((a,b) => a.homeAway==='away' ? -1 : 1).map((c) => (
               <div key={c.team?.id} className="gc-team-score-row">
-                {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="gc-team-logo" />}
+                <LogoImg team={c.team} className="gc-team-logo" />
                 <span className="gc-team-abbr">{c.team?.abbreviation}</span>
                 <span className="gc-team-record">{c.record?.[0]?.displayValue}</span>
                 <div className="gc-rhe">
@@ -382,7 +397,7 @@ function PlayByPlay({ data, competitors, sport }) {
       {groups.slice().reverse().map((g, gi) => (
         <div key={gi} className="pbp-group">
           <div className="pbp-group-header">
-            {g.teamLogo && <img src={g.teamLogo} alt="" className="pbp-team-logo" />}
+            <LogoImg url={g.teamLogo} className="pbp-team-logo" />
             <span className="pbp-group-label">{g.label}</span>
             <span className="pbp-score">{away?.team?.abbreviation} {g.awayScore} · {home?.team?.abbreviation} {g.homeScore}</span>
           </div>
@@ -495,14 +510,14 @@ function TeamStats({ group, sport }) {
     <div className="bsp-team-stats">
       {batting && (<>
         <div className="bsp-stats-heading">
-          {teamLogo(team) && <img src={teamLogo(team)} alt="" style={{width:20,height:20,objectFit:'contain'}} />}
+          <LogoImg team={team} style={{width:20,height:20,objectFit:'contain'}} />
           <span>{team.displayName} Hitting</span>
         </div>
         <StatsTable statGroup={batting} sport={sport} />
       </>)}
       {pitching && (<>
         <div className="bsp-stats-heading" style={{marginTop:16}}>
-          {teamLogo(team) && <img src={teamLogo(team)} alt="" style={{width:20,height:20,objectFit:'contain'}} />}
+          <LogoImg team={team} style={{width:20,height:20,objectFit:'contain'}} />
           <span>{team.displayName} Pitching</span>
         </div>
         <StatsTable statGroup={pitching} sport={sport} />
@@ -538,7 +553,7 @@ function LineScore({ competitors, sport }) {
           {sorted.map((c) => (
             <tr key={c.team?.id}>
               <td className="bsp-ls-td bsp-ls-team-col">
-                {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="bsp-ls-logo" />}
+                <LogoImg team={c.team} className="bsp-ls-logo" />
                 <span className="bsp-ls-abbr">{c.team?.abbreviation}</span>
               </td>
               {cols.map((_,i) => (
@@ -565,7 +580,7 @@ function GameHeader({ competitors, status }) {
   return (
     <div className="bsp-header">
       <div className="bsp-team">
-        {teamLogo(away?.team) && <img src={teamLogo(away.team)} alt="" className="bsp-team-logo" />}
+        <LogoImg team={away?.team} className="bsp-team-logo" />
         <div className="bsp-team-abbr">{away?.team?.abbreviation}</div>
         <div className="bsp-score">{getScore(away) ?? '—'}</div>
         <div className="bsp-record">{away?.record?.[0]?.displayValue}</div>
@@ -578,7 +593,7 @@ function GameHeader({ competitors, status }) {
         <BaseDiamond size={28} />
       </div>
       <div className="bsp-team bsp-team-right">
-        {teamLogo(home?.team) && <img src={teamLogo(home.team)} alt="" className="bsp-team-logo" />}
+        <LogoImg team={home?.team} className="bsp-team-logo" />
         <div className="bsp-team-abbr">{home?.team?.abbreviation}</div>
         <div className="bsp-score">{getScore(home) ?? '—'}</div>
         <div className="bsp-record">{home?.record?.[0]?.displayValue}</div>

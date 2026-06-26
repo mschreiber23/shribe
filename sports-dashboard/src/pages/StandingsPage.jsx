@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getStandings, SPORTS } from '../api/espn';
+import { getStandings, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 
 /* ── View configs ──────────────────────────────────── */
 const VIEWS = {
@@ -139,7 +139,7 @@ function StandingsTable({ entries, cols, sortKey, sortDir, onSort }) {
             return (
               <tr key={team.id || i} className="standings-tr">
                 <td className="standings-td standings-td-team">
-                  {logo && <img src={logo} alt="" className="standings-logo" />}
+                  <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
                   <div className="standings-team-info">
                     <span className="standings-abbr">{team.abbreviation}</span>
                     {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
@@ -199,7 +199,7 @@ function StandingsGroup({ group, cols, sortKey, sortDir, onSort, wcSpots = 0 }) 
                 <>
                   <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
                     <td className="standings-td standings-td-team">
-                      {logo && <img src={logo} alt="" className="standings-logo" />}
+                      <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
                       <div className="standings-team-info">
                         <span className="standings-abbr">{team.abbreviation}</span>
                         {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
@@ -302,7 +302,7 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
               <>
                 <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
                   <td className="standings-td standings-td-team">
-                    {logo && <img src={logo} alt="" className="standings-logo" />}
+                    <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
                     <div className="standings-team-info">
                       <span className="standings-abbr">{team.abbreviation}</span>
                       {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}

@@ -269,14 +269,8 @@ body {
   gap: 10px;
 }
 
-/* ── Global logo visibility fix ─────────────────────────────────────────
-   Convert all team logos to white on dark backgrounds (ESPN-style).
-   brightness(0) → pure black silhouette; invert(1) → pure white.
-   opacity softens slightly so it doesn't feel harsh.                    */
-img[class*="logo"] {
-  filter: brightness(0) invert(1);
-  opacity: 0.88;
-}
+/* Team logo images — no global filter; dark-mode URL variants are
+   requested per-image via getTeamLogo() + onError fallback in JS. */
 
 .team-logo { width: 28px; height: 28px; object-fit: contain; }
 

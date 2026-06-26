@@ -2,6 +2,28 @@ import axios from 'axios';
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 
+/**
+ * Returns the ESPN dark-mode (white) logo URL for a team object.
+ * ESPN serves white logo variants at /500-dark/ instead of /500/.
+ * Teams with bright logos (Reds red C, Pirates gold P) often have no dark
+ * variant, so the onError fallback returns the original colored logo.
+ */
+export function getTeamLogo(team) {
+  const logos = team?.logos || [];
+  // Prefer explicit dark entry from logos array
+  const darkEntry = logos.find((l) => Array.isArray(l.rel) && l.rel.includes('dark'));
+  if (darkEntry?.href) return darkEntry.href;
+  const orig = team?.logo || logos[0]?.href;
+  if (!orig) return null;
+  // Try ESPN's standard dark URL pattern: /500/ → /500-dark/
+  return orig.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/, '$1$2-dark$3');
+}
+
+/** Original colored logo URL (used as onError fallback). */
+export function getTeamLogoFallback(team) {
+  return team?.logo || team?.logos?.[0]?.href || null;
+}
+
 export const SPORTS = {
   nba: { league: 'basketball/nba', label: 'NBA' },
   nfl: { league: 'football/nfl', label: 'NFL' },

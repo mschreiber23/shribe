@@ -344,6 +344,8 @@ function hasStats(data, sportKey) {
   });
 }
 
+function darkUrl(url){if(!url)return url;return url.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/,'$1$2-dark$3');}
+
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
   const navigate = useNavigate();
@@ -642,7 +644,7 @@ export default function PlayerPage() {
                   <span className="pp-lastname"> {athlete.lastName}</span>
                 </div>
                 <div className="pp-team-row">
-                  {teamLogo && <img src={teamLogo} alt="" className="pp-team-logo" />}
+                  <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
                   <span className="pp-team-name">{athlete.team?.displayName}</span>
                   {athlete.displayJersey && <span className="pp-meta"> · {athlete.displayJersey}</span>}
                   {athlete.position?.abbreviation && <span className="pp-meta"> · {athlete.position.abbreviation}</span>}

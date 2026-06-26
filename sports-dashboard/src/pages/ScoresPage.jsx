@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getScoreboard, SPORTS } from '../api/espn';
+import { getTeamLogo, getTeamLogoFallback, getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
 
 function getScore(c) {
@@ -10,6 +10,12 @@ function getScore(c) {
 }
 
 function teamLogo(team) { return team?.logo || team?.logos?.[0]?.href || null; }
+function LogoImg({ team, className }) {
+  const dark = getTeamLogo(team);
+  const orig = getTeamLogoFallback(team);
+  if (!dark && !orig) return null;
+  return <img src={dark||orig} onError={(e)=>{if(orig&&e.target.src!==orig){e.target.onerror=null;e.target.src=orig;}}} alt="" className={className} />;
+}
 
 function ScoreCard({ game, sport, myTeamIds }) {
   const navigate = useNavigate();
@@ -38,7 +44,7 @@ function ScoreCard({ game, sport, myTeamIds }) {
       {[away, home].filter(Boolean).map((c) => (
         <div key={c.team?.id} className={`scores-team-row ${c.winner ? 'scores-winner' : ''}`}>
           <div className="scores-team-left">
-            {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="scores-team-logo" />}
+            <LogoImg team={c.team} className="scores-team-logo" />
             <div>
               <span className={`scores-team-name ${myTeamIds.includes(c.team?.id) ? 'scores-my-team' : ''}`}>
                 {c.team?.abbreviation}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getScoreboard, SPORTS } from '../api/espn';
+import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
 
 function getScore(c) {
@@ -9,7 +9,19 @@ function getScore(c) {
   return typeof s === 'object' ? s.displayValue : String(s);
 }
 
-function teamLogo(team) { return team?.logo || team?.logos?.[0]?.href || null; }
+function LogoImg({ team, className }) {
+  const dark = getTeamLogo(team);
+  const orig = getTeamLogoFallback(team);
+  if (!dark && !orig) return null;
+  return (
+    <img
+      src={dark || orig}
+      onError={(e) => { if (orig && e.target.src !== orig) { e.target.onerror = null; e.target.src = orig; } }}
+      alt=""
+      className={className}
+    />
+  );
+}
 
 function toDateStr(date) {
   return date.getFullYear().toString()
@@ -72,7 +84,7 @@ function TickerCard({ game, sport, myTeamIds }) {
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
             <div className="ticker-team-left">
-              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="ticker-logo" />}
+              <LogoImg team={c.team} className="ticker-logo" />
               <span className="ticker-abbr">{c.team?.abbreviation}</span>
             </div>
             {c.records?.[0]?.summary && <span className="ticker-record-right">{c.records[0].summary}</span>}
@@ -96,7 +108,7 @@ function TickerCard({ game, sport, myTeamIds }) {
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
             <div className="ticker-team-left">
-              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="ticker-logo" />}
+              <LogoImg team={c.team} className="ticker-logo" />
               <span className="ticker-abbr">{c.team?.abbreviation}</span>
             </div>
             <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
@@ -122,7 +134,7 @@ function TickerCard({ game, sport, myTeamIds }) {
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`ticker-team ${c.winner ? 'ticker-winner' : ''} ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
             <div className="ticker-team-left">
-              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="ticker-logo" />}
+              <LogoImg team={c.team} className="ticker-logo" />
               <div>
                 <span className="ticker-abbr">{c.team?.abbreviation}</span>
                 {c.records?.[0]?.summary && <span className="ticker-record"> {c.records[0].summary}</span>}
@@ -167,7 +179,7 @@ function GridCard({ game, sport, myTeamIds }) {
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`grid-card-team ${myTeamIds.includes(c.team?.id) ? 'grid-my-team' : ''}`}>
             <div className="grid-team-left">
-              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="grid-logo" />}
+              <LogoImg team={c.team} className="grid-logo" />
               <span className="grid-abbr">{c.team?.abbreviation}</span>
             </div>
             {c.records?.[0]?.summary && <span className="grid-record">{c.records[0].summary}</span>}
@@ -188,7 +200,7 @@ function GridCard({ game, sport, myTeamIds }) {
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`grid-card-team ${myTeamIds.includes(c.team?.id) ? 'grid-my-team' : ''}`}>
             <div className="grid-team-left">
-              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="grid-logo" />}
+              <LogoImg team={c.team} className="grid-logo" />
               <span className="grid-abbr">{c.team?.abbreviation}</span>
             </div>
             <span className="grid-score">{getScore(c) ?? '0'}</span>
@@ -211,7 +223,7 @@ function GridCard({ game, sport, myTeamIds }) {
         {[away, home].filter(Boolean).map((c) => (
           <div key={c.team?.id} className={`grid-card-team ${c.winner ? 'grid-winner' : ''} ${myTeamIds.includes(c.team?.id) ? 'grid-my-team' : ''}`}>
             <div className="grid-team-left">
-              {teamLogo(c.team) && <img src={teamLogo(c.team)} alt="" className="grid-logo" />}
+              <LogoImg team={c.team} className="grid-logo" />
               <div>
                 <span className="grid-abbr">{c.team?.abbreviation}</span>
                 {c.records?.[0]?.summary && <span className="grid-record-sm"> {c.records[0].summary}</span>}

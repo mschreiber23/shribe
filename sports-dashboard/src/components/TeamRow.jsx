@@ -3,7 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
 import { useFavorites } from '../context/FavoritesContext';
-import { SPORTS } from '../api/espn';
+import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
+
+function LogoImg({ team, className, style }) {
+  const dark = getTeamLogo(team);
+  const orig = getTeamLogoFallback(team);
+  if (!dark && !orig) return null;
+  return (
+    <img
+      src={dark || orig}
+      onError={(e) => { if (orig && e.target.src !== orig) { e.target.onerror = null; e.target.src = orig; } }}
+      alt=""
+      className={className}
+      style={style}
+    />
+  );
+}
 
 function getScore(c) {
   const s = c?.score;
@@ -57,7 +72,7 @@ function GameScore({ game, teamId, sport, onOpen }) {
                 const splitLabel = c.homeAway === 'home' ? 'Home' : 'Away';
                 return (
                   <div key={c.team?.id} className={`pregame-team ${c.team?.id === String(teamId) ? 'pregame-my-team' : ''}`}>
-                    {c.team?.logo && <img src={c.team.logo} alt="" className="pregame-logo" />}
+                    <LogoImg team={c.team} className="pregame-logo" />
                     <div>
                       <div className="pregame-name">{c.team?.shortDisplayName || c.team?.displayName}</div>
                       <div className="pregame-record">
@@ -119,7 +134,7 @@ function TeamScoreRow({ competitor, teamId, showScore }) {
   return (
     <div className={`tr2-team-row ${isMine ? 'tr2-mine' : ''}`}>
       <div className="tr2-team-left">
-        {team.logo && <img src={team.logo} alt="" className="tr2-team-logo" />}
+        <LogoImg team={team} className="tr2-team-logo" />
         <div>
           <span className={`tr2-team-name ${isMine ? 'tr2-mine-name' : ''}`}>
             {team.shortDisplayName || team.displayName || team.abbreviation}
@@ -186,7 +201,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
             {[away, home].filter(Boolean).map((c) => (
               <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
                 <div className="lv-team-left">
-                  {c.team?.logo && <img src={c.team.logo} alt="" className="lv-logo" />}
+                  <LogoImg team={c.team} className="lv-logo" />
                   <div>
                     <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary} · {c.homeAway === 'home' ? 'Home' : 'Away'}</div>}
@@ -262,7 +277,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
             {[away, home].filter(Boolean).map((c) => (
               <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
                 <div className="lv-team-left">
-                  {c.team?.logo && <img src={c.team.logo} alt="" className="lv-logo" />}
+                  <LogoImg team={c.team} className="lv-logo" />
                   <div>
                     <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary}</div>}
@@ -305,7 +320,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
             {[away, home].filter(Boolean).map((c) => (
               <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
                 <div className="lv-team-left">
-                  {c.team?.logo && <img src={c.team.logo} alt="" className="lv-logo" />}
+                  <LogoImg team={c.team} className="lv-logo" />
                   <div>
                     <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary}</div>}
@@ -346,7 +361,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           {[away, home].filter(Boolean).map((c) => (
             <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
               <div className="lv-team-left">
-                {c.team?.logo && <img src={c.team.logo} alt="" className="lv-logo" />}
+                <LogoImg team={c.team} className="lv-logo" />
                 <div>
                   <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                   {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary}</div>}
@@ -395,7 +410,7 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
       {/* Card header */}
       <div className="tr2-header">
         <Link to={`/team/${sport}/${team.id}`} className="tr2-identity">
-          {team.logo && <img src={team.logo} alt="" className="tr2-logo" />}
+          <LogoImg team={team} className="tr2-logo" />
           <div>
             <div className="tr2-name">{team.displayName}</div>
             <div className="tr2-sport">{sportLabel}</div>

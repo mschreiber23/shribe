@@ -69,7 +69,7 @@ function ScheduleRow({ event, teamId }) {
       <div className="tp-row-opponent">
         <span className="tp-row-ha">{isHome ? 'vs' : '@'}</span>
         {opponent?.team?.logo && (
-          <img src={opponent.team.logo} alt="" className="tp-row-logo" />
+          <DLogo url={opponent.team.logo} className="tp-row-logo" />
         )}
         <span className="tp-row-opp-name">{opponent?.team?.shortDisplayName || opponent?.team?.displayName}</span>
       </div>
@@ -199,7 +199,7 @@ function StandingsTab({ sport, teamId }) {
                   return (
                     <tr key={team.id || i} className={`tp-tr ${isMyTeam ? 'tp-tr-mine' : ''}`}>
                       <td className="tp-td tp-td-team">
-                        {logo && <img src={logo} alt="" className="tp-standings-logo" />}
+                        <DLogo url={logo} className="tp-standings-logo" />
                         <span className={`tp-standings-abbr ${isMyTeam ? 'tp-standings-mine' : ''}`}>
                           {team.abbreviation || team.shortDisplayName}
                         </span>
@@ -287,6 +287,9 @@ function formatTimeAgo(date) {
 
 const TABS = ['Schedule', 'Standings', 'News'];
 
+function darkUrl(url){if(!url)return url;return url.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/,'$1$2-dark$3');}
+function DLogo({url,className,style}){const d=darkUrl(url);return d?<img src={d} onError={(e)=>{if(e.target.src!==url){e.target.onerror=null;e.target.src=url;}}} alt='' className={className} style={style}/>:null;}
+
 export default function TeamPage() {
   const { sport, teamId } = useParams();
   const navigate = useNavigate();
@@ -319,7 +322,7 @@ export default function TeamPage() {
         <div className="tp-header" style={{ '--team-color': accentColor }}>
           <div className="tp-header-inner">
             {team.logos?.[0]?.href && (
-              <img src={team.logos[0].href} alt={team.displayName} className="tp-header-logo" />
+              <DLogo url={team.logos?.[0]?.href} className="tp-header-logo" />
             )}
             <div className="tp-header-info">
               <div className="tp-header-name">
