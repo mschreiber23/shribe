@@ -213,6 +213,8 @@ export default function RankingsPage() {
           // Get pitcher's split stats based on batter handedness
           // (will be refined if we want separate vs L/R — for now use overall pitcher stats)
           Object.entries(byId).forEach(([batterId, batter]) => {
+            // Minimum 100 AB this season to qualify for rankings
+            if ((parseInt(batter.abs) || 0) < 100) return;
             const score = calcScore(batter, pitcherRow);
             const playerName = (batter.player_name || '').split(',').map(s => s.trim()).reverse().join(' ');
             allRows.push({
