@@ -95,8 +95,11 @@ async function getProjectedLineup(teamId) {
       if (game.status?.abstractGameState !== 'Final') continue;
       try {
         const bs = await mlbFetch(`${STATSAPI}/game/${game.gamePk}/boxscore`);
-        const isHome = game.teams?.home?.team?.id === Number(teamId);
-        const teamBs = isHome ? bs.teams?.home : bs.teams?.away;
+        // Pick the side whose team.id matches — avoids home/away mismatch bugs
+        const homeTeam = bs.teams?.home;
+        const awayTeam = bs.teams?.away;
+        const teamBs = Number(homeTeam?.team?.id) === Number(teamId) ? homeTeam : awayTeam;
+        if (!teamBs || Number(teamBs.team?.id) !== Number(teamId)) continue; // safety check
         const battingOrder = teamBs?.battingOrder || [];
         const playerMap   = teamBs?.players || {};
 
