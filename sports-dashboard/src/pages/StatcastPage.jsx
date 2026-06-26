@@ -341,30 +341,39 @@ export default function StatcastPage() {
     { key: 'bb_percent',             label: 'BB%',       fmt: 'num1' },
   ];
 
-  // Batted ball table
+  // Batted ball table — base on enrichedRows (all years) + current-year directional data
   const bbCols = [
-    { key: '_year',           label: 'Season',    left: true, fmt: 'int' },
-    { key: 'bbe',             label: 'BIP',       fmt: 'int' },
-    { key: 'gb_rate_pct',    label: 'GB%',        fmt: 'num1' },
-    { key: 'fb_rate_pct',    label: 'FB%',        fmt: 'num1' },
-    { key: 'ld_rate_pct',    label: 'LD%',        hl: true,  fmt: 'num1' },
-    { key: 'pu_rate_pct',    label: 'PU%',        fmt: 'num1' },
-    { key: 'pull_rate_pct',  label: 'Pull%',      fmt: 'num1' },
-    { key: 'str_rate_pct',   label: 'Straight%',  fmt: 'num1' },
-    { key: 'oppo_rate_pct',  label: 'Oppo%',      fmt: 'num1' },
+    { key: 'year',           label: 'Season',    left: true, fmt: 'int' },
+    { key: 'pitches',        label: 'Pitches',   fmt: 'int' },
+    { key: 'bip',            label: 'BIP',       fmt: 'int' },
+    { key: 'launch_angle',   label: 'LA',        hl: true,  fmt: 'num1' },
+    { key: 'barrels_total',  label: 'Barrels',   fmt: 'int' },
+    { key: 'barrels_per_bbe_percent', label: 'Barrel%', hl: true, fmt: 'num1' },
+    { key: 'gb_pct',         label: 'GB%',       fmt: 'num1' },
+    { key: 'fb_pct',         label: 'FB%',       fmt: 'num1' },
+    { key: 'ld_pct',         label: 'LD%',       hl: true,  fmt: 'num1' },
+    { key: 'pu_pct',         label: 'PU%',       fmt: 'num1' },
+    { key: 'pull_pct',       label: 'Pull%',     fmt: 'num1' },
+    { key: 'str_pct',        label: 'Straight%', fmt: 'num1' },
+    { key: 'oppo_pct',       label: 'Oppo%',     fmt: 'num1' },
   ];
 
-  const bbRows = bbRow ? [{
-    _year:          year,
-    bbe:            bbRow.bbe,
-    gb_rate_pct:    bbRow.gb_rate   != null ? (parseFloat(bbRow.gb_rate)   * 100).toFixed(1) : '—',
-    fb_rate_pct:    bbRow.fb_rate   != null ? (parseFloat(bbRow.fb_rate)   * 100).toFixed(1) : '—',
-    ld_rate_pct:    bbRow.ld_rate   != null ? (parseFloat(bbRow.ld_rate)   * 100).toFixed(1) : '—',
-    pu_rate_pct:    bbRow.pu_rate   != null ? (parseFloat(bbRow.pu_rate)   * 100).toFixed(1) : '—',
-    pull_rate_pct:  bbRow.pull_rate != null ? (parseFloat(bbRow.pull_rate) * 100).toFixed(1) : '—',
-    str_rate_pct:   bbRow.straight_rate != null ? (parseFloat(bbRow.straight_rate) * 100).toFixed(1) : '—',
-    oppo_rate_pct:  bbRow.oppo_rate != null ? (parseFloat(bbRow.oppo_rate) * 100).toFixed(1) : '—',
-  }] : [];
+  const toPC = (v) => v != null && v !== '' ? (parseFloat(v) * 100).toFixed(1) : null;
+  const bbRows = enrichedRows.map((r) => {
+    const y = parseInt(r.year);
+    // Directional breakdown only available for current year from leaderboard/batted-ball
+    const bb = y === year && bbRow ? bbRow : null;
+    return {
+      ...r,
+      gb_pct:   bb ? toPC(bb.gb_rate)       : null,
+      fb_pct:   bb ? toPC(bb.fb_rate)       : null,
+      ld_pct:   bb ? toPC(bb.ld_rate)       : null,
+      pu_pct:   bb ? toPC(bb.pu_rate)       : null,
+      pull_pct: bb ? toPC(bb.pull_rate)     : null,
+      str_pct:  bb ? toPC(bb.straight_rate) : null,
+      oppo_pct: bb ? toPC(bb.oppo_rate)     : null,
+    };
+  });
 
   const hasData = percs || yearRows.length > 0;
 
