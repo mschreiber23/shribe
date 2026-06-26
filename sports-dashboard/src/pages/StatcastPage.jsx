@@ -71,6 +71,27 @@ async function fetchSprintSpeed(mlbId, year) {
   return rows.find((r) => String(r.player_id) === String(mlbId)) || null;
 }
 
+// Statcast leaderboard — for max_hit_speed per year
+async function fetchStatcastLeaderboard(mlbId, years) {
+  const results = await Promise.allSettled(
+    years.map((y) =>
+      bsFetch(`${BS}/leaderboard/statcast?year=${y}&position=batter&team=&min=1&csv=true`)
+        .then((text) => {
+          const { rows } = parseCSV(text);
+          const row = rows.find((r) => String(r.player_id) === String(mlbId));
+          return row ? { year: y, max_hit_speed: row.max_hit_speed } : null;
+        })
+    )
+  );
+  const map = {};
+  results.forEach((r) => {
+    if (r.status === 'fulfilled' && r.value) {
+      map[r.value.year] = r.value.max_hit_speed;
+    }
+  });
+  return map; // { 2024: "111.6", 2025: "118.0", 2026: "116.3" }
+}
+
 // Resolve MLB player ID from name
 async function resolveMlbId(firstName, lastName) {
   const name = `${firstName} ${lastName}`;
@@ -90,7 +111,7 @@ async function resolveMlbId(firstName, lastName) {
 // invert:  true when lower stat value = better (K%, whiff%)
 const PCT_STATS = [
   { pctCol: 'exit_velocity', statCol: 'launch_speed',           label: 'Exit Velocity', unit: ' mph', fmt: 'num1' },
-  { pctCol: 'max_ev',        statCol: 'hyper_speed',            label: 'Max EV',        unit: ' mph', fmt: 'num1' },
+  { pctCol: 'max_ev',        statCol: 'max_hit_speed',          label: 'Max EV',        unit: ' mph', fmt: 'num1' },
   { pctCol: 'brl_percent',   statCol: 'barrels_per_bbe_percent',label: 'Barrel%',       unit: '%',   fmt: 'num1' },
   { pctCol: 'hard_hit_percent', statCol: 'hardhit_percent',     label: 'Hard Hit%',     unit: '%',   fmt: 'num1' },
   { pctCol: 'xba',           statCol: 'xba',                    label: 'xBA',           unit: '',    fmt: 'avg' },
@@ -201,6 +222,7 @@ export default function StatcastPage() {
   const [yearRows, setYearRows] = useState([]);     // Statcast stats by year
   const [bbRow, setBbRow]       = useState(null);   // batted ball current year
   const [sprintRow, setSprintRow] = useState(null); // sprint speed current year
+  const [maxEvMap, setMaxEvMap]   = useState({});   // { year: max_hit_speed }
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
 
@@ -242,9 +264,19 @@ export default function StatcastPage() {
       ]);
 
       if (percRes.status   === 'fulfilled') setPercs(percRes.value);
-      if (yearRes.status   === 'fulfilled') setYearRows(yearRes.value || []);
-      if (bbRes.status     === 'fulfilled') setBbRow(bbRes.value);
       if (sprintRes.status === 'fulfilled') setSprintRow(sprintRes.value);
+      if (bbRes.status     === 'fulfilled') setBbRow(bbRes.value);
+
+      // Year-by-year rows — sort ascending after loading
+      let rows = yearRes.status === 'fulfilled' ? (yearRes.value || []) : [];
+      rows = [...rows].sort((a, b) => parseInt(a.year) - parseInt(b.year));
+      setYearRows(rows);
+
+      // Fetch max EV for each year we have data for
+      if (rows.length > 0) {
+        const years = rows.map((r) => parseInt(r.year));
+        fetchStatcastLeaderboard(id, years).then(setMaxEvMap).catch(() => {});
+      }
 
       const allFailed = [percRes, yearRes, bbRes, sprintRes].every((r) => r.status === 'rejected');
       if (allFailed) setError('Could not load Statcast data from Baseball Savant.');
@@ -267,17 +299,25 @@ export default function StatcastPage() {
 
   // Build the most-recent year's raw stat row for circle values
   const currentYearRow = {
-    ...(yearRows.find((r) => String(r.year) === String(year)) || yearRows[0] || {}),
-    // Inject sprint speed from its own endpoint
+    ...(yearRows.find((r) => String(r.year) === String(year)) || yearRows[yearRows.length - 1] || {}),
+    // Max EV from leaderboard/statcast endpoint
+    max_hit_speed: maxEvMap[year] ?? null,
+    // Sprint speed from its own endpoint
     _sprint_speed: sprintRow?.sprint_speed ?? null,
   };
+
+  // Merge max_hit_speed into year rows
+  const enrichedRows = yearRows.map((r) => ({
+    ...r,
+    max_hit_speed: maxEvMap[parseInt(r.year)] ?? null,
+  }));
 
   // Statcast stats table columns
   const statCols = [
     { key: 'year',                   label: 'Season',    left: true, fmt: 'int' },
     { key: 'pa',                     label: 'PA',        fmt: 'int' },
     { key: 'launch_speed',           label: 'EV',        hl: true,  fmt: 'num1' },
-    { key: 'hyper_speed',            label: 'Max EV',    fmt: 'num1' },
+    { key: 'max_hit_speed',          label: 'Max EV',    fmt: 'num1' },
     { key: 'barrels_per_bbe_percent',label: 'Barrel%',   hl: true,  fmt: 'num1' },
     { key: 'barrels_per_pa_percent', label: 'Brl/PA%',   fmt: 'num1' },
     { key: 'hardhit_percent',        label: 'HardHit%',  hl: true,  fmt: 'num1' },
@@ -430,7 +470,7 @@ export default function StatcastPage() {
           <StatTable
             title="Statcast Batting Statistics"
             cols={statCols}
-            rows={yearRows}
+            rows={enrichedRows}
           />
 
           {/* ── Batted Ball Profile ───────────────────────────────────── */}
