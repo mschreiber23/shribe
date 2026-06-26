@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, matchPath } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import { BottomNav, TopNav } from './components/Nav';
@@ -47,12 +47,20 @@ function Dashboard() {
 function AppShell({ userId }) {
   const { pathname } = useLocation();
   const isSubPage = ['/player/', '/boxscore/', '/team/'].some((p) => pathname.startsWith(p));
+  // Show compact sticky ticker on all pages except home and player/boxscore/team sub-pages
+  const isHome = pathname === '/';
+  const showStickyTicker = !isHome && !isSubPage;
 
   return (
     <FavoritesProvider userId={userId}>
       <div className="app">
         <TopNav />
         <InstallBanner />
+        {showStickyTicker && (
+          <div className="global-ticker-sticky">
+            <TodaysScores compact />
+          </div>
+        )}
         <div className="app-body">
           <Routes>
             <Route path="/"          element={<Dashboard />} />

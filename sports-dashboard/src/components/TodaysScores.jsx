@@ -239,7 +239,7 @@ function GridCard({ game, sport, myTeamIds }) {
 }
 
 /* ── Main Component ──────────────────────────────────── */
-export default function TodaysScores() {
+export default function TodaysScores({ compact = false }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
   const [activeSport, setActiveSport] = useState(sportOrder[0] || 'mlb');
   const [games, setGames] = useState([]);
@@ -302,9 +302,11 @@ export default function TodaysScores() {
             <button className="ts-date-btn" onClick={() => shiftDate(1)}>›</button>
           </div>
 
-          <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? '✕ Close' : 'All Scores'}
-          </button>
+          {!compact && (
+            <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? '✕ Close' : 'All Scores'}
+            </button>
+          )}
         </div>
 
         {/* Row 2: horizontal scrolling ticker */}
@@ -317,8 +319,8 @@ export default function TodaysScores() {
         </div>
       </div>
 
-      {/* ── Expanded full grid ── */}
-      {expanded && (
+      {/* ── Expanded full grid (only in full mode) ── */}
+      {!compact && expanded && (
         <div className="ts-expanded">
           <div className="ts-expanded-header">
             <span className="ts-expanded-title">

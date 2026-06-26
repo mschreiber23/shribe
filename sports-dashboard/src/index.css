@@ -3098,6 +3098,30 @@ body {
 .nav-label-logo { font-size: 9px; font-weight: 700; color: var(--accent2); }
 
 /* Top nav (desktop — hidden on mobile) */
+/* ── Global sticky ticker (shows on non-home pages) ── */
+.global-ticker-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+/* On desktop where top-nav is visible, push ticker below it */
+@media (min-width: 641px) {
+  .global-ticker-sticky {
+    top: 57px; /* top-nav height (12px padding × 2 + ~33px content) */
+  }
+}
+/* Remove the section margin/padding when compact ticker is in sticky header */
+.global-ticker-sticky .ts-section {
+  padding: 0;
+  margin: 0;
+}
+.global-ticker-sticky .ts-ticker-bar {
+  border-radius: 0;
+  border: none;
+}
+
 .top-nav {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
