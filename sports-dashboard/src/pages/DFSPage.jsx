@@ -755,18 +755,21 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
-  const lastKey = useRef('');
 
   useEffect(() => {
-    const key = `${lineup?.map(p=>p?.id).join(',')}|${pitcherId}`;
-    if (!pitcherId || !lineup?.length) {
+    // Always clear stale rows immediately so the old game's data never shows
+    setRows([]);
+
+    if (!pitcherId) {
       setLoading(false);
       return;
     }
-    if (key === lastKey.current) return;
-    lastKey.current = key;
+    if (!lineup?.length) {
+      setLoading(true); // Have pitcher, waiting for lineup to load
+      return;
+    }
+
     setLoading(true);
-    setRows([]);
 
     Promise.allSettled(
       lineup.map((player) =>
