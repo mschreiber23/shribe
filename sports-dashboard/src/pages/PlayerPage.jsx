@@ -387,9 +387,12 @@ export default function PlayerPage() {
       const eventsMap = data.events || {};
       const seasonTypes = data.seasonTypes || [];
       const games = [];
+      const seenEventIds = new Set();
       for (const st of seasonTypes) {
         for (const cat of st.categories || []) {
           for (const ev of cat.events || []) {
+            if (seenEventIds.has(ev.eventId)) continue;
+            seenEventIds.add(ev.eventId);
             const info = eventsMap[ev.eventId] || {};
             games.push({
               date: info.gameDate || '',
@@ -405,10 +408,11 @@ export default function PlayerPage() {
 
       // Prepend today's game if not in log
       const today = new Date().toISOString().slice(0, 10);
+      const todayStr = today.replace(/-/g, ''); // YYYYMMDD for scoreboard API
       const hasToday = games.some((g) => g.date.startsWith(today));
       if (!hasToday) {
         try {
-          const events = await getScoreboard(sport);
+          const events = await getScoreboard(sport, todayStr);
           const bioData = await getPlayerBio(sport, playerId).catch(() => null);
           const teamId = bioData?.athlete?.team?.id;
           const todayGame = teamId
