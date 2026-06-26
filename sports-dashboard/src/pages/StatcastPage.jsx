@@ -41,10 +41,16 @@ async function bsFetch(url) {
 
 // Year-by-year Statcast stats for a specific batter
 async function fetchStatcastYears(mlbId) {
-  const url = `${BS}/statcast_search/csv?player_type=batter&batterID=${mlbId}&hfGT=R%7C&min_pitches=0&min_results=0&group_by=name-year&sort_col=year&sort_order=desc&min_pas=0`;
+  // batterID is ignored by the endpoint (same issue as pitcherID).
+  // Fetch full current-year leaderboard and filter client-side.
+  // hfSea limits to this year, ensuring all ~576 batters fit in the response.
+  const year = new Date().getFullYear();
+  const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
   const text = await bsFetch(url);
   const { rows } = parseCSV(text);
-  return rows.filter((r) => r.player_id === String(mlbId) || r.player_id === mlbId);
+  const row = rows.find((r) => String(r.player_id).trim() === String(mlbId).trim());
+  // Return as a single-entry array (year-by-year table shows current year)
+  return row ? [{ ...row, year }] : [];
 }
 
 // Current-year percentile rankings — fetch all, filter by player_id
