@@ -35,17 +35,54 @@ async function bsFetch(url) {
 const BS = 'https://baseballsavant.mlb.com';
 const STATSAPI = 'https://statsapi.mlb.com/api/v1';
 
-/* ── Name normalisation for ESPN ↔ Savant matching ─────────────────── */
-// Savant: "Wood, James"  →  ESPN: "James Wood"
+/* ── Name normalisation for Savant matching ──────────────────────────── */
+function normKey(name) { return name.toLowerCase().replace(/[^a-z]/g, ''); }
 function savantToDisplay(savantName) {
   const [last, ...rest] = savantName.split(',');
   return `${rest.join('').trim()} ${last.trim()}`;
 }
-function normKey(name) {
-  return name.toLowerCase().replace(/[^a-z]/g, '');
+
+/* ── MLB Stats API helpers ─────────────────────────────────────────── */
+async function mlbFetch(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
-/* ── MLB ID resolution ──────────────────────────────────────────────── */
+// Today's MLB schedule with lineups + probable pitchers
+async function getMlbSchedule() {
+  const today = new Date().toISOString().slice(0, 10);
+  const data = await mlbFetch(
+    `${STATSAPI}/schedule?sportId=1&date=${today}&hydrate=probablePitcher,lineups,teams,game(content(summary))`
+  );
+  return data.dates?.[0]?.games || [];
+}
+
+// Get projected lineup: use the most recent game's confirmed lineup for that team
+async function getProjectedLineup(teamId, isHome) {
+  const today = new Date();
+  const end = new Date(today); end.setDate(end.getDate() - 1);
+  const start = new Date(today); start.setDate(start.getDate() - 8);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const data = await mlbFetch(
+    `${STATSAPI}/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(start)}&endDate=${fmt(end)}&hydrate=lineups&gameType=R`
+  );
+  // Walk dates newest-first, find most recent lineup
+  for (const dateObj of [...(data.dates || [])].reverse()) {
+    for (const game of dateObj.games || []) {
+      const isHomeTeam = game.teams?.home?.team?.id === Number(teamId);
+      const players = isHomeTeam
+        ? game.lineups?.homePlayers
+        : game.lineups?.awayPlayers;
+      if (players?.length > 0) {
+        return { players, confirmed: false, fromDate: dateObj.date };
+      }
+    }
+  }
+  return { players: [], confirmed: false, fromDate: null };
+}
+
+/* ── MLB ID resolution (fallback for pitcher only) ─────────────────── */
 async function resolveMlbId(fullName) {
   try {
     const res = await fetch(`${STATSAPI}/people/search?names=${encodeURIComponent(fullName)}&sportIds=1`);
@@ -63,7 +100,18 @@ async function fetchTeamBatters(teamAbbr, pitcherThrows) {
   const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(teamAbbr + '|')}&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0${throwsParam}`;
   const text = await bsFetch(url);
   const { rows } = parseCSV(text);
-  return rows;
+  // Index by both player_id (MLB ID) and normalised name for flexible matching
+  const byId = {};
+  const byName = {};
+  rows.forEach((r) => {
+    if (r.player_id) byId[String(r.player_id).trim()] = r;
+    const display = savantToDisplay(r.player_name || '');
+    byName[normKey(display)] = r;
+    // Also index by last name only as fallback
+    const last = (r.player_name || '').split(',')[0].trim().toLowerCase().replace(/[^a-z]/g, '');
+    if (last && !byName[last]) byName[last] = r;
+  });
+  return { byId, byName };
 }
 
 async function fetchPitcherSplits(mlbId) {
@@ -170,16 +218,22 @@ const BATTER_COLS = [
 ];
 
 function BatterTable({ lineup, savantMap }) {
-  if (lineup.length === 0) return (
-    <div className="dfs-empty">No lineup data available yet. Check back closer to game time.</div>
+  if (!lineup || lineup.length === 0) return (
+    <div className="dfs-empty">No lineup data available yet.</div>
   );
+  const { byId, byName } = savantMap;
 
-  // Aggregate rows
-  const allRows = lineup.map((e) => {
-    const name = e.athlete?.displayName || '';
-    const key = normKey(name);
-    return savantMap[key] || null;
-  }).filter(Boolean);
+  // MLB Stats API lineup player: { id, fullName, primaryPosition, ... }
+  const lookupStats = (player) => {
+    if (!player) return null;
+    // Try MLB person ID first (most reliable), then name fallback
+    const byIdMatch = byId?.[String(player.id)];
+    if (byIdMatch) return byIdMatch;
+    const name = player.fullName || player.useName || '';
+    return byName?.[normKey(name)] || byName?.[normKey(name.split(' ').slice(-1)[0])] || null;
+  };
+
+  const allRows = lineup.map(lookupStats).filter(Boolean);
 
   function agg(rows) {
     if (!rows.length) return {};
@@ -192,18 +246,13 @@ function BatterTable({ lineup, savantMap }) {
     return result;
   }
 
-  const lefties = lineup.filter((e) => {
-    const hand = e.athlete?.batHand?.abbreviation || e.athlete?.displayBatsThrows?.charAt(0) || '';
-    return hand === 'L';
-  });
-  const righties = lineup.filter((e) => {
-    const hand = e.athlete?.batHand?.abbreviation || e.athlete?.displayBatsThrows?.charAt(0) || '';
-    return hand === 'R' || hand === 'S';
-  });
+  // MLB Stats API lineup: players have { id, fullName, primaryPosition, batSide, ... }
+  const lefties  = lineup.filter((p) => p.batSide?.code === 'L');
+  const righties = lineup.filter((p) => p.batSide?.code === 'R' || p.batSide?.code === 'S');
 
-  const aggAll     = agg(allRows);
-  const aggL       = agg(lefties.map((e) => savantMap[normKey(e.athlete?.displayName || '')]).filter(Boolean));
-  const aggR       = agg(righties.map((e) => savantMap[normKey(e.athlete?.displayName || '')]).filter(Boolean));
+  const aggAll = agg(allRows);
+  const aggL   = agg(lefties.map(lookupStats).filter(Boolean));
+  const aggR   = agg(righties.map(lookupStats).filter(Boolean));
 
   const AggRow = ({ label, row }) => (
     <tr className="dfs-agg-row">
@@ -228,13 +277,13 @@ function BatterTable({ lineup, savantMap }) {
           </tr>
         </thead>
         <tbody>
-          {lineup.map((entry, i) => {
-            const athlete = entry.athlete || {};
-            const name = athlete.displayName || '';
-            const pos = athlete.position?.abbreviation || '';
-            const hand = athlete.batHand?.abbreviation || athlete.displayBatsThrows?.charAt(0) || '';
-            const slot = entry.lineup?.slot || (i + 1);
-            const stats = savantMap[normKey(name)] || {};
+          {lineup.map((player, i) => {
+            // MLB Stats API player object from lineups
+            const name = player.fullName || player.useName || '';
+            const pos  = player.primaryPosition?.abbreviation || '';
+            const hand = player.batSide?.code || '';
+            const slot = i + 1;
+            const stats = lookupStats(player) || {};
             const hasStats = Object.keys(stats).length > 0;
             return (
               <tr key={i} className="dfs-player-row">
@@ -318,115 +367,130 @@ function PitcherSplitsTable({ splits }) {
    ───────────────────────────────────────────────────────────────────── */
 export default function DFSPage() {
   const navigate = useNavigate();
-  const [games, setGames]                 = useState([]);
-  const [selectedGame, setSelectedGame]   = useState(null);
-  const [gameData, setGameData]           = useState(null);
-  const [activeSide, setActiveSide]       = useState('away'); // 'away' | 'home' = batting team
-  const [throwsFilter, setThrowsFilter]   = useState('all'); // 'all' | 'L' | 'R'
-  const [batterStats, setBatterStats]     = useState({}); // savant keyed by norm name
+  const [mlbGames, setMlbGames]           = useState([]);   // from MLB Stats API
+  const [espnGames, setEspnGames]         = useState([]);   // from ESPN (for logos/status)
+  const [selectedIdx, setSelectedIdx]     = useState(0);
+  const [activeSide, setActiveSide]       = useState('away');
+  const [throwsFilter, setThrowsFilter]   = useState('all');
+  const [batterStats, setBatterStats]     = useState({ byId: {}, byName: {} });
   const [batterLoading, setBatterLoading] = useState(false);
   const [pitcherSplits, setPitcherSplits] = useState(null);
   const [pitcherLoading, setPitcherLoading] = useState(false);
-  const [pitcherInfo, setPitcherInfo]     = useState(null); // { name, hand, headshot }
+  const [lineup, setLineup]               = useState({ players: [], confirmed: false, fromDate: null });
+  const [lineupLoading, setLineupLoading] = useState(false);
 
   const year = new Date().getFullYear();
 
-  // Load today's MLB games
+  // Load today's MLB games from both APIs
   useEffect(() => {
     const today = new Date();
     const dateStr = today.getFullYear().toString()
       + String(today.getMonth() + 1).padStart(2, '0')
       + String(today.getDate()).padStart(2, '0');
-    getScoreboard('mlb', dateStr).then((events) => {
-      setGames(events);
-      if (events.length > 0) setSelectedGame(events[0]);
+
+    // ESPN for logos, status, probable pitchers display
+    getScoreboard('mlb', dateStr).then(setEspnGames).catch(() => {});
+    // MLB Stats API for lineups + confirmed lineup data
+    getMlbSchedule().then((games) => {
+      setMlbGames(games);
+      setSelectedIdx(0);
     }).catch(() => {});
   }, []);
 
-  // Load game detail when selection changes
+  const selectedMlb = mlbGames[selectedIdx] || null;
+  const selectedEspn = espnGames[selectedIdx] || null;
+
+  // Derive teams from selected MLB game
+  const mlbAway = selectedMlb?.teams?.away;
+  const mlbHome = selectedMlb?.teams?.home;
+  const battingMlb  = activeSide === 'away' ? mlbAway : mlbHome;
+  const pitchingMlb = activeSide === 'away' ? mlbHome : mlbAway;
+
+  // Derive probable pitcher from MLB Stats API
+  const probPitcherRaw = pitchingMlb?.probablePitcher || null;
+  const probPitcher = probPitcherRaw ? {
+    id: String(probPitcherRaw.id),
+    name: probPitcherRaw.fullName || '',
+    hand: null, // resolved below from ESPN
+    headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${probPitcherRaw.id}/headshot/67/current`,
+    record: '',
+  } : null;
+
+  // Get pitcher hand from ESPN data
+  const espnComp = selectedEspn?.competitions?.[0];
+  const espnCompetitors = espnComp?.competitors || [];
+  const espnPitchingTeam = activeSide === 'away'
+    ? espnCompetitors.find((c) => c.homeAway === 'home')
+    : espnCompetitors.find((c) => c.homeAway === 'away');
+  const espnProb = espnPitchingTeam?.probables?.[0];
+  if (probPitcher && espnProb) {
+    probPitcher.hand = espnProb.athlete?.throwHand?.abbreviation || null;
+    probPitcher.record = espnProb.record || '';
+  }
+
+  // Get team logos from ESPN
+  const espnBattingTeam  = activeSide === 'away'
+    ? espnCompetitors.find((c) => c.homeAway === 'away')
+    : espnCompetitors.find((c) => c.homeAway === 'home');
+
+  // Load lineup when game/side changes
   useEffect(() => {
-    if (!selectedGame) return;
-    setGameData(null);
-    setBatterStats({});
-    setPitcherSplits(null);
-    setPitcherInfo(null);
-    getGameBoxscore('mlb', selectedGame.id).then(setGameData).catch(() => {});
-  }, [selectedGame]);
+    if (!selectedMlb) return;
+    setLineup({ players: [], confirmed: false, fromDate: null });
+    setLineupLoading(true);
 
-  // Derive teams from selected game
-  const comp = selectedGame?.competitions?.[0];
-  const competitors = comp?.competitors || [];
-  const awayTeam = competitors.find((c) => c.homeAway === 'away') || competitors[0];
-  const homeTeam = competitors.find((c) => c.homeAway === 'home') || competitors[1];
-  const battingTeam = activeSide === 'away' ? awayTeam : homeTeam;
-  const pitchingTeam = activeSide === 'away' ? homeTeam : awayTeam;
+    const isHome = activeSide === 'home';
+    const teamId = isHome ? mlbHome?.team?.id : mlbAway?.team?.id;
+    const confirmedPlayers = isHome
+      ? selectedMlb.lineups?.homePlayers
+      : selectedMlb.lineups?.awayPlayers;
 
-  // Derive probable pitcher
-  const probPitcher = (() => {
-    const pitchers = pitchingTeam?.probables || [];
-    const p = pitchers[0];
-    if (!p) return null;
-    const ath = p.athlete || {};
-    return {
-      id: ath.id,
-      name: ath.displayName || ath.fullName || '',
-      shortName: ath.shortName || '',
-      hand: ath.throwHand?.abbreviation || p.throws || '',
-      headshot: typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href,
-      record: p.record || '',
-      era: p.statistics?.find?.(s => s.abbreviation === 'ERA')?.displayValue || '',
-    };
-  })();
+    if (confirmedPlayers?.length > 0) {
+      setLineup({ players: confirmedPlayers, confirmed: true, fromDate: null });
+      setLineupLoading(false);
+    } else if (teamId) {
+      // Fall back to most recent game's lineup as projection
+      getProjectedLineup(teamId, isHome).then((result) => {
+        setLineup(result);
+        setLineupLoading(false);
+      }).catch(() => setLineupLoading(false));
+    } else {
+      setLineupLoading(false);
+    }
+  }, [selectedIdx, activeSide]);
 
-  // When pitching team / game changes, load pitcher splits
+  // Load pitcher splits when pitcher changes
   useEffect(() => {
-    if (!probPitcher?.name) return;
+    if (!probPitcher?.id) return;
     setPitcherLoading(true);
     setPitcherSplits(null);
-    setPitcherInfo(probPitcher);
+    fetchPitcherSplits(probPitcher.id).then(setPitcherSplits)
+      .catch(() => {})
+      .finally(() => setPitcherLoading(false));
+  }, [probPitcher?.id, selectedIdx, activeSide]);
 
-    resolveMlbId(probPitcher.name).then((mlbId) => {
-      if (!mlbId) { setPitcherLoading(false); return; }
-      fetchPitcherSplits(mlbId).then((splits) => {
-        setPitcherSplits(splits);
-        setPitcherLoading(false);
-      }).catch(() => setPitcherLoading(false));
-    }).catch(() => setPitcherLoading(false));
-  }, [probPitcher?.name, selectedGame?.id]);
-
-  // When batting team / throws filter changes, load batter stats
+  // Load batter Statcast stats when batting team / throws filter changes
   useEffect(() => {
-    if (!battingTeam?.team?.abbreviation) return;
+    const abbr = battingMlb?.team?.abbreviation;
+    if (!abbr) return;
     setBatterLoading(true);
-    setBatterStats({});
-    const abbr = battingTeam.team.abbreviation;
+    setBatterStats({ byId: {}, byName: {} });
     const throws = throwsFilter === 'all' ? null : throwsFilter;
-    fetchTeamBatters(abbr, throws).then((rows) => {
-      const map = {};
-      rows.forEach((r) => {
-        const key = normKey(savantToDisplay(r.player_name || ''));
-        map[key] = r;
-        // Also index by last name only for fuzzy match
-        const lastName = (r.player_name || '').split(',')[0].trim().toLowerCase().replace(/[^a-z]/g, '');
-        if (!map[lastName]) map[lastName] = r;
-      });
-      setBatterStats(map);
-      setBatterLoading(false);
-    }).catch(() => setBatterLoading(false));
-  }, [battingTeam?.team?.abbreviation, throwsFilter]);
+    fetchTeamBatters(abbr, throws)
+      .then(setBatterStats)
+      .catch(() => {})
+      .finally(() => setBatterLoading(false));
+  }, [battingMlb?.team?.abbreviation, throwsFilter]);
 
   // Auto-set throws filter based on pitcher handedness
   useEffect(() => {
-    if (probPitcher?.hand) {
-      setThrowsFilter(probPitcher.hand === 'L' ? 'L' : probPitcher.hand === 'R' ? 'R' : 'all');
-    }
-  }, [probPitcher?.hand, activeSide]);
+    const hand = probPitcher?.hand;
+    if (hand === 'L' || hand === 'R') setThrowsFilter(hand);
+  }, [probPitcher?.hand, selectedIdx, activeSide]);
 
-  // Get batting lineup from game rosters
-  const lineup = extractLineup(gameData?.rosters, battingTeam?.team?.id);
-
-  const awayLogo = getTeamLogo(awayTeam?.team);
-  const homeLogo = getTeamLogo(homeTeam?.team);
+  // Team logo helper using ESPN data
+  const battingEspnTeam = espnBattingTeam?.team;
+  const pitchingEspnTeam = espnPitchingTeam?.team;
 
   return (
     <div className="dfs-page">
@@ -434,22 +498,21 @@ export default function DFSPage() {
       <div className="dfs-game-selector">
         <div className="dfs-selector-label">Select Game</div>
         <div className="dfs-games-list">
-          {games.length === 0 && <span className="dfs-no-games">No MLB games today</span>}
-          {games.map((g) => {
-            const c = g.competitions?.[0];
-            const away = c?.competitors?.find((x) => x.homeAway === 'away');
-            const home = c?.competitors?.find((x) => x.homeAway === 'home');
-            const status = c?.status?.type?.shortDetail || '';
-            const isSelected = selectedGame?.id === g.id;
+          {mlbGames.length === 0 && <span className="dfs-no-games">Loading games…</span>}
+          {mlbGames.map((g, i) => {
+            const away = g.teams?.away?.team;
+            const home = g.teams?.home?.team;
+            const status = g.status?.detailedState || '';
+            const isSelected = i === selectedIdx;
             return (
               <button
-                key={g.id}
+                key={g.gamePk}
                 className={`dfs-game-pill ${isSelected ? 'dfs-game-pill-active' : ''}`}
-                onClick={() => { setSelectedGame(g); setActiveSide('away'); }}
+                onClick={() => { setSelectedIdx(i); setActiveSide('away'); }}
               >
-                <span className="dfs-pill-team">{away?.team?.abbreviation}</span>
+                <span className="dfs-pill-team">{away?.abbreviation}</span>
                 <span className="dfs-pill-sep">@</span>
-                <span className="dfs-pill-team">{home?.team?.abbreviation}</span>
+                <span className="dfs-pill-team">{home?.abbreviation}</span>
                 {status && <span className="dfs-pill-status">{status}</span>}
               </button>
             );
@@ -457,20 +520,23 @@ export default function DFSPage() {
         </div>
       </div>
 
-      {selectedGame && (
+      {selectedMlb && (
         <>
           {/* ── Team tab switcher ──────────────────────────────────── */}
           <div className="dfs-team-tabs">
-            {[{ side: 'away', team: awayTeam }, { side: 'home', team: homeTeam }].map(({ side, team }) => (
+            {[
+              { side: 'away', mlbTeam: mlbAway?.team, espnTeam: espnCompetitors.find(c=>c.homeAway==='away')?.team },
+              { side: 'home', mlbTeam: mlbHome?.team, espnTeam: espnCompetitors.find(c=>c.homeAway==='home')?.team },
+            ].map(({ side, mlbTeam, espnTeam }) => (
               <button
                 key={side}
                 className={`dfs-team-tab ${activeSide === side ? 'dfs-team-tab-active' : ''}`}
                 onClick={() => setActiveSide(side)}
               >
-                {getTeamLogo(team?.team) && (
-                  <img src={getTeamLogo(team?.team)} alt="" className="dfs-tab-logo" />
+                {getTeamLogo(espnTeam) && (
+                  <img src={getTeamLogo(espnTeam)} alt="" className="dfs-tab-logo" />
                 )}
-                {team?.team?.abbreviation} Batters
+                {mlbTeam?.abbreviation} Batters
               </button>
             ))}
           </div>
@@ -482,12 +548,18 @@ export default function DFSPage() {
             <div className="dfs-panel dfs-panel-batters">
               <div className="dfs-panel-header">
                 <div className="dfs-panel-team">
-                  {getTeamLogo(battingTeam?.team) && (
-                    <img src={getTeamLogo(battingTeam?.team)} alt="" className="dfs-panel-logo" />
+                  {getTeamLogo(battingEspnTeam) && (
+                    <img src={getTeamLogo(battingEspnTeam)} alt="" className="dfs-panel-logo" />
                   )}
                   <div>
-                    <div className="dfs-panel-name">{battingTeam?.team?.displayName}</div>
-                    <div className="dfs-panel-sub">Batting Lineup</div>
+                    <div className="dfs-panel-name">{battingMlb?.team?.name}</div>
+                    <div className="dfs-panel-sub">
+                      {lineupLoading ? 'Loading lineup…' : lineup.confirmed
+                        ? <span className="dfs-confirmed-badge">✓ CONFIRMED LINEUP</span>
+                        : lineup.fromDate
+                          ? <span className="dfs-projected-badge">⟳ PROJECTED from {lineup.fromDate}</span>
+                          : 'Batting Lineup'}
+                    </div>
                   </div>
                 </div>
                 {/* Throws filter */}
@@ -508,10 +580,10 @@ export default function DFSPage() {
                 </div>
               </div>
 
-              {batterLoading ? (
-                <div className="dfs-loading"><div className="auth-spinner" /><span>Loading stats…</span></div>
+              {batterLoading || lineupLoading ? (
+                <div className="dfs-loading"><div className="auth-spinner" /><span>Loading…</span></div>
               ) : (
-                <BatterTable lineup={lineup} savantMap={batterStats} />
+                <BatterTable lineup={lineup.players} savantMap={batterStats} />
               )}
             </div>
 
@@ -519,23 +591,20 @@ export default function DFSPage() {
             <div className="dfs-panel dfs-panel-pitcher">
               <div className="dfs-panel-header">
                 <div className="dfs-panel-team">
-                  {getTeamLogo(pitchingTeam?.team) && (
-                    <img src={getTeamLogo(pitchingTeam?.team)} alt="" className="dfs-panel-logo" />
+                  {getTeamLogo(pitchingEspnTeam) && (
+                    <img src={getTeamLogo(pitchingEspnTeam)} alt="" className="dfs-panel-logo" />
                   )}
                   <div>
-                    <div className="dfs-panel-name">{pitchingTeam?.team?.displayName}</div>
+                    <div className="dfs-panel-name">{pitchingMlb?.team?.name}</div>
                     <div className="dfs-panel-sub">Starting Pitcher</div>
                   </div>
                 </div>
               </div>
 
-              {/* Pitcher identity card */}
               {probPitcher ? (
                 <div className="dfs-pitcher-card">
-                  {probPitcher.headshot && (
-                    <img src={probPitcher.headshot} alt="" className="dfs-pitcher-avatar"
-                      onError={(e) => { e.target.style.display = 'none'; }} />
-                  )}
+                  <img src={probPitcher.headshot} alt="" className="dfs-pitcher-avatar"
+                    onError={(e) => { e.target.style.display = 'none'; }} />
                   <div className="dfs-pitcher-info">
                     <div className="dfs-pitcher-name">
                       {probPitcher.name}
@@ -543,7 +612,6 @@ export default function DFSPage() {
                     </div>
                     <div className="dfs-pitcher-meta">
                       {probPitcher.record && <span>{probPitcher.record}</span>}
-                      {probPitcher.era && <span> · {probPitcher.era} ERA</span>}
                     </div>
                   </div>
                 </div>
@@ -551,7 +619,6 @@ export default function DFSPage() {
                 <div className="dfs-empty">No probable pitcher announced yet.</div>
               )}
 
-              {/* Splits header */}
               {probPitcher && (
                 <>
                   <div className="dfs-splits-header">
@@ -569,7 +636,7 @@ export default function DFSPage() {
         </>
       )}
 
-      {!selectedGame && games.length === 0 && (
+      {mlbGames.length === 0 && (
         <div className="dfs-empty dfs-empty-center">No MLB games scheduled for today.</div>
       )}
     </div>
