@@ -3699,29 +3699,37 @@ body {
 .dfs-th-sortable { cursor: pointer; user-select: none; }
 .dfs-th-sortable:hover { color: var(--text); }
 
-/* Sticky # and Player columns */
+/* Sticky # and Player columns — explicit widths + solid backgrounds */
 .dfs-sticky-num {
   position: sticky; left: 0; z-index: 2;
-  background: inherit;
-  box-shadow: 1px 0 0 var(--border);
+  width: 44px; min-width: 44px; max-width: 44px;
+  background-color: var(--bg2);
+  box-shadow: 2px 0 6px rgba(0,0,0,0.45);
 }
 .dfs-sticky-player {
-  position: sticky; left: 36px; z-index: 2;
-  background: inherit;
-  box-shadow: 1px 0 0 var(--border);
-  min-width: 130px;
+  position: sticky; left: 44px; z-index: 2;
+  min-width: 140px;
+  background-color: var(--bg2);
 }
-/* Ensure sticky cells have the right background in each row type */
-.dfs-player-row .dfs-sticky-num,
-.dfs-player-row .dfs-sticky-player { background: var(--bg2); }
+/* Per-row-type backgrounds so sticky cells are always opaque */
 .dfs-agg-row .dfs-sticky-num,
-.dfs-agg-row .dfs-sticky-player { background: color-mix(in srgb, var(--bg3) 60%, var(--bg2)); }
+.dfs-agg-row .dfs-sticky-player {
+  background-color: color-mix(in srgb, var(--bg3) 60%, var(--bg2));
+}
 thead .dfs-sticky-num,
-thead .dfs-sticky-player { background: var(--bg3); z-index: 3; }
-.dfs-th-num { width: 24px; padding-left: 12px; text-align: center; }
+thead .dfs-sticky-player {
+  background-color: var(--bg3);
+  z-index: 3;
+}
+/* BvP table has the same panel background */
+.bvp-wrap .dfs-sticky-num,
+.bvp-wrap .dfs-sticky-player { background-color: var(--bg2); }
+.bvp-wrap thead .dfs-sticky-num,
+.bvp-wrap thead .dfs-sticky-player { background-color: var(--bg3); }
+.dfs-th-num { width: 44px; min-width: 44px; text-align: center; padding: 0; }
 .dfs-th-player { text-align: left; padding-left: 14px; min-width: 130px; }
 .dfs-td { padding: 8px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
-.dfs-td-num { text-align: center; padding-left: 12px; color: var(--text2); font-size: 11px; }
+.dfs-td-num { text-align: center; padding: 8px 0; color: var(--text2); font-size: 11px; width: 44px; min-width: 44px; }
 .dfs-td-player { text-align: left; padding-left: 14px; }
 .dfs-td-stat { }
 .dfs-player-name { font-size: 12px; font-weight: 700; color: var(--text); }
