@@ -42,24 +42,37 @@ function GameScore({ game, teamId, sport, onOpen }) {
     return (
       <div className="pregame-bar">
         <div className="pregame-top">
-          <span className="pregame-time">{timeStr}</span>
-          {broadcast && <span className="pregame-tv"> · {broadcast}</span>}
+          <div className="pregame-top-left">
+            <span className="pregame-time">{timeStr}</span>
+            {broadcast && <span className="pregame-tv"> · {broadcast}</span>}
+          </div>
+          {probables.length > 0 && (
+            <span className="pregame-pitchers-label">PROBABLE PITCHERS</span>
+          )}
         </div>
         <div className="pregame-body">
           <div className="pregame-teams">
-            {[away, home].filter(Boolean).map((c) => (
-              <div key={c.team?.id} className={`pregame-team ${c.team?.id === String(teamId) ? 'pregame-my-team' : ''}`}>
-                {c.team?.logo && <img src={c.team.logo} alt="" className="pregame-logo" />}
-                <div>
-                  <div className="pregame-name">{c.team?.shortDisplayName || c.team?.displayName}</div>
-                  <div className="pregame-record">({c.records?.[0]?.summary}{c.records?.[1]?.summary ? `, ${c.records[1].summary} ${c.homeAway === 'home' ? 'Home' : 'Away'}` : ''})</div>
+            {[away, home].filter(Boolean).map((c) => {
+              const overallRec = c.records?.[0]?.summary;
+              const splitRec = c.homeAway === 'home'
+                ? (c.records?.find((r) => r.name === 'home' || r.type === 'home') || c.records?.[1])?.summary
+                : (c.records?.find((r) => r.name === 'road' || r.type === 'road') || c.records?.[2])?.summary;
+              const splitLabel = c.homeAway === 'home' ? 'Home' : 'Away';
+              return (
+                <div key={c.team?.id} className={`pregame-team ${c.team?.id === String(teamId) ? 'pregame-my-team' : ''}`}>
+                  {c.team?.logo && <img src={c.team.logo} alt="" className="pregame-logo" />}
+                  <div>
+                    <div className="pregame-name">{c.team?.shortDisplayName || c.team?.displayName}</div>
+                    <div className="pregame-record">
+                      ({overallRec}{splitRec ? `, ${splitRec} ${splitLabel}` : ''})
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {probables.length > 0 && (
             <div className="pregame-pitchers">
-              <div className="pregame-pitchers-label">PROBABLE PITCHERS</div>
               {probables.map((p, i) => (
                 <div key={i} className="pregame-pitcher" onClick={() => p.id && navigate(`/player/${sport}/${p.id}`)} style={{ cursor: p.id ? 'pointer' : 'default' }}>
                   {p.headshot && <img src={p.headshot} alt="" className="pregame-pitcher-avatar" onError={(e) => { e.target.style.display='none'; }} />}

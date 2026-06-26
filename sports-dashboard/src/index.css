@@ -1405,7 +1405,8 @@ body {
 
 /* ── Pre-game ESPN-style bar ── */
 .pregame-bar { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--border); }
-.pregame-top { display: flex; align-items: center; }
+.pregame-top { display: flex; align-items: center; justify-content: space-between; }
+.pregame-top-left { display: flex; align-items: center; gap: 0; }
 .pregame-time { font-size: 13px; font-weight: 800; color: var(--text); }
 .pregame-tv { font-size: 12px; color: var(--text2); }
 .pregame-body { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
@@ -1416,7 +1417,7 @@ body {
 .pregame-name { font-size: 14px; font-weight: 700; color: var(--text); }
 .pregame-record { font-size: 11px; color: var(--text2); }
 .pregame-pitchers { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 140px; }
-.pregame-pitchers-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2); margin-bottom: 2px; }
+.pregame-pitchers-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text2); }
 .pregame-pitcher { display: flex; align-items: center; gap: 8px; }
 .pregame-pitcher-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
 .pregame-pitcher-name { font-size: 12px; font-weight: 700; color: var(--text); }
