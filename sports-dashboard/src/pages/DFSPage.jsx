@@ -709,8 +709,11 @@ const BVP_COLS = [
 ];
 
 function BvPTab({ lineup, pitcherId, pitcherName }) {
+  // ALL hooks must be at the top — before any conditional returns
   const [rows, setRows]       = useState([]);
-  const [loading, setLoading] = useState(true); // start true so we never show blank
+  const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
   const lastKey = useRef('');
 
   useEffect(() => {
@@ -751,8 +754,6 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
     </div>
   );
 
-  const [sortKey, setSortKey] = useState(null);
-  const [sortDir, setSortDir] = useState('desc');
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
     else { setSortKey(key); setSortDir('desc'); }
