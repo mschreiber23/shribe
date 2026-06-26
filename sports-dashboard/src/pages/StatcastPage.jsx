@@ -88,9 +88,9 @@ const PCT_STATS = [
   { pctCol: 'xba',           statCol: 'xba',                    label: 'xBA',           unit: '',    fmt: 'avg' },
   { pctCol: 'xslg',          statCol: 'xslg',                   label: 'xSLG',          unit: '',    fmt: 'avg' },
   { pctCol: 'xwoba',         statCol: 'xwoba',                  label: 'xwOBA',         unit: '',    fmt: 'avg' },
-  { pctCol: 'k_percent',     statCol: 'k_percent',              label: 'K%',            unit: '%',   fmt: 'num1', invert: true },
+  { pctCol: 'k_percent',     statCol: 'k_percent',              label: 'K%',            unit: '%',   fmt: 'num1' },
   { pctCol: 'bb_percent',    statCol: 'bb_percent',             label: 'BB%',           unit: '%',   fmt: 'num1' },
-  { pctCol: 'whiff_percent', statCol: 'swing_miss_percent',     label: 'Whiff%',        unit: '%',   fmt: 'num1', invert: true },
+  { pctCol: 'whiff_percent', statCol: 'swing_miss_percent',     label: 'Whiff%',        unit: '%',   fmt: 'num1' },
   { pctCol: 'sprint_speed',  statCol: null,                     label: 'Sprint Speed',  unit: ' ft/s', fmt: 'num1' },
 ];
 
