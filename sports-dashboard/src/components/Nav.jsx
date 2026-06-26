@@ -69,11 +69,21 @@ function DFSIcon({ active }) {
   );
 }
 
+function RankIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#a855f7' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      <line x1="12" y1="8" x2="12" y2="16"/>
+      <line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
   { path: '/dfs',       label: 'DFS',       Icon: DFSIcon },
   { path: '/',          label: 'Shribely',  logo: true },
-  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
+  { path: '/rankings',  label: 'Rankings',  Icon: RankIcon },
   { path: '/me',        label: 'Me',        Icon: MeIcon },
 ];
 
