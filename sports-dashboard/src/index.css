@@ -3733,6 +3733,19 @@ thead .dfs-sticky-player { background: var(--bg3); z-index: 3; }
 .dfs-agg-row { background: color-mix(in srgb, var(--bg3) 60%, var(--bg2)); border-top: 1px solid var(--border); }
 .dfs-agg-row .dfs-td-player { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; }
 
+/* Pitcher sub-tabs (Dashboard / Pitch Usage / Game Logs) */
+.dfs-pitcher-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  padding: 0 4px;
+}
+.dfs-pitcher-tab {
+  padding: 9px 14px; font-size: 12px; font-weight: 700; color: var(--text2);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all 0.15s; margin-bottom: -1px;
+}
+.dfs-pitcher-tab:hover { color: var(--text); }
+.dfs-pitcher-tab-active { color: var(--text); border-bottom-color: var(--accent); }
+
 /* Pitcher panel header — team info left, pitcher info right */
 .dfs-pitcher-header { justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 

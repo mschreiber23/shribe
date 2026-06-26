@@ -197,6 +197,75 @@ async function fetchBvpStats(batterId, pitcherId) {
   return splits[0]?.stat || null;
 }
 
+async function fetchPitchArsenal(mlbId) {
+  const year = new Date().getFullYear();
+  // Two time windows: full season (120 days ≈ full season) and last 30 days
+  const today = new Date().toISOString().slice(0, 10);
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+  const start30 = d30.toISOString().slice(0, 10);
+
+  const base = `${BS}/leaderboard/pitch-arsenal-stats?type=pitcher&pitchName=&season=${year}&min=0&csv=true`;
+  const [seasonRes, recent30Res] = await Promise.allSettled([
+    bsFetch(base),
+    bsFetch(`${base}&startDate=${start30}`),
+  ]);
+
+  const filterPlayer = (text) => {
+    if (typeof text !== 'string') return [];
+    const { rows } = parseCSV(text);
+    return rows.filter((r) => String(r.player_id).trim() === String(mlbId).trim());
+  };
+
+  const seasonRows = seasonRes.status === 'fulfilled' ? filterPlayer(seasonRes.value) : [];
+  const recent30   = recent30Res.status === 'fulfilled' ? filterPlayer(recent30Res.value) : [];
+
+  // Merge: season row + recent 30-day usage keyed by pitch_type
+  const recent30Map = {};
+  recent30.forEach((r) => { recent30Map[r.pitch_type] = r; });
+
+  return seasonRows.map((r) => ({
+    ...r,
+    pct_season: parseFloat(r.pitch_usage) || 0,
+    pct_30:     parseFloat(recent30Map[r.pitch_type]?.pitch_usage) || null,
+    iso:        r.ba && r.slg ? (parseFloat(r.slg) - parseFloat(r.ba)).toFixed(3) : null,
+  })).sort((a, b) => b.pct_season - a.pct_season);
+}
+
+async function fetchPitcherGameLogs(mlbId) {
+  const year = new Date().getFullYear();
+  const data = await mlbFetch(
+    `${STATSAPI}/people/${mlbId}/stats?stats=gameLog&group=pitching&season=${year}&sportId=1`
+  );
+  const splits = data.stats?.[0]?.splits || [];
+  return splits.map((s) => {
+    const st = s.stat || {};
+    const ip = (() => {
+      const parts = String(st.inningsPitched || '0').split('.');
+      return parseInt(parts[0]) + (parseInt(parts[1] || '0') / 3);
+    })();
+    const k  = parseInt(st.strikeOuts || 0);
+    const w  = parseInt(st.wins || 0);
+    const er = parseInt(st.earnedRuns || 0);
+    const h  = parseInt(st.hits || 0);
+    const bb = parseInt(st.baseOnBalls || 0);
+    const hbp = parseInt(st.hitBatsmen || 0);
+    const fpts = (ip * 2.25 + k * 2 + w * 4 + er * -2 + h * -0.6 + bb * -0.6 + hbp * -0.6).toFixed(1);
+    const oppName = s.opponent?.name || '?';
+    // Build opponent abbreviation from name
+    const oppAbbr = Object.entries(MLB_ABBR || {}).find(([id]) =>
+      oppName.toLowerCase().includes('astros') ? id === '117' : false
+    )?.[1] || oppName.split(' ').slice(-1)[0].slice(0, 3).toUpperCase();
+    return {
+      date: s.date,
+      opponent: oppName,
+      ip: st.inningsPitched,
+      pitches: st.numberOfPitches,
+      er, k, h, bb, w,
+      fpts: parseFloat(fpts),
+    };
+  }).reverse(); // most recent first
+}
+
 async function fetchPitcherSeasonStats(mlbId) {
   const year = new Date().getFullYear();
   const data = await mlbFetch(
@@ -459,6 +528,132 @@ const PITCHER_STATS = [
   { key: 'launch_angle', label: 'Avg LA',     avgs: {} },
 ];
 
+/* ── Pitch Usage Table ───────────────────────────────────────────── */
+function PitchUsageTable({ pitcherId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const fetched = useRef(null);
+
+  useEffect(() => {
+    if (!pitcherId || fetched.current === pitcherId) return;
+    fetched.current = pitcherId;
+    setLoading(true);
+    fetchPitchArsenal(pitcherId)
+      .then(setRows)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [pitcherId]);
+
+  if (loading) return <div className="dfs-loading"><div className="auth-spinner"/><span>Loading pitch arsenal…</span></div>;
+
+  return (
+    <div className="dfs-table-wrap">
+      <table className="dfs-table">
+        <thead>
+          <tr>
+            <th className="dfs-th" style={{ textAlign: 'left', paddingLeft: 14, minWidth: 130 }}>Pitch</th>
+            <th className="dfs-th">%30</th>
+            <th className="dfs-th">%Season</th>
+            <th className="dfs-th">Chg</th>
+            <th className="dfs-th">Velo</th>
+            <th className="dfs-th">Whiff%</th>
+            <th className="dfs-th">wOBA</th>
+            <th className="dfs-th">ISO</th>
+            <th className="dfs-th">Hard%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const chg = r.pct_30 != null ? (r.pct_30 - r.pct_season).toFixed(1) : null;
+            const chgColor = chg != null ? (parseFloat(chg) > 0 ? '#4ade80' : parseFloat(chg) < 0 ? '#f87171' : 'inherit') : 'inherit';
+            return (
+              <tr key={r.pitch_type} className="dfs-player-row">
+                <td className="dfs-td" style={{ textAlign: 'left', paddingLeft: 14, fontWeight: 700, color: 'var(--text)' }}>
+                  {r.pitch_name}
+                </td>
+                <td className="dfs-td">{r.pct_30 != null ? r.pct_30.toFixed(1) + '%' : '—'}</td>
+                <td className="dfs-td">{r.pct_season.toFixed(1)}%</td>
+                <td className="dfs-td" style={{ color: chgColor }}>
+                  {chg != null ? (parseFloat(chg) > 0 ? '+' : '') + chg + '%' : '—'}
+                </td>
+                <td className="dfs-td">{r.velocity ? r.velocity + ' mph' : '—'}</td>
+                <td className="dfs-td">{r.whiff_percent ? r.whiff_percent + '%' : '—'}</td>
+                <td className="dfs-td">{r.woba || '—'}</td>
+                <td className="dfs-td">{r.iso || '—'}</td>
+                <td className="dfs-td">{r.hard_hit_percent ? r.hard_hit_percent + '%' : '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── Game Log Table ──────────────────────────────────────────────── */
+function PitcherGameLog({ pitcherId }) {
+  const [rows, setRows]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const fetched = useRef(null);
+
+  useEffect(() => {
+    if (!pitcherId || fetched.current === pitcherId) return;
+    fetched.current = pitcherId;
+    setLoading(true);
+    fetchPitcherGameLogs(pitcherId)
+      .then(setRows)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [pitcherId]);
+
+  if (loading) return <div className="dfs-loading"><div className="auth-spinner"/><span>Loading game logs…</span></div>;
+
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const [y, m, day] = d.split('-');
+    return `${parseInt(m)}/${parseInt(day)}/${y}`;
+  };
+
+  return (
+    <div className="dfs-table-wrap">
+      <table className="dfs-table">
+        <thead>
+          <tr>
+            <th className="dfs-th" style={{ textAlign: 'left', paddingLeft: 14, minWidth: 90 }}>Date</th>
+            <th className="dfs-th" style={{ textAlign: 'left', minWidth: 110 }}>Opponent</th>
+            <th className="dfs-th">Pitches</th>
+            <th className="dfs-th">IP</th>
+            <th className="dfs-th">ER</th>
+            <th className="dfs-th">K</th>
+            <th className="dfs-th">H</th>
+            <th className="dfs-th">BB</th>
+            <th className="dfs-th" style={{ color: 'var(--accent2)' }}>FPts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="dfs-player-row">
+              <td className="dfs-td" style={{ textAlign: 'left', paddingLeft: 14, color: 'var(--text)' }}>{fmtDate(r.date)}</td>
+              <td className="dfs-td" style={{ textAlign: 'left', fontSize: 11, color: 'var(--text2)' }}>
+                {r.opponent?.length > 16 ? r.opponent.slice(0, 16) + '…' : r.opponent}
+              </td>
+              <td className="dfs-td">{r.pitches ?? '—'}</td>
+              <td className="dfs-td">{r.ip}</td>
+              <td className="dfs-td">{r.er}</td>
+              <td className="dfs-td">{r.k}</td>
+              <td className="dfs-td">{r.h}</td>
+              <td className="dfs-td">{r.bb}</td>
+              <td className="dfs-td" style={{ fontWeight: 800, color: r.fpts >= 15 ? '#4ade80' : r.fpts < 5 ? '#f87171' : 'var(--text)' }}>
+                {r.fpts}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PitcherSplitsTable({ splits }) {
   if (!splits) return <div className="dfs-empty">Loading pitcher stats…</div>;
   const { all, vsL, vsR } = splits;
@@ -641,6 +836,7 @@ export default function DFSPage() {
   const [pitcherLoading, setPitcherLoading]   = useState(false);
   const [pitcherHand, setPitcherHand]         = useState(null);
   const [pitcherSeasonStat, setPitcherSeasonStat] = useState(null);
+  const [pitcherTab, setPitcherTab]               = useState('dashboard'); // 'dashboard'|'pitch-usage'|'game-logs'
   const [lineup, setLineup]               = useState({ players: [], confirmed: false, fromDate: null });
   const [lineupLoading, setLineupLoading] = useState(false);
   const [espnPitcherMap, setEspnPitcherMap] = useState({}); // teamName → ESPN pitcher
@@ -749,6 +945,7 @@ export default function DFSPage() {
     setPitcherSplits(null);
     setPitcherHand(null);
     setPitcherSeasonStat(null);
+    setPitcherTab('dashboard');
 
     const handPromise = probPitcher.source === 'espn' && espnFallback?.hand
       ? Promise.resolve(espnFallback.hand)
@@ -957,13 +1154,33 @@ export default function DFSPage() {
 
               {probPitcher && (
                 <>
-                  <div className="dfs-splits-header">
-                    <span className="dfs-splits-title">Stats vs Batters — {year}</span>
+                  {/* Pitcher sub-tabs */}
+                  <div className="dfs-pitcher-tabs">
+                    {[
+                      { key: 'dashboard',   label: 'Dashboard' },
+                      { key: 'pitch-usage', label: 'Pitch Usage' },
+                      { key: 'game-logs',   label: 'Game Logs' },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        className={`dfs-pitcher-tab ${pitcherTab === key ? 'dfs-pitcher-tab-active' : ''}`}
+                        onClick={() => setPitcherTab(key)}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                  {pitcherLoading ? (
-                    <div className="dfs-loading"><div className="auth-spinner" /><span>Loading splits…</span></div>
-                  ) : (
-                    <PitcherSplitsTable splits={pitcherSplits} />
+
+                  {pitcherTab === 'dashboard' && (
+                    pitcherLoading
+                      ? <div className="dfs-loading"><div className="auth-spinner"/><span>Loading splits…</span></div>
+                      : <PitcherSplitsTable splits={pitcherSplits} />
+                  )}
+                  {pitcherTab === 'pitch-usage' && (
+                    <PitchUsageTable pitcherId={probPitcher.id} />
+                  )}
+                  {pitcherTab === 'game-logs' && (
+                    <PitcherGameLog pitcherId={probPitcher.id} />
                   )}
                 </>
               )}
