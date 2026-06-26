@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-// No ESPN imports needed — logos constructed directly from MLB team IDs
+import { getScoreboard } from '../api/espn';
 
 /* ── CSV helpers (same as StatcastPage) ─────────────────────────────── */
 function parseCSV(text) {
@@ -446,6 +446,7 @@ export default function DFSPage() {
   const [pitcherHand, setPitcherHand]     = useState(null);
   const [lineup, setLineup]               = useState({ players: [], confirmed: false, fromDate: null });
   const [lineupLoading, setLineupLoading] = useState(false);
+  const [espnPitcherMap, setEspnPitcherMap] = useState({}); // teamName → ESPN pitcher
 
   const year = new Date().getFullYear();
 
@@ -461,6 +462,29 @@ export default function DFSPage() {
       setMlbGames(games);
       setSelectedIdx(0);
     }).catch(() => {});
+
+    // ESPN scoreboard — used ONLY as fallback for probable pitchers not in MLB API
+    // Matched by full team name (not index) to avoid ordering mismatch
+    getScoreboard('mlb', dateStr).then((events) => {
+      const map = {};
+      for (const event of events) {
+        const comp = event.competitions?.[0];
+        for (const c of comp?.competitors || []) {
+          const teamName = c.team?.displayName;
+          const prob = c.probables?.[0];
+          if (teamName && prob?.athlete) {
+            const ath = prob.athlete;
+            map[teamName] = {
+              id: String(ath.id || ''),
+              name: ath.displayName || ath.fullName || '',
+              hand: ath.throwHand?.abbreviation || null,
+              headshot: typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href || null,
+            };
+          }
+        }
+      }
+      setEspnPitcherMap(map);
+    }).catch(() => {});
   }, []);
 
   const selectedMlb = mlbGames[selectedIdx] || null;
@@ -471,13 +495,25 @@ export default function DFSPage() {
   const battingMlb  = activeSide === 'away' ? mlbAway : mlbHome;
   const pitchingMlb = activeSide === 'away' ? mlbHome : mlbAway;
 
-  // Derive probable pitcher from MLB Stats API
+  // Derive probable pitcher: MLB Stats API first, ESPN fallback by team name
   const probPitcherRaw = pitchingMlb?.probablePitcher || null;
-  const probPitcher = probPitcherRaw ? {
-    id: String(probPitcherRaw.id),
-    name: probPitcherRaw.fullName || '',
-    headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${probPitcherRaw.id}/headshot/67/current`,
-  } : null;
+  const espnFallback   = espnPitcherMap[pitchingMlb?.team?.name] || null;
+  const probPitcher = (() => {
+    if (probPitcherRaw) return {
+      id: String(probPitcherRaw.id),
+      name: probPitcherRaw.fullName || '',
+      headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${probPitcherRaw.id}/headshot/67/current`,
+      source: 'mlb',
+    };
+    if (espnFallback) return {
+      id: espnFallback.id,
+      name: espnFallback.name,
+      headshot: espnFallback.headshot
+        || (espnFallback.id ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${espnFallback.id}/headshot/67/current` : null),
+      source: 'espn',
+    };
+    return null;
+  })();
 
   // Team IDs for logos (constructed directly from MLB ID, no ESPN game matching needed)
   const battingTeamId  = battingMlb?.team?.id;
@@ -515,12 +551,18 @@ export default function DFSPage() {
     setPitcherLoading(true);
     setPitcherSplits(null);
     setPitcherHand(null);
+
+    // For ESPN fallback, hand is already available — no extra fetch needed
+    const handPromise = probPitcher.source === 'espn' && espnFallback?.hand
+      ? Promise.resolve(espnFallback.hand)
+      : fetchPitcherHand(probPitcher.id);
+
     Promise.allSettled([
       fetchPitcherSplits(probPitcher.id),
-      fetchPitcherHand(probPitcher.id),
+      handPromise,
     ]).then(([splitsRes, handRes]) => {
       if (splitsRes.status === 'fulfilled') setPitcherSplits(splitsRes.value);
-      if (handRes.status === 'fulfilled') setPitcherHand(handRes.value);
+      if (handRes.status === 'fulfilled')   setPitcherHand(handRes.value);
       setPitcherLoading(false);
     });
   }, [probPitcher?.id, selectedIdx, activeSide]);
