@@ -193,10 +193,11 @@ async function fetchPitcherHand(mlbId) {
 }
 
 async function fetchBvpStats(batterId, pitcherId) {
+  // vsPlayerTotal = career totals; vsPlayer = per-season rows (we want career)
   const data = await mlbFetch(
-    `${STATSAPI}/people/${batterId}/stats?stats=vsPlayer&opposingPlayerId=${pitcherId}&group=hitting&sportId=1`
+    `${STATSAPI}/people/${batterId}/stats?stats=vsPlayerTotal&opposingPlayerId=${pitcherId}&group=hitting&sportId=1`
   );
-  const splits = data.stats?.find((s) => s.type?.displayName === 'vsPlayer')?.splits || [];
+  const splits = data.stats?.find((s) => s.type?.displayName === 'vsPlayerTotal')?.splits || [];
   return splits[0]?.stat || null;
 }
 
