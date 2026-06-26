@@ -3632,6 +3632,111 @@ body {
   .sc-player-name { font-size: 18px; }
 }
 
+/* ── DFS Page ─────────────────────────────────────────────────────── */
+.dfs-page { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+
+/* Game selector */
+.dfs-game-selector { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.dfs-selector-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.dfs-games-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.dfs-no-games { font-size: 13px; color: var(--text2); }
+.dfs-game-pill {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 20px;
+  padding: 5px 12px; font-size: 12px; font-weight: 700; color: var(--text2);
+  cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+}
+.dfs-game-pill:hover { border-color: var(--accent); color: var(--text); }
+.dfs-game-pill-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dfs-pill-team { color: inherit; }
+.dfs-pill-sep { opacity: 0.6; }
+.dfs-pill-status { font-size: 10px; font-weight: 500; opacity: 0.8; margin-left: 4px; }
+
+/* Team tabs */
+.dfs-team-tabs { display: flex; gap: 8px; }
+.dfs-team-tab {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 9px 14px; font-size: 13px; font-weight: 700; color: var(--text2);
+  cursor: pointer; transition: all 0.15s;
+}
+.dfs-team-tab:hover { border-color: var(--accent); color: var(--text); }
+.dfs-team-tab-active { background: color-mix(in srgb, var(--accent) 15%, var(--bg2)); border-color: var(--accent); color: var(--text); }
+.dfs-tab-logo { width: 18px; height: 18px; object-fit: contain; }
+
+/* Two-panel layout */
+.dfs-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+@media (max-width: 900px) { .dfs-panels { grid-template-columns: 1fr; } }
+
+/* Panel */
+.dfs-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.dfs-panel-header {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.dfs-panel-team { display: flex; align-items: center; gap: 10px; }
+.dfs-panel-logo { width: 28px; height: 28px; object-fit: contain; }
+.dfs-panel-name { font-size: 15px; font-weight: 800; }
+.dfs-panel-sub { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Filter buttons */
+.dfs-filter-row { display: flex; gap: 4px; }
+.dfs-filter-btn {
+  padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; transition: all 0.15s;
+}
+.dfs-filter-btn:hover { color: var(--text); }
+.dfs-filter-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Batter / stat tables */
+.dfs-table-wrap { overflow-x: auto; }
+.dfs-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.dfs-th {
+  padding: 7px 8px; text-align: right; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.3px; color: var(--text2);
+  background: var(--bg3); border-bottom: 1px solid var(--border); position: sticky; top: 0;
+}
+.dfs-th-num { width: 24px; padding-left: 12px; text-align: center; }
+.dfs-th-player { text-align: left; padding-left: 14px; min-width: 130px; }
+.dfs-td { padding: 8px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.dfs-td-num { text-align: center; padding-left: 12px; color: var(--text2); font-size: 11px; }
+.dfs-td-player { text-align: left; padding-left: 14px; }
+.dfs-td-stat { }
+.dfs-player-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.dfs-player-meta { font-size: 10px; color: var(--text2); }
+.dfs-player-hand { font-size: 10px; color: var(--text2); }
+.dfs-player-row:hover { background: rgba(255,255,255,0.03); }
+
+/* Aggregate rows */
+.dfs-agg-row { background: color-mix(in srgb, var(--bg3) 60%, var(--bg2)); border-top: 1px solid var(--border); }
+.dfs-agg-row .dfs-td-player { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* Pitcher card */
+.dfs-pitcher-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.dfs-pitcher-avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
+.dfs-pitcher-name { font-size: 15px; font-weight: 800; color: var(--text); }
+.dfs-pitcher-hand { font-size: 13px; font-weight: 600; color: var(--text2); }
+.dfs-pitcher-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* Pitcher splits */
+.dfs-splits-header { padding: 10px 14px 6px; border-bottom: 1px solid var(--border); }
+.dfs-splits-title { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
+.dfs-stat-row:hover { background: rgba(255,255,255,0.03); }
+.dfs-stat-label { font-size: 11px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* Heat map cell colors */
+.dfs-cell-good-sm  { background: rgba(34, 197, 94,  0.12); color: #4ade80; }
+.dfs-cell-good     { background: rgba(34, 197, 94,  0.22); color: #22c55e; font-weight: 700; }
+.dfs-cell-good-lg  { background: rgba(34, 197, 94,  0.35); color: #16a34a; font-weight: 800; }
+.dfs-cell-bad-sm   { background: rgba(239, 68, 68,  0.12); color: #f87171; }
+.dfs-cell-bad      { background: rgba(239, 68, 68,  0.22); color: #ef4444; font-weight: 700; }
+.dfs-cell-bad-lg   { background: rgba(239, 68, 68,  0.35); color: #dc2626; font-weight: 800; }
+
+/* Loading / empty */
+.dfs-loading { display: flex; align-items: center; gap: 8px; padding: 20px 14px; color: var(--text2); font-size: 13px; }
+.dfs-empty { padding: 16px 14px; color: var(--text2); font-size: 13px; }
+.dfs-empty-center { text-align: center; padding: 40px 20px; }
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

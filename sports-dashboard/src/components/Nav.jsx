@@ -56,9 +56,22 @@ function MeIcon({ active }) {
   );
 }
 
+function DFSIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#a855f7' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <line x1="8" y1="21" x2="16" y2="21"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
+      <line x1="7" y1="10" x2="7" y2="13"/>
+      <line x1="12" y1="7" x2="12" y2="13"/>
+      <line x1="17" y1="9" x2="17" y2="13"/>
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
-  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
+  { path: '/dfs',       label: 'DFS',       Icon: DFSIcon },
   { path: '/',          label: 'Shribely',  logo: true },
   { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
   { path: '/me',        label: 'Me',        Icon: MeIcon },
