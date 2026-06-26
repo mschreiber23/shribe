@@ -75,10 +75,10 @@ async function fetchPitcherSplitsById(mlbId) {
 }
 
 // Season stats for team batters (vs specific pitcher handedness)
-async function fetchTeamBattersForRankings(abbr, pitcherThrows) {
+// Season stats — NO hand filter, so they're comparable to recent form
+async function fetchTeamBattersForRankings(abbr) {
   const year = new Date().getFullYear();
-  const throwsParam = pitcherThrows ? `&pitcher_throws=${pitcherThrows}` : '';
-  const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(abbr + '|')}&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0${throwsParam}`;
+  const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(abbr + '|')}&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
   const text = await apiFetch(url);
   const rows = parseCSV(text);
   const map = {};
@@ -86,9 +86,9 @@ async function fetchTeamBattersForRankings(abbr, pitcherThrows) {
   return map;
 }
 
-// Recent form: last 14 days (all pitchers — no hand filter, small sample)
+// Recent form: last 21 days, also no hand filter → consistent comparison with season
 async function fetchTeamRecentForm(abbr) {
-  const d = new Date(); d.setDate(d.getDate() - 14);
+  const d = new Date(); d.setDate(d.getDate() - 21);
   const since = d.toISOString().slice(0, 10);
   const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(abbr + '|')}&game_date_gt=${since}&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
   const text = await apiFetch(url).catch(() => '');
@@ -99,41 +99,14 @@ async function fetchTeamRecentForm(abbr) {
   return map;
 }
 
-// Blend season stats with recent form (weighted by recent PA to avoid tiny-sample noise)
-function blendStats(season, recent) {
-  if (!recent) return { ...season, _recentXwoba: null, _recentPA: 0 };
-  const recentPA = parseInt(recent.pa) || 0;
-  // Scale weight linearly: 0 PA → 0%, 30+ PA → 40% recent
-  const w = Math.min(0.40, (recentPA / 30) * 0.40);
-  const mix = (key, fallback) => {
-    const sv = parseFloat(season[key]);
-    const rv = parseFloat(recent[key]);
-    const s = isNaN(sv) ? fallback : sv;
-    const r2 = isNaN(rv) ? s : rv;
-    return ((s * (1 - w)) + (r2 * w)).toFixed(4);
-  };
-  return {
-    ...season,
-    xwoba:                   mix('xwoba',                   0.320),
-    woba:                    mix('woba',                    0.320),
-    hardhit_percent:         mix('hardhit_percent',         38),
-    barrels_per_bbe_percent: mix('barrels_per_bbe_percent', 8),
-    bb_percent:              mix('bb_percent',              8.5),
-    k_percent:               mix('k_percent',               22),
-    iso:                     mix('iso',                     0.165),
-    _recentXwoba: parseFloat(recent.xwoba) || null,
-    _recentPA:    recentPA,
-  };
-}
-
-// Hot/cold indicator based on recent vs season xwOBA gap
-function formTag(seasonXwoba, recentXwoba, recentPA) {
-  if (recentPA < 15 || !recentXwoba) return { icon: '', cls: '' };
+// Hot/cold: compare recent xwOBA to season xwOBA (now both vs all pitchers — apples to apples)
+// Require 25+ recent PA and 50+ total PA to avoid noise
+// Threshold raised: need 0.040 diff to show emoji (less sensitive to noise)
+function formTag(seasonXwoba, recentXwoba, recentPA, totalPA) {
+  if (recentPA < 25 || totalPA < 50 || !recentXwoba || !seasonXwoba) return { icon: '', cls: '' };
   const diff = recentXwoba - seasonXwoba;
-  if (diff >= 0.060) return { icon: '🔥🔥', cls: 'form-hot2' };
-  if (diff >= 0.030) return { icon: '🔥',   cls: 'form-hot' };
-  if (diff <= -0.060) return { icon: '❄️❄️', cls: 'form-cold2' };
-  if (diff <= -0.030) return { icon: '❄️',  cls: 'form-cold' };
+  if (diff >= 0.060) return { icon: '🔥', cls: 'form-hot' };
+  if (diff <= -0.060) return { icon: '❄️', cls: 'form-cold' };
   return { icon: '', cls: '' };
 }
 
@@ -221,38 +194,63 @@ function projDkPts(dkAvgPts, score) {
 }
 
 /* ── Scoring formula ─────────────────────────────────────────────────── */
-// Score each batter-pitcher matchup on a ~0-100 scale.
-// Higher = better offensive matchup for this batter today.
-function calcScore(batter, pitcherRow) {
-  const safe = (v, fallback = 0) => { const n = parseFloat(v); return isNaN(n) ? fallback : n; };
+// ShribeIQ score (0-100): reflects TODAY's expected offensive output for this batter.
+//
+// Design principle: player quality is the PRIMARY factor. A weak hitter
+// facing a terrible pitcher should NOT outscore a great hitter in an average matchup.
+//
+//   70% — Batter talent (season xwOBA normalized to 0-100)
+//   20% — Pitcher difficulty today (how hittable is this pitcher vs league avg)
+//   10% — Recent form adjustment (capped at ±8 pts to avoid noise)
+//
+// Score 70+ = above-average matchup worth targeting
+// Score 50   = exactly league-average batter vs league-average pitcher
+// Score 30-  = below-average matchup
 
-  const bXwoba = safe(batter.xwoba,   0.320);
-  const bHH    = safe(batter.hardhit_percent, 38) / 100;
-  const bBrl   = safe(batter.barrels_per_bbe_percent, 8) / 100;
-  const bBB    = safe(batter.bb_percent, 8.5) / 100;
-  const bK     = safe(batter.k_percent, 22) / 100;
+function calcScore(season, recent, pitcherRow) {
+  const f = (v, d) => { const n = parseFloat(v); return isNaN(n) ? d : n; };
 
-  // Pitcher: how hittable are they? Higher xwOBA allowed = easier matchup
-  const pXwoba = safe(pitcherRow?.xwoba, 0.320);
-  const pHH    = safe(pitcherRow?.hardhit_percent, 38) / 100;
-  const pBrl   = safe(pitcherRow?.barrels_per_bbe_percent, 8) / 100;
-  const pK     = safe(pitcherRow?.k_percent, 22) / 100; // lower pitcher K = easier
+  // ── BATTER TALENT (70%) ───────────────────────────────────────────────
+  // Normalize xwOBA to 0-100 where 50 = league avg (.315), range .210-.430
+  const xwoba = f(season?.xwoba, 0.315);
+  const xwobaScore = Math.max(0, Math.min(100, (xwoba - 0.210) / (0.430 - 0.210) * 100));
 
-  // Composite: batter ability (60%) + pitcher vulnerability (40%)
-  const batterScore =
-    (bXwoba / 0.400) * 35 +      // xwOBA: 35 pts max (.400 = perfect)
-    bHH * 15 +                    // Hard Hit: 15 pts max (100% = perfect)
-    bBrl * 10 +                   // Barrel: 10 pts max (100% = perfect)
-    bBB * 8 +                     // BB: 8 pts max (100% = perfect)
-    (1 - bK) * 7;                 // Low K: 7 pts max (0% K = perfect)
+  // Hard Hit % bonus/penalty (secondary batter quality signal)
+  const hh = f(season?.hardhit_percent, 36);
+  const hhBonus = Math.max(-8, Math.min(8, (hh - 36) / 2)); // ±8 pts for ±16% from avg
 
-  const pitcherScore =
-    (pXwoba / 0.400) * 20 +      // pitcher xwOBA allowed: 20 pts max
-    pHH * 10 +                    // pitcher hard hit allowed: 10 pts max
-    pBrl * 5 +                    // pitcher barrel allowed: 5 pts max
-    (1 - pK) * 5;                 // pitcher low K rate (easier to hit): 5 pts max
+  // K% penalty
+  const k = f(season?.k_percent, 22);
+  const kPenalty = Math.max(-5, Math.min(5, (k - 22) / 2)); // ±5 pts for ±10% from avg
 
-  return Math.min(100, batterScore + pitcherScore);
+  const batterScore = xwobaScore + hhBonus - kPenalty; // ~0-108, then normalize below
+
+  // ── PITCHER MATCHUP (20%) ─────────────────────────────────────────────
+  // How far above/below league avg is this pitcher's xwOBA allowed?
+  // League avg pitcher xwOBA ≈ .315. Range .230 (ace) to .400 (terrible).
+  const pXwoba = f(pitcherRow?.xwoba, 0.315);
+  // 50 = avg pitcher, 80 = very hittable, 20 = dominant ace
+  const pitcherScore = Math.max(0, Math.min(100, (pXwoba - 0.230) / (0.400 - 0.230) * 100));
+  // Matchup bonus: how much above/below 50 is the pitcher score?
+  const matchupBonus = (pitcherScore - 50) * 0.20; // ±10 pts max for extreme pitchers
+
+  // ── RECENT FORM (10%, very conservative) ─────────────────────────────
+  // Only fire if we have meaningful recent sample (25+ PA)
+  const seasonXwoba = xwoba;
+  const recentXwoba = recent ? f(recent.xwoba, seasonXwoba) : seasonXwoba;
+  const recentPA    = recent ? (parseInt(recent.pa) || 0) : 0;
+  const formWeight  = Math.min(1.0, recentPA / 50); // ramp up to full weight at 50 PA
+  const formDiff    = (recentXwoba - seasonXwoba) / 0.080; // normalise: 0.080 gap = 1 unit
+  const formBonus   = Math.max(-8, Math.min(8, formDiff * 8 * formWeight));
+
+  // ── FINAL SCORE ────────────────────────────────────────────────────────
+  // batterScore (0-108) → target centre of 50 means avg batter = 50
+  // batterScore at league avg xwoba (.315 → 50th percentile on 0-100 scale = 50):
+  //   xwobaScore(0.315) = (0.315-0.210)/(0.430-0.210)*100 = 47.7 ≈ 50 ✓
+  const raw = batterScore * 0.70 + (50 + matchupBonus) * 0.20 + (50 + formBonus) * 0.10;
+  // Re-centre so 50 = avg batter, avg pitcher, avg form
+  // raw at avg = 47.7*0.70 + 50*0.20 + 50*0.10 = 33.4 + 10 + 5 = 48.4 ≈ 50 ✓
+  return Math.max(0, Math.min(100, Math.round(raw * 10) / 10));
 }
 
 /* ── Score badge color ───────────────────────────────────────────────── */
@@ -403,7 +401,7 @@ export default function RankingsPage() {
             const abbr = MLB_ABBR[m.batterTeamId];
             if (!abbr) return null;
             const [seasonById, recentById] = await Promise.allSettled([
-              fetchTeamBattersForRankings(abbr, m.pitcherHand),
+              fetchTeamBattersForRankings(abbr), // no hand filter — consistent with recent
               fetchTeamRecentForm(abbr),
             ]);
             return {
@@ -440,14 +438,19 @@ export default function RankingsPage() {
             if (!playerName) return;
 
             const recentBatter = recentById[batterId] || null;
-            const batter = seasonBatter ? blendStats(seasonBatter, recentBatter) : null;
-            const hasStats = batter && (parseInt(seasonBatter.abs) || 0) >= 20;
+            const hasStats = seasonBatter && (parseInt(seasonBatter.pa) || 0) >= 20;
 
-            const score   = hasStats ? calcScore(batter, pitcherRow) : 50; // baseline if no data
+            // calcScore now takes (season, recent, pitcher) — all vs all pitchers = fair comparison
+            const score   = hasStats
+              ? calcScore(seasonBatter, recentBatter, pitcherRow)
+              : 50;
             const projPts = null;
+            // formTag: both season and recent are now vs all pitchers → valid comparison
             const form    = hasStats ? formTag(
-              parseFloat(seasonBatter.xwoba) || 0.320,
-              batter._recentXwoba, batter._recentPA
+              parseFloat(seasonBatter?.xwoba) || 0.315,
+              parseFloat(recentBatter?.xwoba) || null,
+              parseInt(recentBatter?.pa) || 0,
+              parseInt(seasonBatter?.pa) || 0
             ) : { icon: '', cls: '' };
 
             // Only add to rows (remove old abs check — lineup determines inclusion)
@@ -463,20 +466,20 @@ export default function RankingsPage() {
               pitcherHand: pitcherHand || '?',
               score:   Math.round(score * 10) / 10,
               projPts,
-              pa:      batter?.pa      ?? null,
-              xwoba:   batter?.xwoba   ?? null,
-              woba:    batter?.woba    ?? null,
-              hh:      batter?.hardhit_percent ?? null,
-              brl:     batter?.barrels_per_bbe_percent ?? null,
-              kpct:    batter?.k_percent  ?? null,
-              bbpct:   batter?.bb_percent ?? null,
-              iso:     batter?.iso    ?? null,
+              pa:      seasonBatter?.pa      ?? null,
+              xwoba:   seasonBatter?.xwoba   ?? null,
+              woba:    seasonBatter?.woba    ?? null,
+              hh:      seasonBatter?.hardhit_percent ?? null,
+              brl:     seasonBatter?.barrels_per_bbe_percent ?? null,
+              kpct:    seasonBatter?.k_percent  ?? null,
+              bbpct:   seasonBatter?.bb_percent ?? null,
+              iso:     seasonBatter?.iso    ?? null,
               pXwoba:  pitcherRow?.xwoba,
               pKpct:   pitcherRow?.k_percent,
               formIcon: form.icon,
               formCls:  form.cls,
-              recentXwoba: batter?._recentXwoba ?? null,
-              recentPA:    batter?._recentPA    ?? 0,
+              recentXwoba: parseFloat(recentBatter?.xwoba) || null,
+              recentPA:    parseInt(recentBatter?.pa) || 0,
               hasStats,
             });
           } // close the brace replacing the old if-filter
