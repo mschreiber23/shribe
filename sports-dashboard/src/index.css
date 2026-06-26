@@ -3877,6 +3877,7 @@ thead .dfs-sticky-player {
 .rank-salary { font-weight: 700; color: var(--text); }
 .rank-proj { font-weight: 700; color: var(--accent2); }
 .rank-value-badge { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 11px; font-weight: 800; }
+.rank-form-icon { margin-left: 6px; font-size: 12px; cursor: help; }
 .rank-header { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .rank-title { font-size: 18px; font-weight: 800; color: var(--text); }
 .rank-subtitle { font-size: 12px; color: var(--text2); margin-top: 3px; }

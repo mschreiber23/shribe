@@ -73,7 +73,7 @@ async function fetchPitcherSplitsById(mlbId) {
   return { all: pick(allText), vsL: pick(vsLText), vsR: pick(vsRText) };
 }
 
-// Fetch all batters on a team vs a specific pitcher handedness
+// Season stats for team batters (vs specific pitcher handedness)
 async function fetchTeamBattersForRankings(abbr, pitcherThrows) {
   const year = new Date().getFullYear();
   const throwsParam = pitcherThrows ? `&pitcher_throws=${pitcherThrows}` : '';
@@ -83,6 +83,57 @@ async function fetchTeamBattersForRankings(abbr, pitcherThrows) {
   const map = {};
   rows.forEach(r => { if (r.player_id) map[String(r.player_id).trim()] = r; });
   return map;
+}
+
+// Recent form: last 14 days (all pitchers — no hand filter, small sample)
+async function fetchTeamRecentForm(abbr) {
+  const d = new Date(); d.setDate(d.getDate() - 14);
+  const since = d.toISOString().slice(0, 10);
+  const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(abbr + '|')}&game_date_gt=${since}&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
+  const text = await apiFetch(url).catch(() => '');
+  if (!text) return {};
+  const rows = parseCSV(text);
+  const map = {};
+  rows.forEach(r => { if (r.player_id) map[String(r.player_id).trim()] = r; });
+  return map;
+}
+
+// Blend season stats with recent form (weighted by recent PA to avoid tiny-sample noise)
+function blendStats(season, recent) {
+  if (!recent) return { ...season, _recentXwoba: null, _recentPA: 0 };
+  const recentPA = parseInt(recent.pa) || 0;
+  // Scale weight linearly: 0 PA → 0%, 30+ PA → 40% recent
+  const w = Math.min(0.40, (recentPA / 30) * 0.40);
+  const mix = (key, fallback) => {
+    const sv = parseFloat(season[key]);
+    const rv = parseFloat(recent[key]);
+    const s = isNaN(sv) ? fallback : sv;
+    const r2 = isNaN(rv) ? s : rv;
+    return ((s * (1 - w)) + (r2 * w)).toFixed(4);
+  };
+  return {
+    ...season,
+    xwoba:                   mix('xwoba',                   0.320),
+    woba:                    mix('woba',                    0.320),
+    hardhit_percent:         mix('hardhit_percent',         38),
+    barrels_per_bbe_percent: mix('barrels_per_bbe_percent', 8),
+    bb_percent:              mix('bb_percent',              8.5),
+    k_percent:               mix('k_percent',               22),
+    iso:                     mix('iso',                     0.165),
+    _recentXwoba: parseFloat(recent.xwoba) || null,
+    _recentPA:    recentPA,
+  };
+}
+
+// Hot/cold indicator based on recent vs season xwOBA gap
+function formTag(seasonXwoba, recentXwoba, recentPA) {
+  if (recentPA < 15 || !recentXwoba) return { icon: '', cls: '' };
+  const diff = recentXwoba - seasonXwoba;
+  if (diff >= 0.060) return { icon: '🔥🔥', cls: 'form-hot2' };
+  if (diff >= 0.030) return { icon: '🔥',   cls: 'form-hot' };
+  if (diff <= -0.060) return { icon: '❄️❄️', cls: 'form-cold2' };
+  if (diff <= -0.030) return { icon: '❄️',  cls: 'form-cold' };
+  return { icon: '', cls: '' };
 }
 
 /* ── DraftKings salary CSV parser ───────────────────────────────────── */
@@ -280,14 +331,21 @@ export default function RankingsPage() {
 
         if (cancelled) return;
 
-        // Step 4: fetch batter stats for each team vs pitcher handedness
-        setProgress('Fetching batter matchup data…');
+        // Step 4: fetch season stats + recent form in parallel for each team
+        setProgress('Fetching batter stats + recent form…');
         const batterResults = await Promise.allSettled(
           matchupsWithHands.map(async (m) => {
             const abbr = MLB_ABBR[m.batterTeamId];
             if (!abbr) return null;
-            const byId = await fetchTeamBattersForRankings(abbr, m.pitcherHand);
-            return { ...m, abbr, byId };
+            const [seasonById, recentById] = await Promise.allSettled([
+              fetchTeamBattersForRankings(abbr, m.pitcherHand),
+              fetchTeamRecentForm(abbr),
+            ]);
+            return {
+              ...m, abbr,
+              byId:     seasonById.status  === 'fulfilled' ? seasonById.value  : {},
+              recentById: recentById.status === 'fulfilled' ? recentById.value : {},
+            };
           })
         );
 
@@ -298,18 +356,25 @@ export default function RankingsPage() {
         const allRows = [];
         batterResults.forEach(res => {
           if (res.status !== 'fulfilled' || !res.value) return;
-          const { game, pitcher, pitcherHand, abbr, byId } = res.value;
+          const { game, pitcher, pitcherHand, abbr, byId, recentById } = res.value;
           const pitcherId = String(pitcher.id);
           const pitcherRow = allPitcherStats[pitcherId] || null;
 
-          // Get pitcher's split stats based on batter handedness
-          // (will be refined if we want separate vs L/R — for now use overall pitcher stats)
-          Object.entries(byId).forEach(([batterId, batter]) => {
-            // Minimum 100 AB this season to qualify for rankings
-            if ((parseInt(batter.abs) || 0) < 100) return;
-            const score    = calcScore(batter, pitcherRow);
-            const projPts  = projDkPts(batter, pitcherRow);
+          Object.entries(byId).forEach(([batterId, seasonBatter]) => {
+            if ((parseInt(seasonBatter.abs) || 0) < 100) return;
+
+            // Blend season + recent form
+            const recentBatter = recentById[batterId] || null;
+            const batter = blendStats(seasonBatter, recentBatter);
+
+            const score   = calcScore(batter, pitcherRow);
+            const projPts = projDkPts(batter, pitcherRow);
             const playerName = (batter.player_name || '').split(',').map(s => s.trim()).reverse().join(' ');
+            const form = formTag(
+              parseFloat(seasonBatter.xwoba) || 0.320,
+              batter._recentXwoba,
+              batter._recentPA
+            );
             allRows.push({
               batterId,
               playerName,
@@ -318,18 +383,22 @@ export default function RankingsPage() {
               pitcherName: pitcher.fullName || '',
               pitcherId,
               pitcherHand: pitcherHand || '?',
-              score:  Math.round(score * 10) / 10,
+              score:   Math.round(score * 10) / 10,
               projPts,
-              pa:     batter.pa,
-              xwoba:  batter.xwoba,
-              woba:   batter.woba,
-              hh:     batter.hardhit_percent,
-              brl:    batter.barrels_per_bbe_percent,
-              kpct:   batter.k_percent,
-              bbpct:  batter.bb_percent,
-              iso:    batter.iso,
-              pXwoba: pitcherRow?.xwoba,
-              pKpct:  pitcherRow?.k_percent,
+              pa:      batter.pa,
+              xwoba:   batter.xwoba,    // blended
+              woba:    batter.woba,     // blended
+              hh:      batter.hardhit_percent,
+              brl:     batter.barrels_per_bbe_percent,
+              kpct:    batter.k_percent,
+              bbpct:   batter.bb_percent,
+              iso:     batter.iso,
+              pXwoba:  pitcherRow?.xwoba,
+              pKpct:   pitcherRow?.k_percent,
+              formIcon: form.icon,
+              formCls:  form.cls,
+              recentXwoba: batter._recentXwoba,
+              recentPA:    batter._recentPA,
             });
           });
         });
@@ -471,6 +540,11 @@ export default function RankingsPage() {
                   <td className="rank-td rank-td-num">{i + 1}</td>
                   <td className="rank-td rank-td-player">
                     <span className="rank-player-name">{r.playerName}</span>
+                    {r.formIcon && (
+                      <span className="rank-form-icon" title={`Recent xwOBA: ${r.recentXwoba?.toFixed(3)} (${r.recentPA} PA last 14d)`}>
+                        {r.formIcon}
+                      </span>
+                    )}
                   </td>
                   <td className="rank-td rank-td-team">{r.teamAbbr}</td>
                   <td className="rank-td rank-td-pitcher">
