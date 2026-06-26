@@ -212,7 +212,7 @@ async function fetchPitchArsenal(mlbId, stand) {
   // Use statcast_search with hfPT= (pitch type filter) — correctly gives
   // velocity, woba, whiff%, hard_hit% per pitch type AND supports vs L/R via hfStands
   const year = new Date().getFullYear();
-  const standFilter = stand ? `&hfStands=${encodeURIComponent(stand + '|')}` : '';
+  const standFilter = stand ? `&batter_stands=${stand}` : '';
   const base = `${BS}/statcast_search/csv?player_type=pitcher&hfGT=R%7C&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
 
   const results = await Promise.allSettled(
