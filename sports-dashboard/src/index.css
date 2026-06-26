@@ -271,12 +271,11 @@ body {
 
 /* ── Global logo visibility fix ─────────────────────────────────────────
    Dark logos (e.g. Yankees, Capitals) are invisible on a dark background.
-   Adding a semi-transparent white backing makes every team logo visible
-   regardless of its own color scheme.                                    */
+   drop-shadow traces the actual logo shape so dark logos get a white
+   outline without putting a visible box behind colorful logos.           */
 img[class*="logo"] {
-  background: rgba(255, 255, 255, 0.10);
-  border-radius: 4px;
-  padding: 1px;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.55))
+          drop-shadow(0 0 3px rgba(255, 255, 255, 0.2));
 }
 
 .team-logo { width: 28px; height: 28px; object-fit: contain; }
