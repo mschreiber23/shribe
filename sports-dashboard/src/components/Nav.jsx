@@ -83,7 +83,7 @@ const NAV_ITEMS = [
   { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
   { path: '/dfs',       label: 'DFS',       Icon: DFSIcon },
   { path: '/',          label: 'Shribely',  logo: true },
-  { path: '/rankings',  label: 'Rankings',  Icon: RankIcon },
+  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
   { path: '/me',        label: 'Me',        Icon: MeIcon },
 ];
 
