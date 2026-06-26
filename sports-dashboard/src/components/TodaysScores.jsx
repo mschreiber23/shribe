@@ -302,11 +302,9 @@ export default function TodaysScores({ compact = false }) {
             <button className="ts-date-btn" onClick={() => shiftDate(1)}>›</button>
           </div>
 
-          {!compact && (
-            <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
-              {expanded ? '✕ Close' : 'All Scores'}
-            </button>
-          )}
+          <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? '✕ Close' : 'All Scores'}
+          </button>
         </div>
 
         {/* Row 2: horizontal scrolling ticker */}
@@ -319,8 +317,8 @@ export default function TodaysScores({ compact = false }) {
         </div>
       </div>
 
-      {/* ── Expanded full grid (only in full mode) ── */}
-      {!compact && expanded && (
+      {/* ── Expanded full grid ── */}
+      {expanded && (
         <div className="ts-expanded">
           <div className="ts-expanded-header">
             <span className="ts-expanded-title">

@@ -80,8 +80,8 @@ function RankIcon({ active }) {
 }
 
 const NAV_ITEMS = [
-  { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
-  { path: '/dfs',       label: 'DFS',       Icon: DFSIcon },
+  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
+  { path: '/dfs',       label: 'ShribeIQ',  Icon: DFSIcon },
   { path: '/',          label: 'Shribely',  logo: true },
   { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
   { path: '/me',        label: 'Me',        Icon: MeIcon },
