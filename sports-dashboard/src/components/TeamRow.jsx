@@ -71,7 +71,7 @@ function GameScore({ game, teamId, sport, onOpen }) {
               ))}
             </div>
           )}
-          <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}#tab=Preview`)}>Gamecast</button>
+          <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Gamecast</button>
         </div>
       </div>
     );
@@ -142,7 +142,7 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
   const lastPlay = liveData?.lastPlay;
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
 
-  const goTo = (tab) => navigate(`/boxscore/${sport}/${game.id}#tab=${encodeURIComponent(tab)}`);
+  const goTo = (tab) => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab } });
 
   // ── MLB (baseball) ──────────────────────────────────────────
   if (sport === 'mlb') {

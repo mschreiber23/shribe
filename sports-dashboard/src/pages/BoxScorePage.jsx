@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 
 /* ─── helpers ──────────────────────────────────────── */
@@ -592,18 +592,9 @@ export default function BoxScorePage() {
   const { sport, gameId } = useParams();
   const navigate = useNavigate();
   const { data, loading, error } = useBoxScore(sport, gameId);
-  const [activeTab, setActiveTab] = useState('Gamecast');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => location.state?.tab || 'Gamecast');
   const [bsTeam, setBsTeam] = useState(0);
-
-  // Allow deep-linking to a specific tab via URL hash param e.g. #tab=Box Score
-  useEffect(() => {
-    const hash = window.location.hash;
-    const match = hash.match(/tab=([^&]+)/);
-    if (match) {
-      const tab = decodeURIComponent(match[1]);
-      setActiveTab(tab);
-    }
-  }, []);
 
   const comp   = data?.header?.competitions?.[0];
   const comps  = comp?.competitors || [];
@@ -622,9 +613,9 @@ export default function BoxScorePage() {
 
   const isPre = status?.type?.state === 'pre';
 
-  // Auto-select best tab based on game state
+  // Auto-select best tab only if no tab was passed via navigation state
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !location.state?.tab) {
       if (isPre) setActiveTab('Preview');
       else if (!isLive) setActiveTab('Box Score');
       else setActiveTab('Gamecast');
