@@ -129,6 +129,21 @@ async function fetchBattedBallLeaderboard() {
   return map; // keyed by player_id
 }
 
+// Batter stats vs a specific pitch type (for the vs Pitch Type tab)
+async function fetchTeamBattersByPitchType(teamAbbr, pitcherThrows, pitchType) {
+  const year = new Date().getFullYear();
+  const throwsParam = pitcherThrows ? `&pitcher_throws=${pitcherThrows}` : '';
+  const pitchParam  = pitchType ? `&hfPT=${pitchType}%7C` : '';
+  const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(teamAbbr + '|')}&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0${throwsParam}${pitchParam}`;
+  const text = await bsFetch(url);
+  const { rows } = parseCSV(text);
+  const byId = {};
+  rows.forEach((r) => {
+    if (r.player_id) byId[String(r.player_id).trim()] = r;
+  });
+  return byId;
+}
+
 async function fetchTeamBatters(teamAbbr, pitcherThrows) {
   const year = new Date().getFullYear();
   const throwsParam = pitcherThrows ? `&pitcher_throws=${pitcherThrows}` : '';
@@ -406,6 +421,147 @@ const BATTER_COLS = [
   { key: 'ld_pct',       label: 'LD%',      avgs: BATTER_AVGS_BB },
   { key: 'babip',        label: 'BABIP',    avgs: BATTER_AVGS_BB },
 ];
+
+/* ── vs Pitch Type Tab ───────────────────────────────────────────────── */
+const PT_COLS = [
+  { key: 'pa',                     label: 'PA',     fmt: 'int' },
+  { key: 'iso',                    label: 'ISO',    fmt: 'avg', hl: true },
+  { key: 'woba',                   label: 'wOBA',   fmt: 'avg', hl: true },
+  { key: 'xwoba',                  label: 'xwOBA',  fmt: 'avg', hl: true },
+  { key: 'k_percent',              label: 'K%',     fmt: 'pct1', avgs: BATTER_AVGS },
+  { key: 'bb_percent',             label: 'BB%',    fmt: 'pct1', avgs: BATTER_AVGS },
+  { key: 'hardhit_percent',        label: 'HH%',    fmt: 'pct1', avgs: BATTER_AVGS },
+  { key: 'barrels_per_bbe_percent',label: 'Brl%',   fmt: 'pct1', avgs: BATTER_AVGS },
+  { key: 'gb_pct',                 label: 'GB%',    fmt: 'pct1' },
+  { key: 'fb_pct',                 label: 'FB%',    fmt: 'pct1' },
+  { key: 'ld_pct',                 label: 'LD%',    fmt: 'pct1' },
+];
+
+function fmtPtVal(val, fmt) {
+  if (val == null || val === '' || val === undefined) return '—';
+  const n = parseFloat(val);
+  if (isNaN(n)) return '—';
+  if (fmt === 'avg') return n < 1 ? n.toFixed(3).replace(/^0\./, '.') : n.toFixed(3);
+  if (fmt === 'pct1') return n.toFixed(1) + '%';
+  if (fmt === 'int') return String(Math.round(n));
+  return String(n);
+}
+
+function VsPitchTypeTab({ lineup, battingAbbr, pitcherId, defaultHand }) {
+  const [pitchArsenal, setPitchArsenal] = useState([]);
+  const [selectedPitch, setSelectedPitch] = useState('');
+  const [hand, setHand]                   = useState(defaultHand || '');
+  const [statsById, setStatsById]         = useState({});
+  const [bbById, setBbById]               = useState({});
+  const [loading, setLoading]             = useState(false);
+  const lastFetchKey = useRef('');
+
+  // Load pitcher arsenal for dropdown
+  useEffect(() => {
+    if (!pitcherId) return;
+    fetchPitchArsenal(pitcherId, null).then((rows) => {
+      setPitchArsenal(rows);
+      if (rows.length > 0 && !selectedPitch) setSelectedPitch(rows[0].pitch_type);
+    }).catch(() => {});
+  }, [pitcherId]);
+
+  // Auto-update hand when pitcher changes
+  useEffect(() => {
+    if (defaultHand) setHand(defaultHand);
+  }, [defaultHand]);
+
+  // Fetch batter stats when pitch type, hand, team or lineup changes
+  useEffect(() => {
+    if (!battingAbbr || !selectedPitch || !lineup?.length) return;
+    const key = `${battingAbbr}|${selectedPitch}|${hand}`;
+    if (key === lastFetchKey.current) return;
+    lastFetchKey.current = key;
+    setLoading(true);
+    Promise.allSettled([
+      fetchTeamBattersByPitchType(battingAbbr, hand || null, selectedPitch),
+      fetchBattedBallLeaderboard(),
+    ]).then(([statsRes, bbRes]) => {
+      if (statsRes.status === 'fulfilled') setStatsById(statsRes.value);
+      if (bbRes.status === 'fulfilled') setBbById(bbRes.value);
+      setLoading(false);
+    });
+  }, [battingAbbr, selectedPitch, hand, lineup]);
+
+  const pitchLabel = (pt) => PITCH_NAMES[pt] || pt;
+  const lookupRow = (player) => {
+    const id = String(player.id).trim();
+    const r = statsById[id] || {};
+    const bb = bbById[id] || {};
+    return {
+      ...r,
+      gb_pct: bb.gb_rate != null ? (parseFloat(bb.gb_rate) * 100).toFixed(1) : null,
+      fb_pct: bb.fb_rate != null ? (parseFloat(bb.fb_rate) * 100).toFixed(1) : null,
+      ld_pct: bb.ld_rate != null ? (parseFloat(bb.ld_rate) * 100).toFixed(1) : null,
+    };
+  };
+
+  return (
+    <div>
+      {/* Dropdowns */}
+      <div className="dfs-vsp-controls">
+        <select className="dfs-arsenal-select" value={selectedPitch}
+          onChange={(e) => { setSelectedPitch(e.target.value); lastFetchKey.current = ''; }}>
+          {pitchArsenal.length === 0
+            ? <option value="">Loading pitches…</option>
+            : pitchArsenal.map((p) => (
+              <option key={p.pitch_type} value={p.pitch_type}>
+                {pitchLabel(p.pitch_type)} ({p.pitch_usage.toFixed(0)}%)
+              </option>
+            ))}
+        </select>
+        <select className="dfs-arsenal-select" value={hand}
+          onChange={(e) => { setHand(e.target.value); lastFetchKey.current = ''; }}>
+          <option value="">vs All Pitchers</option>
+          <option value="L">vs LHP</option>
+          <option value="R">vs RHP</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="dfs-loading"><div className="auth-spinner"/><span>Loading…</span></div>
+      ) : (
+        <div className="dfs-table-wrap">
+          <table className="dfs-table">
+            <thead>
+              <tr>
+                <th className="dfs-th dfs-th-num dfs-sticky-num">#</th>
+                <th className="dfs-th dfs-th-player dfs-sticky-player">Player</th>
+                {PT_COLS.map((c) => <th key={c.key} className="dfs-th">{c.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {lineup.map((player, i) => {
+                const row = lookupRow(player);
+                const hasData = row.pa && parseInt(row.pa) > 0;
+                const pos = player.primaryPosition?.abbreviation || '';
+                return (
+                  <tr key={player.id} className="dfs-player-row">
+                    <td className="dfs-td dfs-td-num dfs-sticky-num">{i + 1}</td>
+                    <td className="dfs-td dfs-td-player dfs-sticky-player">
+                      <span className="dfs-player-name">{player.fullName}</span>
+                      {pos && <span className="dfs-player-meta"> {pos}</span>}
+                    </td>
+                    {PT_COLS.map((c) => (
+                      <td key={c.key}
+                        className={`dfs-td ${hasData && c.avgs ? heatClass(row[c.key], c.key, c.avgs) : ''}`}>
+                        {hasData ? fmtPtVal(row[c.key], c.fmt) : '—'}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function BatterTable({ lineup, savantMap }) {
   const [sortKey, setSortKey] = useState(null);
@@ -851,6 +1007,7 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
 export default function DFSPage() {
   const navigate = useNavigate();
   const [dfsTab, setDfsTab]               = useState('shriebiq'); // 'shriebiq' | 'bvp'
+  const [batterTab, setBatterTab]         = useState('dashboard'); // 'dashboard' | 'vs-pitch'
   const [mlbGames, setMlbGames]           = useState([]);   // from MLB Stats API
   const [selectedIdx, setSelectedIdx]     = useState(0);
   const [activeSide, setActiveSide]       = useState('away');
@@ -1098,28 +1255,52 @@ export default function DFSPage() {
                     </div>
                   </div>
                 </div>
-                {/* Throws filter */}
-                <div className="dfs-filter-row">
-                  {[
-                    { val: 'all', label: 'vs All' },
-                    { val: 'L',   label: 'vs L' },
-                    { val: 'R',   label: 'vs R' },
-                  ].map(({ val, label }) => (
-                    <button
-                      key={val}
-                      className={`dfs-filter-btn ${throwsFilter === val ? 'dfs-filter-active' : ''}`}
-                      onClick={() => setThrowsFilter(val)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                {/* Throws filter — only shown on Dashboard tab */}
+                {batterTab === 'dashboard' && (
+                  <div className="dfs-filter-row">
+                    {[
+                      { val: 'all', label: 'vs All' },
+                      { val: 'L',   label: 'vs L' },
+                      { val: 'R',   label: 'vs R' },
+                    ].map(({ val, label }) => (
+                      <button
+                        key={val}
+                        className={`dfs-filter-btn ${throwsFilter === val ? 'dfs-filter-active' : ''}`}
+                        onClick={() => setThrowsFilter(val)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {batterLoading || lineupLoading ? (
-                <div className="dfs-loading"><div className="auth-spinner" /><span>Loading…</span></div>
-              ) : (
-                <BatterTable lineup={lineup.players} savantMap={batterStats} />
+              {/* Batter sub-tabs */}
+              <div className="dfs-pitcher-tabs">
+                {[
+                  { key: 'dashboard', label: 'Dashboard' },
+                  { key: 'vs-pitch',  label: 'vs Pitch Type' },
+                ].map(({ key, label }) => (
+                  <button key={key}
+                    className={`dfs-pitcher-tab ${batterTab === key ? 'dfs-pitcher-tab-active' : ''}`}
+                    onClick={() => setBatterTab(key)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {batterTab === 'dashboard' && (
+                batterLoading || lineupLoading
+                  ? <div className="dfs-loading"><div className="auth-spinner" /><span>Loading…</span></div>
+                  : <BatterTable lineup={lineup.players} savantMap={batterStats} />
+              )}
+              {batterTab === 'vs-pitch' && (
+                <VsPitchTypeTab
+                  lineup={lineup.players}
+                  battingAbbr={battingAbbr}
+                  pitcherId={probPitcher?.id}
+                  defaultHand={pitcherHand || probPitcher?.hand}
+                />
               )}
             </div>
 

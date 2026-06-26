@@ -3741,6 +3741,11 @@ thead .dfs-sticky-player {
 .dfs-agg-row { background: color-mix(in srgb, var(--bg3) 60%, var(--bg2)); border-top: 1px solid var(--border); }
 .dfs-agg-row .dfs-td-player { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; }
 
+/* vs Pitch Type controls (two dropdowns side-by-side) */
+.dfs-vsp-controls {
+  display: flex; gap: 8px; padding: 10px 14px 6px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+
 /* Pitch Usage Arsenal header + dropdown */
 .dfs-arsenal-header { padding: 10px 14px 6px; border-bottom: 1px solid var(--border); }
 .dfs-arsenal-select {
