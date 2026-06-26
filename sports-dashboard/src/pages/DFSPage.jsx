@@ -197,38 +197,46 @@ async function fetchBvpStats(batterId, pitcherId) {
   return splits[0]?.stat || null;
 }
 
-async function fetchPitchArsenal(mlbId) {
+// All pitch type codes Baseball Savant uses
+const PITCH_CODES = ['FF','SI','SL','CH','CU','ST','FC','FS','SV','KC','KN'];
+const PITCH_NAMES = {
+  FF: '4-Seam Fastball', SI: 'Sinker', SL: 'Slider', CH: 'Changeup',
+  CU: 'Curveball', ST: 'Sweeper', FC: 'Cutter', FS: 'Split-Finger',
+  SV: 'Slurve', KC: 'Knuckle-Curve', KN: 'Knuckleball',
+};
+
+async function fetchPitchArsenal(mlbId, stand) {
+  // Use statcast_search with hfPT= (pitch type filter) — correctly gives
+  // velocity, woba, whiff%, hard_hit% per pitch type AND supports vs L/R via hfStands
   const year = new Date().getFullYear();
-  // Two time windows: full season (120 days ≈ full season) and last 30 days
-  const today = new Date().toISOString().slice(0, 10);
-  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-  const start30 = d30.toISOString().slice(0, 10);
+  const standFilter = stand ? `&hfStands=${encodeURIComponent(stand + '|')}` : '';
+  const base = `${BS}/statcast_search/csv?player_type=pitcher&hfGT=R%7C&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
 
-  const base = `${BS}/leaderboard/pitch-arsenal-stats?type=pitcher&pitchName=&season=${year}&min=0&csv=true`;
-  const [seasonRes, recent30Res] = await Promise.allSettled([
-    bsFetch(base),
-    bsFetch(`${base}&startDate=${start30}`),
-  ]);
+  const results = await Promise.allSettled(
+    PITCH_CODES.map((pt) =>
+      bsFetch(`${base}&hfPT=${pt}%7C${standFilter}`)
+        .then((text) => {
+          const { rows } = parseCSV(text);
+          return rows.find((r) => String(r.player_id).trim() === String(mlbId).trim()) || null;
+        })
+        .catch(() => null)
+    )
+  );
 
-  const filterPlayer = (text) => {
-    if (typeof text !== 'string') return [];
-    const { rows } = parseCSV(text);
-    return rows.filter((r) => String(r.player_id).trim() === String(mlbId).trim());
-  };
-
-  const seasonRows = seasonRes.status === 'fulfilled' ? filterPlayer(seasonRes.value) : [];
-  const recent30   = recent30Res.status === 'fulfilled' ? filterPlayer(recent30Res.value) : [];
-
-  // Merge: season row + recent 30-day usage keyed by pitch_type
-  const recent30Map = {};
-  recent30.forEach((r) => { recent30Map[r.pitch_type] = r; });
-
-  return seasonRows.map((r) => ({
-    ...r,
-    pct_season: parseFloat(r.pitch_usage) || 0,
-    pct_30:     parseFloat(recent30Map[r.pitch_type]?.pitch_usage) || null,
-    iso:        r.ba && r.slg ? (parseFloat(r.slg) - parseFloat(r.ba)).toFixed(3) : null,
-  })).sort((a, b) => b.pct_season - a.pct_season);
+  return PITCH_CODES.map((pt, i) => {
+    const r = results[i].status === 'fulfilled' ? results[i].value : null;
+    if (!r || parseFloat(r.pitch_percent) < 0.5) return null; // skip negligible usage
+    return {
+      pitch_type: pt,
+      pitch_name: PITCH_NAMES[pt] || pt,
+      pitch_usage: parseFloat(r.pitch_percent) || 0,
+      velocity:    r.velocity,
+      whiff_percent: r.swing_miss_percent,
+      woba:          r.woba,
+      iso: (r.ba && r.slg) ? (parseFloat(r.slg) - parseFloat(r.ba)).toFixed(3) : null,
+      hard_hit_percent: r.hardhit_percent,
+    };
+  }).filter(Boolean).sort((a, b) => b.pitch_usage - a.pitch_usage);
 }
 
 async function fetchPitcherGameLogs(mlbId) {
@@ -530,62 +538,69 @@ const PITCHER_STATS = [
 
 /* ── Pitch Usage Table ───────────────────────────────────────────── */
 function PitchUsageTable({ pitcherId }) {
-  const [rows, setRows] = useState([]);
+  const [rows, setRows]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const fetched = useRef(null);
+  const [stand, setStand] = useState('');   // '' = All, 'L' = vs Left, 'R' = vs Right
+  const lastKey = useRef('');
 
   useEffect(() => {
-    if (!pitcherId || fetched.current === pitcherId) return;
-    fetched.current = pitcherId;
+    const key = `${pitcherId}|${stand}`;
+    if (!pitcherId || key === lastKey.current) return;
+    lastKey.current = key;
     setLoading(true);
-    fetchPitchArsenal(pitcherId)
+    fetchPitchArsenal(pitcherId, stand || null)
       .then(setRows)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [pitcherId]);
-
-  if (loading) return <div className="dfs-loading"><div className="auth-spinner"/><span>Loading pitch arsenal…</span></div>;
+  }, [pitcherId, stand]);
 
   return (
-    <div className="dfs-table-wrap">
-      <table className="dfs-table">
-        <thead>
-          <tr>
-            <th className="dfs-th" style={{ textAlign: 'left', paddingLeft: 14, minWidth: 130 }}>Pitch</th>
-            <th className="dfs-th">%30</th>
-            <th className="dfs-th">%Season</th>
-            <th className="dfs-th">Chg</th>
-            <th className="dfs-th">Velo</th>
-            <th className="dfs-th">Whiff%</th>
-            <th className="dfs-th">wOBA</th>
-            <th className="dfs-th">ISO</th>
-            <th className="dfs-th">Hard%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const chg = r.pct_30 != null ? (r.pct_30 - r.pct_season).toFixed(1) : null;
-            const chgColor = chg != null ? (parseFloat(chg) > 0 ? '#4ade80' : parseFloat(chg) < 0 ? '#f87171' : 'inherit') : 'inherit';
-            return (
-              <tr key={r.pitch_type} className="dfs-player-row">
-                <td className="dfs-td" style={{ textAlign: 'left', paddingLeft: 14, fontWeight: 700, color: 'var(--text)' }}>
-                  {r.pitch_name}
-                </td>
-                <td className="dfs-td">{r.pct_30 != null ? r.pct_30.toFixed(1) + '%' : '—'}</td>
-                <td className="dfs-td">{r.pct_season.toFixed(1)}%</td>
-                <td className="dfs-td" style={{ color: chgColor }}>
-                  {chg != null ? (parseFloat(chg) > 0 ? '+' : '') + chg + '%' : '—'}
-                </td>
-                <td className="dfs-td">{r.velocity ? r.velocity + ' mph' : '—'}</td>
-                <td className="dfs-td">{r.whiff_percent ? r.whiff_percent + '%' : '—'}</td>
-                <td className="dfs-td">{r.woba || '—'}</td>
-                <td className="dfs-td">{r.iso || '—'}</td>
-                <td className="dfs-td">{r.hard_hit_percent ? r.hard_hit_percent + '%' : '—'}</td>
+    <div>
+      {/* Stand filter dropdown */}
+      <div className="dfs-arsenal-header">
+        <select
+          className="dfs-arsenal-select"
+          value={stand}
+          onChange={(e) => setStand(e.target.value)}
+        >
+          <option value="">vs All Batters</option>
+          <option value="L">vs Left Batters</option>
+          <option value="R">vs Right Batters</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="dfs-loading"><div className="auth-spinner"/><span>Loading pitch arsenal…</span></div>
+      ) : (
+        <div className="dfs-table-wrap">
+          <table className="dfs-table">
+            <thead>
+              <tr>
+                <th className="dfs-th dfs-th-pitch">Pitch</th>
+                <th className="dfs-th">Usage%</th>
+                <th className="dfs-th">Velo</th>
+                <th className="dfs-th">Whiff%</th>
+                <th className="dfs-th">wOBA</th>
+                <th className="dfs-th">ISO</th>
+                <th className="dfs-th">Hard%</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.pitch_type} className="dfs-player-row">
+                  <td className="dfs-td dfs-td-pitch">{r.pitch_name}</td>
+                  <td className="dfs-td">{r.pitch_usage.toFixed(1)}%</td>
+                  <td className="dfs-td">{r.velocity ? r.velocity + ' mph' : '—'}</td>
+                  <td className="dfs-td">{r.whiff_percent ? parseFloat(r.whiff_percent).toFixed(1) + '%' : '—'}</td>
+                  <td className="dfs-td">{r.woba || '—'}</td>
+                  <td className="dfs-td">{r.iso || '—'}</td>
+                  <td className="dfs-td">{r.hard_hit_percent ? parseFloat(r.hard_hit_percent).toFixed(1) + '%' : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

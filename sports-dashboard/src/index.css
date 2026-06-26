@@ -3741,6 +3741,16 @@ thead .dfs-sticky-player {
 .dfs-agg-row { background: color-mix(in srgb, var(--bg3) 60%, var(--bg2)); border-top: 1px solid var(--border); }
 .dfs-agg-row .dfs-td-player { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; }
 
+/* Pitch Usage Arsenal header + dropdown */
+.dfs-arsenal-header { padding: 10px 14px 6px; border-bottom: 1px solid var(--border); }
+.dfs-arsenal-select {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.dfs-arsenal-select:focus { outline: none; border-color: var(--accent); }
+.dfs-th-pitch { text-align: left !important; padding-left: 14px !important; min-width: 140px; }
+.dfs-td-pitch { text-align: left; padding-left: 14px; font-weight: 700; color: var(--text); }
+
 /* Pitcher sub-tabs (Dashboard / Pitch Usage / Game Logs) */
 .dfs-pitcher-tabs {
   display: flex; border-bottom: 1px solid var(--border);
