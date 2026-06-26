@@ -350,31 +350,54 @@ export default function RankingsPage() {
         const allPitcherStats = await fetchAllPitcherStats().catch(() => ({}));
         if (cancelled) return;
 
-        // Step 3: pitcher handedness for each probable pitcher
-        setProgress('Resolving pitcher handedness…');
+        // Step 3: pitcher handedness + batting lineups for each game
+        setProgress('Resolving pitchers and lineups…');
         const pitcherMatchups = games.flatMap(g => [
-          { game: g, pitcher: g.teams?.home?.probablePitcher, batterTeamId: g.teams?.away?.team?.id, batterSide: 'away' },
-          { game: g, pitcher: g.teams?.away?.probablePitcher, batterTeamId: g.teams?.home?.team?.id, batterSide: 'home' },
+          {
+            game: g, pitcher: g.teams?.home?.probablePitcher,
+            batterTeamId: g.teams?.away?.team?.id, batterSide: 'away',
+            confirmedLineup: g.lineups?.awayPlayers || [],
+          },
+          {
+            game: g, pitcher: g.teams?.away?.probablePitcher,
+            batterTeamId: g.teams?.home?.team?.id, batterSide: 'home',
+            confirmedLineup: g.lineups?.homePlayers || [],
+          },
         ]).filter(m => m.pitcher?.id && m.batterTeamId);
 
-        // Fetch pitcher hands in parallel
-        const handResults = await Promise.allSettled(
+        // Fetch pitcher hands + projected lineups (when not confirmed) in parallel
+        const handAndLineupResults = await Promise.allSettled(
           pitcherMatchups.map(async (m) => {
-            const res = await fetch(`${STATSAPI}/people/${m.pitcher.id}`);
-            const data = await res.json();
-            return data.people?.[0]?.pitchHand?.code || null;
+            const [handRes, lineupRes] = await Promise.allSettled([
+              fetch(`${STATSAPI}/people/${m.pitcher.id}`).then(r => r.json())
+                .then(d => d.people?.[0]?.pitchHand?.code || null),
+              // Use confirmed lineup if available, else project from team roster
+              m.confirmedLineup.length > 0
+                ? Promise.resolve(m.confirmedLineup)
+                : fetch(`${STATSAPI}/teams/${m.batterTeamId}/roster?rosterType=active&season=${new Date().getFullYear()}`)
+                    .then(r => r.json())
+                    .then(d => (d.roster || [])
+                      .filter(p => p.position?.type !== 'Pitcher')
+                      .slice(0, 9)
+                      .map(p => ({ id: p.person?.id, fullName: p.person?.fullName || '' })))
+                    .catch(() => []),
+            ]);
+            return {
+              pitcherHand: handRes.status === 'fulfilled' ? handRes.value : null,
+              lineupPlayers: lineupRes.status === 'fulfilled' ? lineupRes.value : [],
+            };
           })
         );
 
-        const matchupsWithHands = pitcherMatchups.map((m, i) => ({
-          ...m,
-          pitcherHand: handResults[i].status === 'fulfilled' ? handResults[i].value : null,
-        }));
+        const matchupsWithHands = pitcherMatchups.map((m, i) => {
+          const r = handAndLineupResults[i].status === 'fulfilled' ? handAndLineupResults[i].value : {};
+          return { ...m, pitcherHand: r.pitcherHand || null, lineupPlayers: r.lineupPlayers || [] };
+        });
 
         if (cancelled) return;
 
-        // Step 4: fetch season stats + recent form in parallel for each team
-        setProgress('Fetching batter stats + recent form…');
+        // Step 4: fetch Statcast stats (season + recent) for each batting team
+        setProgress('Fetching batter Statcast stats…');
         const batterResults = await Promise.allSettled(
           matchupsWithHands.map(async (m) => {
             const abbr = MLB_ABBR[m.batterTeamId];
@@ -385,39 +408,51 @@ export default function RankingsPage() {
             ]);
             return {
               ...m, abbr,
-              byId:     seasonById.status  === 'fulfilled' ? seasonById.value  : {},
-              recentById: recentById.status === 'fulfilled' ? recentById.value : {},
+              byId:       seasonById.status  === 'fulfilled' ? seasonById.value  : {},
+              recentById: recentById.status  === 'fulfilled' ? recentById.value  : {},
             };
           })
         );
 
         if (cancelled) return;
 
-        // Step 5: compute scores for every batter
+        // Step 5: score ONLY the 9 lineup players for each team
         setProgress('Computing ShribeIQ scores…');
         const allRows = [];
         batterResults.forEach(res => {
           if (res.status !== 'fulfilled' || !res.value) return;
-          const { game, pitcher, pitcherHand, abbr, byId, recentById } = res.value;
+          const { pitcher, pitcherHand, abbr, byId, recentById, lineupPlayers } = res.value;
           const pitcherId = String(pitcher.id);
           const pitcherRow = allPitcherStats[pitcherId] || null;
 
-          Object.entries(byId).forEach(([batterId, seasonBatter]) => {
-            if ((parseInt(seasonBatter.abs) || 0) < 100) return;
+          // Iterate over the 9 lineup players (not all team batters)
+          lineupPlayers.forEach(player => {
+            const batterId = String(player.id);
+            const seasonBatter = byId[batterId]; // may be undefined if < 100 PA
 
-            // Blend season + recent form
+            // Determine player name: from Statcast if available, else from lineup data
+            const rawName = seasonBatter?.player_name || '';
+            const playerName = rawName
+              ? rawName.split(',').map(s => s.trim()).reverse().join(' ')
+              : (player.fullName || '');
+
+            // Skip if no usable stats AND no name
+            if (!playerName) return;
+
             const recentBatter = recentById[batterId] || null;
-            const batter = blendStats(seasonBatter, recentBatter);
+            const batter = seasonBatter ? blendStats(seasonBatter, recentBatter) : null;
+            const hasStats = batter && (parseInt(seasonBatter.abs) || 0) >= 20;
 
-            const score   = calcScore(batter, pitcherRow);
-            // projPts calculated later after salary merge (needs dkAvgPts)
-            const projPts = null; // placeholder — computed in enriched step
-            const playerName = (batter.player_name || '').split(',').map(s => s.trim()).reverse().join(' ');
-            const form = formTag(
+            const score   = hasStats ? calcScore(batter, pitcherRow) : 50; // baseline if no data
+            const projPts = null;
+            const form    = hasStats ? formTag(
               parseFloat(seasonBatter.xwoba) || 0.320,
-              batter._recentXwoba,
-              batter._recentPA
-            );
+              batter._recentXwoba, batter._recentPA
+            ) : { icon: '', cls: '' };
+
+            // Only add to rows (remove old abs check — lineup determines inclusion)
+            {  // brace replaces the removed `if (abs >= 100)` filter
+
             allRows.push({
               batterId,
               playerName,
@@ -428,22 +463,24 @@ export default function RankingsPage() {
               pitcherHand: pitcherHand || '?',
               score:   Math.round(score * 10) / 10,
               projPts,
-              pa:      batter.pa,
-              xwoba:   batter.xwoba,    // blended
-              woba:    batter.woba,     // blended
-              hh:      batter.hardhit_percent,
-              brl:     batter.barrels_per_bbe_percent,
-              kpct:    batter.k_percent,
-              bbpct:   batter.bb_percent,
-              iso:     batter.iso,
+              pa:      batter?.pa      ?? null,
+              xwoba:   batter?.xwoba   ?? null,
+              woba:    batter?.woba    ?? null,
+              hh:      batter?.hardhit_percent ?? null,
+              brl:     batter?.barrels_per_bbe_percent ?? null,
+              kpct:    batter?.k_percent  ?? null,
+              bbpct:   batter?.bb_percent ?? null,
+              iso:     batter?.iso    ?? null,
               pXwoba:  pitcherRow?.xwoba,
               pKpct:   pitcherRow?.k_percent,
               formIcon: form.icon,
               formCls:  form.cls,
-              recentXwoba: batter._recentXwoba,
-              recentPA:    batter._recentPA,
+              recentXwoba: batter?._recentXwoba ?? null,
+              recentPA:    batter?._recentPA    ?? 0,
+              hasStats,
             });
-          });
+          } // close the brace replacing the old if-filter
+          }); // close lineupPlayers.forEach
         });
 
         if (!cancelled) {
