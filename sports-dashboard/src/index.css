@@ -3874,6 +3874,13 @@ thead .dfs-sticky-player {
 .rank-upload-btn:hover { border-color: var(--accent); color: var(--text); }
 .rank-upload-btn-active { background: color-mix(in srgb, var(--accent) 15%, var(--bg2)); border-color: var(--accent); color: var(--accent2); }
 .rank-upload-hint { font-size: 10px; color: var(--text2); text-align: right; }
+.rank-upload-saved { color: #4ade80; }
+.rank-clear-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text2); font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.rank-clear-btn:hover { border-color: #f87171; color: #f87171; }
 .rank-salary { font-weight: 700; color: var(--text); }
 .rank-proj { font-weight: 700; color: var(--accent2); }
 .rank-value-badge { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 11px; font-weight: 800; }

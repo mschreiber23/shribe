@@ -307,9 +307,44 @@ export default function RankingsPage() {
   const [sortCol, setSortCol]     = useState('score');
   const [sortDir, setSortDir]     = useState('desc');
   const [salaryMap, setSalaryMap]   = useState({});
-  const [espnIdMap, setEspnIdMap]   = useState({});  // normName → espnAthleteId
+  const [salaryDate, setSalaryDate] = useState('');  // date string of loaded salaries
+  const [espnIdMap, setEspnIdMap]   = useState({});
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // On mount: restore cached salaries from localStorage if still today's
+  useEffect(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('shribely_dk_salaries') || 'null');
+      if (cached?.date === todayStr && cached?.map) {
+        setSalaryMap(cached.map);
+        setSalaryDate(cached.date);
+        setSortCol('value');
+        setSortDir('desc');
+      }
+    } catch {}
+  }, []);
+
+  const saveSalaries = (parsed) => {
+    setSalaryMap(parsed);
+    setSalaryDate(todayStr);
+    setSortCol('value');
+    setSortDir('desc');
+    try {
+      localStorage.setItem('shribely_dk_salaries', JSON.stringify({ date: todayStr, map: parsed }));
+    } catch {}
+  };
+
+  const clearSalaries = () => {
+    setSalaryMap({});
+    setSalaryDate('');
+    setSortCol('score');
+    setSortDir('desc');
+    try { localStorage.removeItem('shribely_dk_salaries'); } catch {}
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleDkUpload = (e) => {
     const file = e.target.files?.[0];
@@ -317,9 +352,7 @@ export default function RankingsPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const parsed = parseDkCsv(ev.target.result || '');
-      setSalaryMap(parsed);
-      setSortCol('value'); // auto-sort by value once salaries loaded
-      setSortDir('desc');
+      saveSalaries(parsed);
     };
     reader.readAsText(file);
   };
@@ -536,13 +569,25 @@ export default function RankingsPage() {
           <div className="rank-dk-upload">
             <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }}
               onChange={handleDkUpload} />
-            <button className={`rank-upload-btn ${hasSalaries ? 'rank-upload-btn-active' : ''}`}
-              onClick={() => fileInputRef.current?.click()}>
-              {hasSalaries ? `✓ DK Salaries Loaded` : '📥 Import DraftKings Salaries (.csv)'}
-            </button>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button className={`rank-upload-btn ${hasSalaries ? 'rank-upload-btn-active' : ''}`}
+                onClick={() => fileInputRef.current?.click()}>
+                {hasSalaries ? `✓ DK Salaries Loaded` : '📥 Import DraftKings Salaries (.csv)'}
+              </button>
+              {hasSalaries && (
+                <button className="rank-clear-btn" onClick={clearSalaries} title="Clear salary data">
+                  ✕
+                </button>
+              )}
+            </div>
+            {hasSalaries && salaryDate === todayStr && (
+              <div className="rank-upload-hint rank-upload-saved">
+                💾 Saved for today — auto-loads on refresh
+              </div>
+            )}
             {!hasSalaries && (
               <div className="rank-upload-hint">
-                Download from DK contest lobby → Export Salaries → Upload here
+                Download from DK contest lobby → Export Salaries → Upload here (saved all day)
               </div>
             )}
           </div>
