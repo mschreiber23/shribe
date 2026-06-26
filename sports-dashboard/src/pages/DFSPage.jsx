@@ -77,25 +77,47 @@ async function getMlbSchedule() {
   return data.dates?.[0]?.games || [];
 }
 
-// Get projected lineup: use the most recent game's confirmed lineup for that team
-async function getProjectedLineup(teamId, isHome) {
-  const today = new Date();
-  const end = new Date(today); end.setDate(end.getDate() - 1);
-  const start = new Date(today); start.setDate(start.getDate() - 8);
+// Get projected lineup: use boxscore batting order from most recent completed game.
+// The boxscore endpoint has explicit home/away team separation — far more reliable
+// than the schedule lineups hydration which can mislabel players.
+async function getProjectedLineup(teamId) {
+  const end = new Date(); end.setDate(end.getDate() - 1);
+  const start = new Date(); start.setDate(start.getDate() - 14);
   const fmt = (d) => d.toISOString().slice(0, 10);
-  const data = await mlbFetch(
-    `${STATSAPI}/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(start)}&endDate=${fmt(end)}&hydrate=lineups&gameType=R`
+
+  const schedule = await mlbFetch(
+    `${STATSAPI}/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(start)}&endDate=${fmt(end)}&gameType=R`
   );
-  // Walk dates newest-first, find most recent lineup
-  for (const dateObj of [...(data.dates || [])].reverse()) {
-    for (const game of dateObj.games || []) {
-      const isHomeTeam = game.teams?.home?.team?.id === Number(teamId);
-      const players = isHomeTeam
-        ? game.lineups?.homePlayers
-        : game.lineups?.awayPlayers;
-      if (players?.length > 0) {
-        return { players, confirmed: false, fromDate: dateObj.date };
-      }
+
+  // Walk dates newest-first, find most recent Final game
+  for (const dateObj of [...(schedule.dates || [])].reverse()) {
+    for (const game of [...(dateObj.games || [])].reverse()) {
+      if (game.status?.abstractGameState !== 'Final') continue;
+      try {
+        const bs = await mlbFetch(`${STATSAPI}/game/${game.gamePk}/boxscore`);
+        const isHome = game.teams?.home?.team?.id === Number(teamId);
+        const teamBs = isHome ? bs.teams?.home : bs.teams?.away;
+        const battingOrder = teamBs?.battingOrder || [];
+        const playerMap   = teamBs?.players || {};
+
+        if (battingOrder.length === 0) continue;
+
+        const players = battingOrder.map((id) => {
+          const entry = playerMap[`ID${id}`];
+          if (!entry) return null;
+          return {
+            id: entry.person?.id,
+            fullName: entry.person?.fullName || '',
+            useName:  entry.person?.useName  || '',
+            primaryPosition: entry.position || {},
+            batSide: entry.person?.batSide || {},
+          };
+        }).filter(Boolean);
+
+        if (players.length > 0) {
+          return { players, confirmed: false, fromDate: dateObj.date };
+        }
+      } catch { continue; }
     }
   }
   return { players: [], confirmed: false, fromDate: null };
@@ -469,13 +491,17 @@ const BVP_COLS = [
 ];
 
 function BvPTab({ lineup, pitcherId, pitcherName }) {
-  const [rows, setRows]       = useState([]);   // [{ player, stat }]
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(true); // start true so we never show blank
   const lastKey = useRef('');
 
   useEffect(() => {
-    const key = `${lineup?.map(p=>p.id).join(',')}|${pitcherId}`;
-    if (!pitcherId || !lineup?.length || key === lastKey.current) return;
+    const key = `${lineup?.map(p=>p?.id).join(',')}|${pitcherId}`;
+    if (!pitcherId || !lineup?.length) {
+      setLoading(false);
+      return;
+    }
+    if (key === lastKey.current) return;
     lastKey.current = key;
     setLoading(true);
     setRows([]);
@@ -492,15 +518,19 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
     });
   }, [lineup, pitcherId]);
 
+  if (!pitcherId && !loading) return (
+    <div className="dfs-empty" style={{ padding: '20px 16px' }}>No starting pitcher announced — BvP history unavailable.</div>
+  );
+
+  if (!lineup?.length && !loading) return (
+    <div className="dfs-empty" style={{ padding: '20px 16px' }}>Waiting for lineup data…</div>
+  );
+
   if (loading) return (
     <div className="dfs-loading" style={{ padding: '24px 14px' }}>
       <div className="auth-spinner" />
       <span>Loading career BvP history…</span>
     </div>
-  );
-
-  if (!pitcherId) return (
-    <div className="dfs-empty">No starting pitcher announced — BvP history unavailable.</div>
   );
 
   return (
@@ -662,8 +692,8 @@ export default function DFSPage() {
       setLineup({ players: confirmedPlayers, confirmed: true, fromDate: null });
       setLineupLoading(false);
     } else if (teamId) {
-      // Fall back to most recent game's lineup as projection
-      getProjectedLineup(teamId, isHome).then((result) => {
+      // Fall back to most recent game's boxscore batting order as projection
+      getProjectedLineup(teamId).then((result) => {
         setLineup(result);
         setLineupLoading(false);
       }).catch(() => setLineupLoading(false));
