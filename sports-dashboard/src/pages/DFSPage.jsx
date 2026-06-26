@@ -68,13 +68,19 @@ async function fetchTeamBatters(teamAbbr, pitcherThrows) {
 
 async function fetchPitcherSplits(mlbId) {
   const year = new Date().getFullYear();
-  const base = `${BS}/statcast_search/csv?player_type=pitcher&pitcherID=${mlbId}&hfGT=R%7C&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
+  // NOTE: pitcherID param is ignored by the endpoint — must fetch full leaderboard
+  // and filter by player_id client-side (same pattern as percentile rankings).
+  const base = `${BS}/statcast_search/csv?player_type=pitcher&hfGT=R%7C&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0`;
   const [allRes, vsLRes, vsRRes] = await Promise.allSettled([
     bsFetch(base),
     bsFetch(base + '&batter_stands=L'),
     bsFetch(base + '&batter_stands=R'),
   ]);
-  const pick = (r) => r.status === 'fulfilled' ? parseCSV(r.value).rows[0] || null : null;
+  const pick = (r) => {
+    if (r.status !== 'fulfilled') return null;
+    const { rows } = parseCSV(r.value);
+    return rows.find((row) => String(row.player_id).trim() === String(mlbId).trim()) || null;
+  };
   return { all: pick(allRes), vsL: pick(vsLRes), vsR: pick(vsRRes) };
 }
 
