@@ -35,6 +35,25 @@ async function bsFetch(url) {
 const BS = 'https://baseballsavant.mlb.com';
 const STATSAPI = 'https://statsapi.mlb.com/api/v1';
 
+// Static MLB team ID → Baseball Savant abbreviation (API doesn't return abbr in schedule)
+const MLB_ABBR = {
+  108: 'LAA', 109: 'ARI', 110: 'BAL', 111: 'BOS', 112: 'CHC',
+  113: 'CIN', 114: 'CLE', 115: 'COL', 116: 'DET', 117: 'HOU',
+  118: 'KC',  119: 'LAD', 120: 'WSH', 121: 'NYM', 133: 'ATH',
+  134: 'PIT', 135: 'SD',  136: 'SEA', 137: 'SF',  138: 'STL',
+  139: 'TB',  140: 'TEX', 141: 'TOR', 142: 'MIN', 143: 'PHI',
+  144: 'ATL', 145: 'CWS', 146: 'MIA', 147: 'NYY', 158: 'MIL',
+};
+// Short city/team label for display
+const MLB_SHORT = {
+  108: 'LAA', 109: 'ARI', 110: 'BAL', 111: 'BOS', 112: 'CHC',
+  113: 'CIN', 114: 'CLE', 115: 'COL', 116: 'DET', 117: 'HOU',
+  118: 'KC',  119: 'LAD', 120: 'WSH', 121: 'NYM', 133: 'ATH',
+  134: 'PIT', 135: 'SD',  136: 'SEA', 137: 'SF',  138: 'STL',
+  139: 'TB',  140: 'TEX', 141: 'TOR', 142: 'MIN', 143: 'PHI',
+  144: 'ATL', 145: 'CWS', 146: 'MIA', 147: 'NYY', 158: 'MIL',
+};
+
 /* ── Name normalisation for Savant matching ──────────────────────────── */
 function normKey(name) { return name.toLowerCase().replace(/[^a-z]/g, ''); }
 function savantToDisplay(savantName) {
@@ -470,17 +489,18 @@ export default function DFSPage() {
   }, [probPitcher?.id, selectedIdx, activeSide]);
 
   // Load batter Statcast stats when batting team / throws filter changes
+  const battingTeamId = battingMlb?.team?.id;
+  const battingAbbr   = battingTeamId ? MLB_ABBR[battingTeamId] : null;
   useEffect(() => {
-    const abbr = battingMlb?.team?.abbreviation;
-    if (!abbr) return;
+    if (!battingAbbr) return;
     setBatterLoading(true);
     setBatterStats({ byId: {}, byName: {} });
     const throws = throwsFilter === 'all' ? null : throwsFilter;
-    fetchTeamBatters(abbr, throws)
+    fetchTeamBatters(battingAbbr, throws)
       .then(setBatterStats)
       .catch(() => {})
       .finally(() => setBatterLoading(false));
-  }, [battingMlb?.team?.abbreviation, throwsFilter]);
+  }, [battingAbbr, throwsFilter]);
 
   // Auto-set throws filter based on pitcher handedness
   useEffect(() => {
@@ -502,7 +522,9 @@ export default function DFSPage() {
           {mlbGames.map((g, i) => {
             const away = g.teams?.away?.team;
             const home = g.teams?.home?.team;
-            const status = g.status?.detailedState || '';
+            const awayAbbr = MLB_SHORT[away?.id] || '?';
+            const homeAbbr = MLB_SHORT[home?.id] || '?';
+            const status = g.status?.detailedState || g.status?.abstractGameState || '';
             const isSelected = i === selectedIdx;
             return (
               <button
@@ -510,9 +532,9 @@ export default function DFSPage() {
                 className={`dfs-game-pill ${isSelected ? 'dfs-game-pill-active' : ''}`}
                 onClick={() => { setSelectedIdx(i); setActiveSide('away'); }}
               >
-                <span className="dfs-pill-team">{away?.abbreviation}</span>
+                <span className="dfs-pill-team">{awayAbbr}</span>
                 <span className="dfs-pill-sep">@</span>
-                <span className="dfs-pill-team">{home?.abbreviation}</span>
+                <span className="dfs-pill-team">{homeAbbr}</span>
                 {status && <span className="dfs-pill-status">{status}</span>}
               </button>
             );
@@ -527,18 +549,21 @@ export default function DFSPage() {
             {[
               { side: 'away', mlbTeam: mlbAway?.team, espnTeam: espnCompetitors.find(c=>c.homeAway==='away')?.team },
               { side: 'home', mlbTeam: mlbHome?.team, espnTeam: espnCompetitors.find(c=>c.homeAway==='home')?.team },
-            ].map(({ side, mlbTeam, espnTeam }) => (
-              <button
-                key={side}
-                className={`dfs-team-tab ${activeSide === side ? 'dfs-team-tab-active' : ''}`}
-                onClick={() => setActiveSide(side)}
-              >
-                {getTeamLogo(espnTeam) && (
-                  <img src={getTeamLogo(espnTeam)} alt="" className="dfs-tab-logo" />
-                )}
-                {mlbTeam?.abbreviation} Batters
-              </button>
-            ))}
+            ].map(({ side, mlbTeam, espnTeam }) => {
+              const abbr = MLB_SHORT[mlbTeam?.id] || mlbTeam?.name?.split(' ').slice(-1)[0] || '?';
+              return (
+                <button
+                  key={side}
+                  className={`dfs-team-tab ${activeSide === side ? 'dfs-team-tab-active' : ''}`}
+                  onClick={() => setActiveSide(side)}
+                >
+                  {getTeamLogo(espnTeam) && (
+                    <img src={getTeamLogo(espnTeam)} alt="" className="dfs-tab-logo" />
+                  )}
+                  {abbr} Batters
+                </button>
+              );
+            })}
           </div>
 
           {/* ── Main two-panel layout ─────────────────────────────── */}
