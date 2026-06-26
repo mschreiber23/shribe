@@ -113,24 +113,58 @@ async function resolveMlbId(fullName) {
 }
 
 /* ── Baseball Savant data fetching ──────────────────────────────────── */
+async function fetchBattedBallLeaderboard() {
+  const year = new Date().getFullYear();
+  const text = await bsFetch(
+    `${BS}/leaderboard/batted-ball?type=batter&year=${year}&min=1&csv=true`
+  );
+  const { rows } = parseCSV(text);
+  const map = {};
+  rows.forEach((r) => { if (r.id) map[String(r.id).trim()] = r; });
+  return map; // keyed by player_id
+}
+
 async function fetchTeamBatters(teamAbbr, pitcherThrows) {
   const year = new Date().getFullYear();
   const throwsParam = pitcherThrows ? `&pitcher_throws=${pitcherThrows}` : '';
-  const url = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(teamAbbr + '|')}&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0${throwsParam}`;
-  const text = await bsFetch(url);
-  const { rows } = parseCSV(text);
-  // Index by both player_id (MLB ID) and normalised name for flexible matching
+  const statsUrl = `${BS}/statcast_search/csv?player_type=batter&hfGT=R%7C&hfTeam=${encodeURIComponent(teamAbbr + '|')}&hfSea=${year}%7C&min_pitches=0&min_results=0&group_by=name&sort_col=pitches&sort_order=desc&min_pas=0${throwsParam}`;
+
+  // Fetch statcast stats + batted ball profile in parallel
+  const [statsRes, bbRes] = await Promise.allSettled([
+    bsFetch(statsUrl),
+    fetchBattedBallLeaderboard(),
+  ]);
+
+  const rows = statsRes.status === 'fulfilled' ? parseCSV(statsRes.value).rows : [];
+  const bbMap = bbRes.status === 'fulfilled' ? bbRes.value : {};
+
+  // Merge batted-ball rates into each row (multiply by 100 → percentage)
+  const pct = (v) => v != null && v !== '' ? (parseFloat(v) * 100).toFixed(1) : null;
+  const merged = rows.map((r) => {
+    const bb = bbMap[String(r.player_id).trim()] || {};
+    return {
+      ...r,
+      gb_pct: pct(bb.gb_rate),
+      fb_pct: pct(bb.fb_rate),
+      ld_pct: pct(bb.ld_rate),
+    };
+  });
+
   const byId = {};
   const byName = {};
-  rows.forEach((r) => {
+  merged.forEach((r) => {
     if (r.player_id) byId[String(r.player_id).trim()] = r;
     const display = savantToDisplay(r.player_name || '');
     byName[normKey(display)] = r;
-    // Also index by last name only as fallback
     const last = (r.player_name || '').split(',')[0].trim().toLowerCase().replace(/[^a-z]/g, '');
     if (last && !byName[last]) byName[last] = r;
   });
   return { byId, byName };
+}
+
+async function fetchPitcherHand(mlbId) {
+  const data = await mlbFetch(`${STATSAPI}/people/${mlbId}`);
+  return data.people?.[0]?.pitchHand?.code || null;
 }
 
 async function fetchPitcherSplits(mlbId) {
@@ -225,15 +259,26 @@ function extractLineup(rosters, teamId) {
 /* ─────────────────────────────────────────────────────────────────────
    Batter Table
    ───────────────────────────────────────────────────────────────────── */
+const BATTER_AVGS_BB = {
+  gb_pct: { avg: 44, higherBetter: false }, // lower GB% = more air = generally better for DFS
+  fb_pct: { avg: 24, higherBetter: true  }, // higher FB% = more power chances
+  ld_pct: { avg: 24, higherBetter: true  }, // higher LD% = better contact
+  babip:  { avg: 0.295, higherBetter: true  },
+};
+
 const BATTER_COLS = [
-  { key: 'pa',           label: 'PA',    avgs: BATTER_AVGS },
-  { key: 'iso',          label: 'ISO',   avgs: BATTER_AVGS },
-  { key: 'woba',         label: 'wOBA',  avgs: BATTER_AVGS },
-  { key: 'xwoba',        label: 'xwOBA', avgs: BATTER_AVGS },
-  { key: 'k_percent',    label: 'K%',    avgs: BATTER_AVGS },
-  { key: 'bb_percent',   label: 'BB%',   avgs: BATTER_AVGS },
-  { key: 'hardhit_percent', label: 'HardHit%', avgs: BATTER_AVGS },
-  { key: 'barrels_per_bbe_percent', label: 'Barrel%', avgs: BATTER_AVGS },
+  { key: 'pa',           label: 'PA',       avgs: BATTER_AVGS },
+  { key: 'iso',          label: 'ISO',      avgs: BATTER_AVGS },
+  { key: 'woba',         label: 'wOBA',     avgs: BATTER_AVGS },
+  { key: 'xwoba',        label: 'xwOBA',    avgs: BATTER_AVGS },
+  { key: 'k_percent',    label: 'K%',       avgs: BATTER_AVGS },
+  { key: 'bb_percent',   label: 'BB%',      avgs: BATTER_AVGS },
+  { key: 'hardhit_percent', label: 'HH%',   avgs: BATTER_AVGS },
+  { key: 'barrels_per_bbe_percent', label: 'Brl%', avgs: BATTER_AVGS },
+  { key: 'gb_pct',       label: 'GB%',      avgs: BATTER_AVGS_BB },
+  { key: 'fb_pct',       label: 'FB%',      avgs: BATTER_AVGS_BB },
+  { key: 'ld_pct',       label: 'LD%',      avgs: BATTER_AVGS_BB },
+  { key: 'babip',        label: 'BABIP',    avgs: BATTER_AVGS_BB },
 ];
 
 function BatterTable({ lineup, savantMap }) {
@@ -395,6 +440,7 @@ export default function DFSPage() {
   const [batterLoading, setBatterLoading] = useState(false);
   const [pitcherSplits, setPitcherSplits] = useState(null);
   const [pitcherLoading, setPitcherLoading] = useState(false);
+  const [pitcherHand, setPitcherHand]     = useState(null);
   const [lineup, setLineup]               = useState({ players: [], confirmed: false, fromDate: null });
   const [lineupLoading, setLineupLoading] = useState(false);
 
@@ -478,14 +524,20 @@ export default function DFSPage() {
     }
   }, [selectedIdx, activeSide]);
 
-  // Load pitcher splits when pitcher changes
+  // Load pitcher splits + hand when pitcher changes
   useEffect(() => {
     if (!probPitcher?.id) return;
     setPitcherLoading(true);
     setPitcherSplits(null);
-    fetchPitcherSplits(probPitcher.id).then(setPitcherSplits)
-      .catch(() => {})
-      .finally(() => setPitcherLoading(false));
+    setPitcherHand(null);
+    Promise.allSettled([
+      fetchPitcherSplits(probPitcher.id),
+      fetchPitcherHand(probPitcher.id),
+    ]).then(([splitsRes, handRes]) => {
+      if (splitsRes.status === 'fulfilled') setPitcherSplits(splitsRes.value);
+      if (handRes.status === 'fulfilled') setPitcherHand(handRes.value);
+      setPitcherLoading(false);
+    });
   }, [probPitcher?.id, selectedIdx, activeSide]);
 
   // Load batter Statcast stats when batting team / throws filter changes
@@ -633,7 +685,11 @@ export default function DFSPage() {
                   <div className="dfs-pitcher-info">
                     <div className="dfs-pitcher-name">
                       {probPitcher.name}
-                      {probPitcher.hand && <span className="dfs-pitcher-hand"> ({probPitcher.hand})</span>}
+                      {(pitcherHand || probPitcher.hand) && (
+                        <span className={`dfs-pitcher-arm dfs-pitcher-arm-${(pitcherHand || probPitcher.hand)?.toLowerCase()}`}>
+                          {(pitcherHand || probPitcher.hand) === 'L' ? 'LHP' : 'RHP'}
+                        </span>
+                      )}
                     </div>
                     <div className="dfs-pitcher-meta">
                       {probPitcher.record && <span>{probPitcher.record}</span>}
