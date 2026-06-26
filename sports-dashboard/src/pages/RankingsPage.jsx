@@ -180,68 +180,44 @@ function parseDkCsv(text) {
   // DraftKings format:
   // Position,Name + ID,Name,ID,Roster Position,Salary,Game Info,TeamAbbrev,AvgPointsPerGame
   const lines = text.split('\n').filter(l => l.trim());
-  // Find header line
   const headerIdx = lines.findIndex(l => l.includes('Salary') && l.includes('Name'));
   if (headerIdx === -1) return {};
   const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/"/g, '').toLowerCase());
   const nameIdx   = headers.findIndex(h => h === 'name');
   const salaryIdx = headers.findIndex(h => h === 'salary');
   const teamIdx   = headers.findIndex(h => h.includes('team'));
+  const avgPtsIdx = headers.findIndex(h => h.includes('avgpoints') || h.includes('avg_points') || h.includes('ppg'));
 
-  const salaryMap = {}; // normName → { name, salary, team }
+  const salaryMap = {};
   for (const line of lines.slice(headerIdx + 1)) {
     if (!line.trim()) continue;
-    // Handle quoted fields
     const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
     const name   = cols[nameIdx]   || '';
     const salary = parseInt((cols[salaryIdx] || '').replace(/[^0-9]/g, '')) || 0;
     const team   = cols[teamIdx]   || '';
+    const avgPts = avgPtsIdx >= 0 ? parseFloat(cols[avgPtsIdx]) || 0 : 0;
     if (name && salary > 0) {
-      salaryMap[normName(name)] = { name, salary, team };
+      salaryMap[normName(name)] = { name, salary, team, avgPts };
     }
   }
   return salaryMap;
 }
 
 /* ── DK Fantasy Points Projection ───────────────────────────────────── */
-// DraftKings MLB batter scoring:
-//   1B=3, 2B=5, 3B=8, HR=10, BB/HBP=2, RBI=2, R=2, SB=5
-// We estimate expected DK pts from Statcast metrics.
-function projDkPts(batter, pitcherRow) {
-  const s = (v, d = 0) => { const n = parseFloat(v); return isNaN(n) ? d : n; };
-
-  const xwoba = s(batter.xwoba,   0.320);
-  const brl   = s(batter.barrels_per_bbe_percent, 8) / 100;
-  const bb    = s(batter.bb_percent,   8.5) / 100;
-  const k     = s(batter.k_percent,    22)  / 100;
-  const iso   = s(batter.iso,          0.165);
-  const pXwoba = s(pitcherRow?.xwoba,  0.320);
-  const pK     = s(pitcherRow?.k_percent, 22) / 100;
-
-  // Base projection: calibrated so .320 xwOBA → ~7.4 pts, .400 → ~11 pts
-  const base = xwoba * 45 - 7.0;
-
-  // Power bonus: barrel% above avg drives HR/XBH (worth 5-10 DK pts each)
-  const brlBonus  = (brl - 0.08) * 15;
-
-  // BB bonus: each walk is guaranteed 2 DK pts
-  const bbBonus   = (bb - 0.085) * 10;
-
-  // ISO bonus: extra base hit ability
-  const isoBonus  = (iso - 0.165) * 5;
-
-  // K penalty: strikeouts waste plate appearances
-  const kPenalty  = (k - 0.22) * 8;
-
-  // Pitcher quality multiplier: tougher pitchers suppress all stats
-  // Easy pitcher (.400 xwOBA) → 1.25×, Average (.320) → 1.0×, Ace (.240) → 0.75×
-  const pitcherMult = 0.70 + (pXwoba / 0.400) * 0.60;
-
-  // Pitcher strikeout rate penalty: high-K pitcher → fewer balls in play → lower pts
-  const pitcherKPenalty = (pK - 0.22) * 3;
-
-  const raw = (base + brlBonus + bbBonus + isoBonus - kPenalty - pitcherKPenalty) * pitcherMult;
-  return Math.max(0.5, Math.round(raw * 10) / 10);
+// When DK salary data is uploaded, use their AvgPointsPerGame as the baseline —
+// it's calibrated to real DK scoring. We then apply a matchup multiplier (±25%)
+// derived from the ShribeIQ score to adjust for today's specific matchup.
+//
+// When no DK data is uploaded, we fall back to a rough Statcast estimate.
+function projDkPts(dkAvgPts, score) {
+  if (dkAvgPts > 0) {
+    // ShribeIQ score 65 = league avg matchup → 1.0× (no change)
+    // Score 85 (great matchup) → 1.20×, Score 45 (poor) → 0.80×
+    const multiplier = Math.max(0.70, Math.min(1.30, 1.0 + (score - 65) / 100));
+    return Math.round(dkAvgPts * multiplier * 10) / 10;
+  }
+  // Fallback (no DK data): rough estimate — shows "~" prefix in UI
+  return null;
 }
 
 /* ── Scoring formula ─────────────────────────────────────────────────── */
@@ -434,7 +410,8 @@ export default function RankingsPage() {
             const batter = blendStats(seasonBatter, recentBatter);
 
             const score   = calcScore(batter, pitcherRow);
-            const projPts = projDkPts(batter, pitcherRow);
+            // projPts calculated later after salary merge (needs dkAvgPts)
+            const projPts = null; // placeholder — computed in enriched step
             const playerName = (batter.player_name || '').split(',').map(s => s.trim()).reverse().join(' ');
             const form = formTag(
               parseFloat(seasonBatter.xwoba) || 0.320,
@@ -500,12 +477,17 @@ export default function RankingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  /* ── Merge salary data into rows ── */
+  /* ── Merge salary + compute projPts using DK's AvgPointsPerGame ── */
   const enriched = rankings.map(r => {
-    const dk = salaryMap[r.playerNameNorm] || null;
-    const salary = dk?.salary || 0;
-    const value  = salary > 0 ? Math.round((r.projPts / (salary / 1000)) * 100) / 100 : null;
-    return { ...r, salary, value };
+    const dk      = salaryMap[r.playerNameNorm] || null;
+    const salary  = dk?.salary  || 0;
+    const dkAvg   = dk?.avgPts  || 0;
+    // Use DK avg as base (adjusted by matchup score) when available
+    const projPts = projDkPts(dkAvg, r.score);
+    const value   = (salary > 0 && projPts != null)
+      ? Math.round((projPts / (salary / 1000)) * 100) / 100
+      : null;
+    return { ...r, salary, dkAvg, projPts, value };
   });
   const hasSalaries = enriched.some(r => r.salary > 0);
 
@@ -662,8 +644,8 @@ export default function RankingsPage() {
                     </td>
                   )}
                   {hasSalaries && (
-                    <td className="rank-td rank-proj">
-                      {r.projPts > 0 ? r.projPts : '—'}
+                    <td className="rank-td rank-proj" title={r.dkAvg > 0 ? `DK avg: ${r.dkAvg} × matchup adj` : 'No DK data'}>
+                      {r.projPts != null ? r.projPts : (r.dkAvg > 0 ? r.dkAvg : '—')}
                     </td>
                   )}
                   {hasSalaries && (
