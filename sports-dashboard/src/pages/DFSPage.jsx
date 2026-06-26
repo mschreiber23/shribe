@@ -77,53 +77,33 @@ async function getMlbSchedule() {
   return data.dates?.[0]?.games || [];
 }
 
-// Get projected lineup: use boxscore batting order from most recent completed game.
-// The boxscore endpoint has explicit home/away team separation — far more reliable
-// than the schedule lineups hydration which can mislabel players.
+// Get projected lineup from the team's active roster.
+// Simple single-API-call approach — no schedule/boxscore complexity, no home/away bugs.
+// Batting order is estimated by position; confirmed lineups override this when posted.
+const POS_ORDER = { C:1, '1B':2, '2B':3, '3B':4, SS:5, LF:6, CF:7, RF:8, DH:9, OF:10 };
+
 async function getProjectedLineup(teamId) {
-  const end = new Date(); end.setDate(end.getDate() - 1);
-  const start = new Date(); start.setDate(start.getDate() - 14);
-  const fmt = (d) => d.toISOString().slice(0, 10);
-
-  const schedule = await mlbFetch(
-    `${STATSAPI}/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(start)}&endDate=${fmt(end)}&gameType=R`
-  );
-
-  // Walk dates newest-first, find most recent Final game
-  for (const dateObj of [...(schedule.dates || [])].reverse()) {
-    for (const game of [...(dateObj.games || [])].reverse()) {
-      if (game.status?.abstractGameState !== 'Final') continue;
-      try {
-        const bs = await mlbFetch(`${STATSAPI}/game/${game.gamePk}/boxscore`);
-        // Pick the side whose team.id matches — avoids home/away mismatch bugs
-        const homeTeam = bs.teams?.home;
-        const awayTeam = bs.teams?.away;
-        const teamBs = Number(homeTeam?.team?.id) === Number(teamId) ? homeTeam : awayTeam;
-        if (!teamBs || Number(teamBs.team?.id) !== Number(teamId)) continue; // safety check
-        const battingOrder = teamBs?.battingOrder || [];
-        const playerMap   = teamBs?.players || {};
-
-        if (battingOrder.length === 0) continue;
-
-        const players = battingOrder.map((id) => {
-          const entry = playerMap[`ID${id}`];
-          if (!entry) return null;
-          return {
-            id: entry.person?.id,
-            fullName: entry.person?.fullName || '',
-            useName:  entry.person?.useName  || '',
-            primaryPosition: entry.position || {},
-            batSide: entry.person?.batSide || {},
-          };
-        }).filter(Boolean);
-
-        if (players.length > 0) {
-          return { players, confirmed: false, fromDate: dateObj.date };
-        }
-      } catch { continue; }
-    }
+  const year = new Date().getFullYear();
+  try {
+    const data = await mlbFetch(
+      `${STATSAPI}/teams/${teamId}/roster?rosterType=active&season=${year}`
+    );
+    const roster = data.roster || [];
+    const players = roster
+      .filter((p) => p.position?.type !== 'Pitcher')
+      .sort((a, b) => (POS_ORDER[a.position?.abbreviation] || 99) - (POS_ORDER[b.position?.abbreviation] || 99))
+      .slice(0, 9)
+      .map((p) => ({
+        id: p.person?.id,
+        fullName: p.person?.fullName || '',
+        useName:  p.person?.useName  || '',
+        primaryPosition: p.position || {},
+        batSide: {},
+      }));
+    return { players, confirmed: false, fromDate: 'roster' };
+  } catch {
+    return { players: [], confirmed: false, fromDate: null };
   }
-  return { players: [], confirmed: false, fromDate: null };
 }
 
 /* ── MLB ID resolution (fallback for pitcher only) ─────────────────── */
@@ -1113,7 +1093,7 @@ export default function DFSPage() {
                       {lineupLoading ? 'Loading lineup…' : lineup.confirmed
                         ? <span className="dfs-confirmed-badge">✓ CONFIRMED LINEUP</span>
                         : lineup.fromDate
-                          ? <span className="dfs-projected-badge">⟳ PROJECTED from {lineup.fromDate}</span>
+                          ? <span className="dfs-projected-badge">⟳ PROJECTED LINEUP</span>
                           : 'Batting Lineup'}
                     </div>
                   </div>
