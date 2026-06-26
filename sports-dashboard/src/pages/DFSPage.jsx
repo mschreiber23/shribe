@@ -220,26 +220,48 @@ async function fetchPitchArsenal(mlbId, stand) {
       bsFetch(`${base}&hfPT=${pt}%7C${standFilter}`)
         .then((text) => {
           const { rows } = parseCSV(text);
-          return rows.find((r) => String(r.player_id).trim() === String(mlbId).trim()) || null;
+          const row = rows.find((r) => String(r.player_id).trim() === String(mlbId).trim());
+          if (!row) return null;
+          return {
+            pitch_type: pt,
+            pitches_count: parseInt(row.pitches) || 0, // raw count for correct usage%
+            velocity:     row.velocity,
+            whiff_percent: row.swing_miss_percent,
+            woba:         row.woba,
+            ba:           row.ba,
+            slg:          row.slg,
+            hard_hit_percent: row.hardhit_percent,
+          };
         })
         .catch(() => null)
     )
   );
 
-  return PITCH_CODES.map((pt, i) => {
-    const r = results[i].status === 'fulfilled' ? results[i].value : null;
-    if (!r || parseFloat(r.pitch_percent) < 0.5) return null; // skip negligible usage
-    return {
-      pitch_type: pt,
-      pitch_name: PITCH_NAMES[pt] || pt,
-      pitch_usage: parseFloat(r.pitch_percent) || 0,
-      velocity:    r.velocity,
-      whiff_percent: r.swing_miss_percent,
-      woba:          r.woba,
-      iso: (r.ba && r.slg) ? (parseFloat(r.slg) - parseFloat(r.ba)).toFixed(3) : null,
-      hard_hit_percent: r.hardhit_percent,
-    };
-  }).filter(Boolean).sort((a, b) => b.pitch_usage - a.pitch_usage);
+  // Collect only pitch types that were actually thrown
+  const rawRows = PITCH_CODES
+    .map((pt, i) => {
+      const v = results[i].status === 'fulfilled' ? results[i].value : null;
+      return v && v.pitches_count > 0 ? { ...v, pitch_type: pt } : null;
+    })
+    .filter(Boolean);
+
+  // pitch_percent from Savant uses season total as denominator — wrong for vs L/R splits.
+  // Recalculate: usage% = pitches_of_type / total_pitches_in_this_group
+  const totalPitches = rawRows.reduce((s, r) => s + r.pitches_count, 0);
+
+  return rawRows
+    .map((r) => ({
+      pitch_type:   r.pitch_type,
+      pitch_name:   PITCH_NAMES[r.pitch_type] || r.pitch_type,
+      pitch_usage:  totalPitches > 0 ? (r.pitches_count / totalPitches * 100) : 0,
+      velocity:     r.velocity,
+      whiff_percent: r.whiff_percent,
+      woba:         r.woba,
+      iso:          (r.ba && r.slg) ? (parseFloat(r.slg) - parseFloat(r.ba)).toFixed(3) : null,
+      hard_hit_percent: r.hard_hit_percent,
+    }))
+    .filter((r) => r.pitch_usage >= 0.5)
+    .sort((a, b) => b.pitch_usage - a.pitch_usage);
 }
 
 async function fetchPitcherGameLogs(mlbId) {
