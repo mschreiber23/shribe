@@ -325,10 +325,18 @@ const BATTER_COLS = [
 ];
 
 function BatterTable({ lineup, savantMap }) {
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
+
   if (!lineup || lineup.length === 0) return (
     <div className="dfs-empty">No lineup data available yet.</div>
   );
   const { byId, byName } = savantMap;
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
 
   // MLB Stats API lineup player: { id, fullName, primaryPosition, ... }
   const lookupStats = (player) => {
@@ -361,6 +369,17 @@ function BatterTable({ lineup, savantMap }) {
   const aggL   = agg(lefties.map(lookupStats).filter(Boolean));
   const aggR   = agg(righties.map(lookupStats).filter(Boolean));
 
+  // Apply sort to lineup order
+  const sortedLineup = sortKey
+    ? [...lineup].sort((a, b) => {
+        const sa = lookupStats(a) || {};
+        const sb = lookupStats(b) || {};
+        const va = parseFloat(sa[sortKey]) || 0;
+        const vb = parseFloat(sb[sortKey]) || 0;
+        return sortDir === 'desc' ? vb - va : va - vb;
+      })
+    : lineup;
+
   const AggRow = ({ label, row }) => (
     <tr className="dfs-agg-row">
       <td className="dfs-td dfs-td-num" />
@@ -376,15 +395,19 @@ function BatterTable({ lineup, savantMap }) {
   return (
     <div className="dfs-table-wrap">
       <table className="dfs-table">
-        <thead>
-          <tr>
-            <th className="dfs-th dfs-th-num">#</th>
-            <th className="dfs-th dfs-th-player">Player</th>
-            {BATTER_COLS.map((c) => <th key={c.key} className="dfs-th">{c.label}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {lineup.map((player, i) => {
+          <thead>
+            <tr>
+              <th className="dfs-th dfs-th-num dfs-sticky-num">#</th>
+              <th className="dfs-th dfs-th-player dfs-sticky-player">Player</th>
+              {BATTER_COLS.map((c) => (
+                <th key={c.key} className="dfs-th dfs-th-sortable" onClick={() => handleSort(c.key)}>
+                  {c.label}{sortKey === c.key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedLineup.map((player, i) => {
             // MLB Stats API player object from lineups
             const name = player.fullName || player.useName || '';
             const pos  = player.primaryPosition?.abbreviation || '';
@@ -394,8 +417,8 @@ function BatterTable({ lineup, savantMap }) {
             const hasStats = Object.keys(stats).length > 0;
             return (
               <tr key={i} className="dfs-player-row">
-                <td className="dfs-td dfs-td-num">{slot}</td>
-                <td className="dfs-td dfs-td-player">
+                  <td className="dfs-td dfs-td-num dfs-sticky-num">{sortKey ? i + 1 : slot}</td>
+                  <td className="dfs-td dfs-td-player dfs-sticky-player">
                   <span className="dfs-player-name">{name}</span>
                   {pos && <span className="dfs-player-meta"> {pos}</span>}
                   {hand && <span className="dfs-player-hand"> | {hand}</span>}
@@ -533,6 +556,20 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
     </div>
   );
 
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => d === 'desc' ? 'asc' : 'desc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+  const sortedRows = sortKey
+    ? [...rows].sort((a, b) => {
+        const va = parseFloat(a.stat?.[sortKey]) || 0;
+        const vb = parseFloat(b.stat?.[sortKey]) || 0;
+        return sortDir === 'desc' ? vb - va : va - vb;
+      })
+    : rows;
+
   return (
     <div className="bvp-wrap">
       <div className="bvp-subtitle">
@@ -542,21 +579,24 @@ function BvPTab({ lineup, pitcherId, pitcherName }) {
         <table className="dfs-table bvp-table">
           <thead>
             <tr>
-              <th className="dfs-th dfs-th-num">#</th>
-              <th className="dfs-th dfs-th-player">Player</th>
+              <th className="dfs-th dfs-th-num dfs-sticky-num">#</th>
+              <th className="dfs-th dfs-th-player dfs-sticky-player">Player</th>
               {BVP_COLS.map((c) => (
-                <th key={c.key} className={`dfs-th ${c.rate ? 'bvp-th-rate' : ''}`}>{c.label}</th>
+                <th key={c.key} className={`dfs-th dfs-th-sortable ${c.rate ? 'bvp-th-rate' : ''}`}
+                  onClick={() => handleSort(c.key)}>
+                  {c.label}{sortKey === c.key ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ player, stat }, i) => {
+            {sortedRows.map(({ player, stat }, i) => {
               const pos  = player.primaryPosition?.abbreviation || '';
               const noHistory = !stat || (parseInt(stat.atBats) === 0 && !stat.hits);
               return (
                 <tr key={player.id} className="dfs-player-row">
-                  <td className="dfs-td dfs-td-num">{i + 1}</td>
-                  <td className="dfs-td dfs-td-player">
+                  <td className="dfs-td dfs-td-num dfs-sticky-num">{i + 1}</td>
+                  <td className="dfs-td dfs-td-player dfs-sticky-player">
                     <span className="dfs-player-name">{player.fullName || player.useName}</span>
                     {pos && <span className="dfs-player-meta"> {pos}</span>}
                   </td>
@@ -700,7 +740,7 @@ export default function DFSPage() {
     } else {
       setLineupLoading(false);
     }
-  }, [selectedIdx, activeSide]);
+  }, [selectedMlb?.gamePk, activeSide]);
 
   // Load pitcher splits + hand when pitcher changes
   useEffect(() => {
@@ -728,10 +768,15 @@ export default function DFSPage() {
 
   // Load batter Statcast stats when batting team / throws filter changes
   const battingAbbr = battingTeamId ? MLB_ABBR[battingTeamId] : null;
+  const prevBattingAbbr = useRef(null);
   useEffect(() => {
     if (!battingAbbr) return;
     setBatterLoading(true);
-    setBatterStats({ byId: {}, byName: {} });
+    // Clear stats only when team changes; keep old data visible during filter change
+    if (prevBattingAbbr.current !== battingAbbr) {
+      setBatterStats({ byId: {}, byName: {} });
+      prevBattingAbbr.current = battingAbbr;
+    }
     const throws = throwsFilter === 'all' ? null : throwsFilter;
     fetchTeamBatters(battingAbbr, throws)
       .then(setBatterStats)

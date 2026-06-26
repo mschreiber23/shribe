@@ -3696,6 +3696,28 @@ body {
   text-transform: uppercase; letter-spacing: 0.3px; color: var(--text2);
   background: var(--bg3); border-bottom: 1px solid var(--border);
 }
+.dfs-th-sortable { cursor: pointer; user-select: none; }
+.dfs-th-sortable:hover { color: var(--text); }
+
+/* Sticky # and Player columns */
+.dfs-sticky-num {
+  position: sticky; left: 0; z-index: 2;
+  background: inherit;
+  box-shadow: 1px 0 0 var(--border);
+}
+.dfs-sticky-player {
+  position: sticky; left: 36px; z-index: 2;
+  background: inherit;
+  box-shadow: 1px 0 0 var(--border);
+  min-width: 130px;
+}
+/* Ensure sticky cells have the right background in each row type */
+.dfs-player-row .dfs-sticky-num,
+.dfs-player-row .dfs-sticky-player { background: var(--bg2); }
+.dfs-agg-row .dfs-sticky-num,
+.dfs-agg-row .dfs-sticky-player { background: color-mix(in srgb, var(--bg3) 60%, var(--bg2)); }
+thead .dfs-sticky-num,
+thead .dfs-sticky-player { background: var(--bg3); z-index: 3; }
 .dfs-th-num { width: 24px; padding-left: 12px; text-align: center; }
 .dfs-th-player { text-align: left; padding-left: 14px; min-width: 130px; }
 .dfs-td { padding: 8px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
