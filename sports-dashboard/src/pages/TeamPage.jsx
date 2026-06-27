@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { recordTeamView } from './TeamsPage';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTeamInfo, getTeamSchedule, getTeamNews, getStandings, SPORTS } from '../api/espn';
 
@@ -300,7 +301,17 @@ export default function TeamPage() {
   useEffect(() => {
     setLoading(true);
     getTeamInfo(sport, teamId)
-      .then(setTeam)
+      .then((t) => {
+        setTeam(t);
+        if (t?.displayName) {
+          recordTeamView({
+            id: teamId, sport,
+            name: t.displayName,
+            abbreviation: t.abbreviation || '',
+            logo: t.logos?.[0]?.href || null,
+          });
+        }
+      })
       .catch(() => setTeam(null))
       .finally(() => setLoading(false));
   }, [sport, teamId]);
