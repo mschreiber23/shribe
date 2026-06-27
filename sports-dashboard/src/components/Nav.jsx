@@ -69,12 +69,13 @@ function DFSIcon({ active }) {
   );
 }
 
-function RankIcon({ active }) {
+function PlayersIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#a855f7' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-      <line x1="12" y1="8" x2="12" y2="16"/>
-      <line x1="8" y1="12" x2="16" y2="12"/>
+      <circle cx="11" cy="10" r="3"/>
+      <path d="M11 13c-4 0-7 2-7 4v1h14v-1c0-2-3-4-7-4z"/>
+      <circle cx="18" cy="8" r="2.5"/>
+      <path d="M18 10.5c-2.5 0-4.5 1.5-4.5 3"/>
     </svg>
   );
 }
@@ -83,7 +84,7 @@ const NAV_ITEMS = [
   { path: '/standings', label: 'Standings', Icon: StandingsIcon },
   { path: '/dfs',       label: 'ShribeIQ',  Icon: DFSIcon },
   { path: '/',          label: 'Shribely',  logo: true },
-  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
+  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
   { path: '/me',        label: 'Me',        Icon: MeIcon },
 ];
 

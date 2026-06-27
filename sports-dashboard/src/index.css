@@ -3886,6 +3886,90 @@ thead .dfs-sticky-player {
 .dfs-empty { padding: 16px 14px; color: var(--text2); font-size: 13px; }
 .dfs-empty-center { text-align: center; padding: 40px 20px; }
 
+/* ── Players Search Page ─────────────────────────────────────────────── */
+.players-page { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.players-header { text-align: center; padding: 4px 0 8px; }
+.players-title { font-size: 22px; font-weight: 900; color: var(--text); }
+.players-subtitle { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* Search box */
+.players-search-wrap { display: flex; flex-direction: column; gap: 10px; }
+.players-search-box {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 12px 16px; transition: border-color 0.15s;
+}
+.players-search-box:focus-within { border-color: var(--accent); }
+.players-search-icon { font-size: 16px; flex-shrink: 0; }
+.players-search-input {
+  flex: 1; background: none; border: none; color: var(--text);
+  font-size: 15px; outline: none;
+}
+.players-search-input::placeholder { color: var(--text2); }
+.players-search-clear {
+  background: none; border: none; color: var(--text2); font-size: 14px;
+  cursor: pointer; padding: 2px 4px; border-radius: 4px; flex-shrink: 0;
+}
+.players-search-clear:hover { color: var(--text); }
+
+/* Sport filter pills */
+.players-sport-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.players-filter-pill {
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; transition: all 0.15s;
+}
+.players-filter-pill:hover { color: var(--text); border-color: var(--accent); }
+.players-filter-active { background: color-mix(in srgb, var(--accent) 15%, var(--bg2)); border-color: var(--accent); color: var(--accent2); }
+
+/* Search results */
+.players-results { display: flex; flex-direction: column; gap: 6px; }
+.players-loading { display: flex; align-items: center; gap: 8px; padding: 20px; color: var(--text2); }
+.players-no-results { padding: 20px; text-align: center; color: var(--text2); font-size: 13px; }
+
+/* Player result card */
+.player-search-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; cursor: pointer; transition: all 0.15s; text-align: left; width: 100%;
+}
+.player-search-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, var(--bg2)); }
+.player-search-avatar { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--bg3); display: flex; align-items: center; justify-content: center; }
+.player-search-img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.player-search-placeholder { font-size: 18px; font-weight: 800; color: var(--text2); }
+.player-search-info { flex: 1; min-width: 0; }
+.player-search-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.player-search-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.player-search-sport-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 8px; }
+.player-search-team { font-size: 11px; color: var(--text2); }
+.player-search-pos { font-size: 11px; color: var(--text2); }
+.player-search-arrow { color: var(--text2); font-size: 18px; flex-shrink: 0; }
+
+/* Recently viewed section */
+.player-viewed-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.player-viewed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.player-viewed-title { font-size: 13px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+.player-viewed-clear { background: none; border: none; color: var(--text2); font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.player-viewed-clear:hover { color: var(--danger); }
+.player-viewed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.player-viewed-card {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 6px; cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.player-viewed-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.player-viewed-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; background: var(--bg2); display: flex; align-items: center; justify-content: center; }
+.player-viewed-img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.player-viewed-placeholder { font-size: 16px; font-weight: 800; color: var(--text2); }
+.player-viewed-name { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.player-viewed-badge { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 6px; }
+
+/* Empty state */
+.players-empty { text-align: center; padding: 40px 20px; }
+.players-empty-icon { font-size: 48px; margin-bottom: 12px; }
+.players-empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.players-empty-sub { font-size: 13px; color: var(--text2); }
+
 /* ── ShribeIQ Rankings Page ─────────────────────────────────────────── */
 .rank-page { display: flex; flex-direction: column; gap: 14px; width: 100%; }
 .rank-controls { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

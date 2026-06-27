@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { recordPlayerView } from './PlayersPage';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
 
 /* Format a stat value:
@@ -380,7 +381,21 @@ export default function PlayerPage() {
 
     // Load bio first
     getPlayerBio(sport, playerId)
-      .then(setBio)
+      .then((bioData) => {
+        setBio(bioData);
+        // Record this player view for the Players page recently-viewed list
+        const ath = bioData?.athlete || {};
+        if (ath.displayName) {
+          recordPlayerView({
+            id: playerId,
+            sport,
+            name: ath.displayName,
+            team: ath.team?.displayName || '',
+            headshot: ath.headshot?.href || `https://a.espncdn.com/i/headshots/${sport}/players/full/${playerId}.png`,
+            position: ath.position?.abbreviation || '',
+          });
+        }
+      })
       .catch(() => {});
 
     // Game log
