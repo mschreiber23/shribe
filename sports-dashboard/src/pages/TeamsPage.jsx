@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { searchTeams } from '../api/espn';
 
 const VIEWED_KEY = 'shribely_viewed_teams';
 const MAX_VIEWED = 16;
 
 const SPORTS = [
-  { key: 'mlb', label: 'MLB', league: 'baseball/mlb',    color: '#e74c3c' },
-  { key: 'nba', label: 'NBA', league: 'basketball/nba',  color: '#f39c12' },
-  { key: 'nfl', label: 'NFL', league: 'football/nfl',    color: '#27ae60' },
-  { key: 'nhl', label: 'NHL', league: 'hockey/nhl',      color: '#3498db' },
+  { key: 'mlb', label: 'MLB', color: '#e74c3c' },
+  { key: 'nba', label: 'NBA', color: '#f39c12' },
+  { key: 'nfl', label: 'NFL', color: '#27ae60' },
+  { key: 'nhl', label: 'NHL', color: '#3498db' },
 ];
-
-const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 
 /* ── localStorage helpers ────────────────────────────────────────────── */
 function loadViewed() {
@@ -30,15 +29,15 @@ export function recordTeamView(team) {
 }
 
 /* ── Team card ────────────────────────────────────────────────────────── */
-function TeamCard({ team, sportColor, onClick }) {
-  const darkLogo = team.logos?.find((l) => l.rel?.includes('dark'))?.href
-    || team.logos?.[0]?.href?.replace('/500/', '/500-dark/');
-  const origLogo = team.logos?.[0]?.href;
+function TeamCard({ team, onClick }) {
+  // searchTeams returns ESPN team objects with logo field (single URL) or logos array
+  const origLogo = team.logos?.[0]?.href || team.logo || null;
+  const darkLogo = origLogo?.replace(/\/(\d+)\//, '/$1-dark/');
   return (
     <button className="teams-team-card" onClick={onClick}>
       <div className="teams-team-logo-wrap">
-        {darkLogo && (
-          <img src={darkLogo} alt=""
+        {origLogo && (
+          <img src={darkLogo || origLogo} alt=""
             onError={(e) => { if (origLogo && e.target.src !== origLogo) { e.target.onerror = null; e.target.src = origLogo; } else { e.target.style.display='none'; } }}
             className="teams-team-logo" />
         )}
@@ -96,15 +95,11 @@ export default function TeamsPage() {
 
   const sp = SPORTS.find((s) => s.key === activeSport);
 
-  // Fetch teams for active sport (cached per sport)
+  // Fetch teams using the CORS-friendly standings-based searchTeams function
   useEffect(() => {
     if (teams[activeSport]) return;
-    fetch(`${ESPN_BASE}/${sp.league}/teams?limit=50`)
-      .then((r) => r.json())
-      .then((data) => {
-        const list = (data.sports?.[0]?.leagues?.[0]?.teams || [])
-          .map((t) => t.team)
-          .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    searchTeams(activeSport, '')
+      .then((list) => {
         setTeams((prev) => ({ ...prev, [activeSport]: list }));
       })
       .catch(() => {});
@@ -168,15 +163,14 @@ export default function TeamsPage() {
       </div>
 
       {/* Team grid */}
-      {teams[activeSport] ? (
-        <div className="teams-grid">
-          {filteredTeams.map((team) => (
-            <TeamCard
-              key={team.id}
-              team={team}
-              sportColor={sp?.color}
-              onClick={() => handleTeamClick(team)}
-            />
+          {teams[activeSport] ? (
+            <div className="teams-grid">
+              {filteredTeams.map((team) => (
+                <TeamCard
+                  key={team.id}
+                  team={team}
+                  onClick={() => handleTeamClick(team)}
+                />
           ))}
           {filteredTeams.length === 0 && (
             <div className="players-no-results" style={{ gridColumn: '1/-1' }}>
