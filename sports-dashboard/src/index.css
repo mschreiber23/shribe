@@ -3999,9 +3999,9 @@ thead .dfs-sticky-player {
 /* Remove individual viewed player */
 .player-viewed-card-wrap { position: relative; }
 .player-viewed-remove {
-  position: absolute; top: -6px; right: -6px;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--bg3); border: 1px solid var(--border);
+  position: absolute; top: 4px; right: 4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--bg2); border: 1px solid var(--border);
   color: var(--text2); font-size: 9px; font-weight: 800;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: all 0.15s; z-index: 2;
