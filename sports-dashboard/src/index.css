@@ -3095,11 +3095,26 @@ body {
   font-weight: 600;
   letter-spacing: 0.1px;
 }
+/* Dashboard account / logout section */
+.dashboard-account {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-top: 8px;
+}
+.dashboard-account-email { font-size: 12px; color: var(--text2); }
+.dashboard-signout-btn {
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+  padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--text2);
+  cursor: pointer; transition: all 0.15s;
+}
+.dashboard-signout-btn:hover { border-color: #f87171; color: #f87171; }
 .nav-label-logo { font-size: 9px; font-weight: 700; color: var(--accent2); }
 
-/* 7-item nav: shrink icons and padding for more items */
-.bottom-nav .nav-item svg { width: 19px; height: 19px; }
+/* 6-item nav */
+.bottom-nav .nav-item svg { width: 20px; height: 20px; }
 .bottom-nav .nav-item { padding: 4px 2px; gap: 2px; }
+/* Logo item is bigger and lifts above bar */
+.bottom-nav .nav-item-logo { flex: 1.3; }
 
 /* Top nav (desktop — hidden on mobile) */
 /* ── Global sticky ticker (shows on non-home pages) ── */

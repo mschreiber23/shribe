@@ -70,10 +70,11 @@ function DFSIcon({ active }) {
 }
 
 function PlayersIcon({ active }) {
+  // Search / magnifying glass icon
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#a855f7' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="7" r="3"/><path d="M9 11c-4 0-6 1.5-6 3v1h12v-1c0-1.5-2-3-6-3z"/>
-      <circle cx="17" cy="9" r="2.5"/><path d="M17 12c-2.5 0-4 1.2-4 2.5"/>
+      <circle cx="11" cy="11" r="7"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>
   );
 }
@@ -89,15 +90,14 @@ function TeamsIcon({ active }) {
   );
 }
 
-// User requested: Standings - Teams - Players - Shribely - Leaders - ShribeIQ - Me
+// Me removed from nav — logout now lives on the dashboard homepage
 const NAV_ITEMS = [
   { path: '/standings', label: 'Standings', Icon: StandingsIcon },
   { path: '/teams',     label: 'Teams',     Icon: TeamsIcon },
-  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
-  { path: '/',          label: 'Shribely',  logo: true },
+  { path: '/players',   label: 'Search',    Icon: PlayersIcon },
+  { path: '/',          label: '',          logo: true },   // no label under logo
   { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
   { path: '/dfs',       label: 'ShribeIQ',  Icon: DFSIcon },
-  { path: '/me',        label: 'Me',        Icon: MeIcon },
 ];
 
 function NavItem({ item, active }) {
@@ -105,9 +105,9 @@ function NavItem({ item, active }) {
     return (
       <Link to={item.path} className={`nav-item nav-item-logo ${active ? 'nav-item-active' : ''}`}>
         <div className="nav-logo-wrap">
-          <ShribelyIcon size={40} />
+          <ShribelyIcon size={48} />
         </div>
-        <span className="nav-label nav-label-logo">{item.label}</span>
+        {/* No label under the logo */}
       </Link>
     );
   }
@@ -115,7 +115,7 @@ function NavItem({ item, active }) {
   return (
     <Link to={item.path} className={`nav-item ${active ? 'nav-item-active' : ''}`}>
       <Icon active={active} />
-      <span className="nav-label">{item.label}</span>
+      {item.label && <span className="nav-label">{item.label}</span>}
     </Link>
   );
 }

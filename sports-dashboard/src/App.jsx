@@ -26,6 +26,7 @@ import './index.css';
 function Dashboard() {
   const [editMode, setEditMode] = useState(false);
   const { favorites } = useFavorites();
+  const { user, signOut } = useAuth();
   const hasContent = favorites.teams.length > 0 || favorites.players.length > 0;
 
   return (
@@ -41,6 +42,11 @@ function Dashboard() {
           {editMode ? '✓ Done Editing' : '✎ Edit Dashboard'}
         </button>
       )}
+      {/* Account + sign out at the bottom of the dashboard */}
+      <div className="dashboard-account">
+        {user?.email && <span className="dashboard-account-email">{user.email}</span>}
+        <button className="dashboard-signout-btn" onClick={signOut}>Sign Out</button>
+      </div>
     </main>
   );
 }
