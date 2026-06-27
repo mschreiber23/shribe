@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useFavorites } from '../context/FavoritesContext';
 
 const ESPN_SEARCH = 'https://site.api.espn.com/apis/search/v2';
 const VIEWED_KEY  = 'shribely_viewed_players';
@@ -38,68 +39,79 @@ export function recordPlayerView(player) {
 }
 
 /* ── Player result card ─────────────────────────────────────────────── */
-function PlayerCard({ player, onClick }) {
+/* ── Player result card ─────────────────────────────────────────────── */
+function PlayerCard({ player, onClick, isFav, onToggleFav }) {
   const sport = player.sport;
   const color = SPORT_COLORS[sport] || '#7c3aed';
   const label = SPORT_LABELS[sport] || sport?.toUpperCase();
   return (
-    <button className="player-search-card" onClick={onClick}>
-      <div className="player-search-avatar">
-        {player.headshot ? (
-          <img src={player.headshot} alt="" className="player-search-img"
-            onError={(e) => { e.target.style.display = 'none'; }} />
-        ) : (
-          <div className="player-search-placeholder">{player.name?.[0] || '?'}</div>
-        )}
-      </div>
-      <div className="player-search-info">
-        <div className="player-search-name">{player.name}</div>
-        <div className="player-search-meta">
-          <span className="player-search-sport-badge" style={{ background: `${color}22`, color }}>
-            {label}
-          </span>
-          {player.team && <span className="player-search-team">{player.team}</span>}
-          {player.position && <span className="player-search-pos">{player.position}</span>}
+    <div className="player-search-card-wrap">
+      <button className="player-search-card" onClick={onClick}>
+        <div className="player-search-avatar">
+          {player.headshot ? (
+            <img src={player.headshot} alt="" className="player-search-img"
+              onError={(e) => { e.target.style.display = 'none'; }} />
+          ) : (
+            <div className="player-search-placeholder">{player.name?.[0] || '?'}</div>
+          )}
         </div>
-      </div>
-      <span className="player-search-arrow">›</span>
-    </button>
+        <div className="player-search-info">
+          <div className="player-search-name">{player.name}</div>
+          <div className="player-search-meta">
+            <span className="player-search-sport-badge" style={{ background: `${color}22`, color }}>{label}</span>
+            {player.team && <span className="player-search-team">{player.team}</span>}
+          </div>
+        </div>
+        <span className="player-search-arrow">›</span>
+      </button>
+      <button
+        className={`player-fav-btn ${isFav ? 'player-fav-btn-remove' : 'player-fav-btn-add'}`}
+        title={isFav ? 'Remove from My Players' : 'Add to My Players'}
+        onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
+      >
+        {isFav ? '✕ Remove' : '＋ My Players'}
+      </button>
+    </div>
   );
 }
 
 /* ── Recently viewed grid ───────────────────────────────────────────── */
-function ViewedGrid({ players, onClear }) {
+function ViewedGrid({ players, onClear, onRemoveOne }) {
   const navigate = useNavigate();
   if (!players.length) return null;
   return (
     <div className="player-viewed-section">
       <div className="player-viewed-header">
         <span className="player-viewed-title">Recently Viewed</span>
-        <button className="player-viewed-clear" onClick={onClear}>Clear</button>
+        <button className="player-viewed-clear" onClick={onClear}>Clear All</button>
       </div>
       <div className="player-viewed-grid">
         {players.map((p) => {
           const color = SPORT_COLORS[p.sport] || '#7c3aed';
           const label = SPORT_LABELS[p.sport] || p.sport?.toUpperCase();
           return (
-            <button
-              key={`${p.sport}-${p.id}`}
-              className="player-viewed-card"
-              onClick={() => navigate(`/player/${p.sport}/${p.id}`)}
-            >
-              <div className="player-viewed-avatar">
-                {p.headshot ? (
-                  <img src={p.headshot} alt="" className="player-viewed-img"
-                    onError={(e) => { e.target.style.display = 'none'; }} />
-                ) : (
-                  <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
-                )}
-              </div>
-              <div className="player-viewed-name">{p.name?.split(' ').slice(-1)[0]}</div>
-              <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>
-                {label}
-              </span>
-            </button>
+            <div key={`${p.sport}-${p.id}`} className="player-viewed-card-wrap">
+              <button
+                className="player-viewed-card"
+                onClick={() => navigate(`/player/${p.sport}/${p.id}`)}
+              >
+                <div className="player-viewed-avatar">
+                  {p.headshot ? (
+                    <img src={p.headshot} alt="" className="player-viewed-img"
+                      onError={(e) => { e.target.style.display = 'none'; }} />
+                  ) : (
+                    <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
+                  )}
+                </div>
+                <div className="player-viewed-name">{p.name?.split(' ').slice(-1)[0]}</div>
+                <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
+              </button>
+              <button
+                className="player-viewed-remove"
+                title="Remove from recently viewed"
+                onClick={(e) => { e.stopPropagation(); onRemoveOne(p.id, p.sport); }}
+              >✕</button>
+            </div>
           );
         })}
       </div>
@@ -110,6 +122,7 @@ function ViewedGrid({ players, onClear }) {
 /* ── Main Page ──────────────────────────────────────────────────────── */
 export default function PlayersPage() {
   const navigate = useNavigate();
+  const { favorites, addPlayer, removePlayer } = useFavorites();
   const [query, setQuery]         = useState('');
   const [results, setResults]     = useState([]);
   const [loading, setLoading]     = useState(false);
@@ -174,6 +187,33 @@ export default function PlayersPage() {
   const handleClearViewed = () => {
     localStorage.removeItem(VIEWED_KEY);
     setViewed([]);
+  };
+
+  const handleRemoveOneViewed = (playerId, sport) => {
+    try {
+      let arr = loadViewed().filter((p) => !(p.id === playerId && p.sport === sport));
+      localStorage.setItem(VIEWED_KEY, JSON.stringify(arr));
+      setViewed(arr);
+    } catch {}
+  };
+
+  const isPlayerFav = (player) =>
+    favorites.players.some((p) => p.id === player.id);
+
+  const handleToggleFav = (player) => {
+    if (isPlayerFav(player)) {
+      removePlayer(player.id);
+    } else {
+      // Minimal player object compatible with the favorites system
+      addPlayer({
+        id: player.id,
+        sport: player.sport,
+        displayName: player.name,
+        headshot: { href: player.headshot },
+        team: { displayName: player.team },
+        position: { abbreviation: player.position || '' },
+      });
+    }
   };
 
   const filteredResults = sportFilter === 'all'
@@ -248,6 +288,8 @@ export default function PlayersPage() {
               key={`${player.sport}-${player.id}`}
               player={player}
               onClick={() => handlePlayerClick(player)}
+              isFav={isPlayerFav(player)}
+              onToggleFav={() => handleToggleFav(player)}
             />
           ))}
         </div>
@@ -255,7 +297,7 @@ export default function PlayersPage() {
 
       {/* Recently viewed — show when not actively searching */}
       {!isSearching && (
-        <ViewedGrid players={viewed} onClear={handleClearViewed} />
+        <ViewedGrid players={viewed} onClear={handleClearViewed} onRemoveOne={handleRemoveOneViewed} />
       )}
 
       {/* Empty state */}
