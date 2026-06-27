@@ -80,27 +80,30 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
           const color = SPORT_COLORS[p.sport] || '#7c3aed';
           const label = SPORT_LABELS[p.sport] || p.sport?.toUpperCase();
           return (
-            <div key={`${p.sport}-${p.id}`} className="player-viewed-card-wrap">
-              <button
-                className="player-viewed-card"
-                onClick={() => navigate(`/player/${p.sport}/${p.id}`)}
-              >
-                <div className="player-viewed-avatar">
-                  {p.headshot ? (
-                    <img src={p.headshot} alt="" className="player-viewed-img"
-                      onError={(e) => { e.target.style.display = 'none'; }} />
-                  ) : (
-                    <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
-                  )}
-                </div>
-                <div className="player-viewed-name">{p.name?.split(' ').slice(-1)[0]}</div>
-                <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
-              </button>
+            // Outer div is the card — position:relative so X stays inside
+            <div
+              key={`${p.sport}-${p.id}`}
+              className="player-viewed-card"
+              onClick={() => navigate(`/player/${p.sport}/${p.id}`)}
+              role="button"
+            >
+              {/* X button anchored inside the card */}
               <button
                 className="player-viewed-remove"
-                title="Remove from recently viewed"
+                title="Remove"
                 onClick={(e) => { e.stopPropagation(); onRemoveOne(p.id, p.sport); }}
               >✕</button>
+
+              <div className="player-viewed-avatar">
+                {p.headshot ? (
+                  <img src={p.headshot} alt="" className="player-viewed-img"
+                    onError={(e) => { e.target.style.display = 'none'; }} />
+                ) : (
+                  <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
+                )}
+              </div>
+              <div className="player-viewed-name">{p.name}</div>
+              <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
             </div>
           );
         })}
