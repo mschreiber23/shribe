@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DashboardPlayerCard from '../components/PlayerCard';
 
 const ESPN_SEARCH = 'https://site.api.espn.com/apis/search/v2';
 const VIEWED_KEY  = 'shribely_viewed_players';
@@ -65,9 +66,8 @@ function PlayerCard({ player, onClick }) {
   );
 }
 
-/* ── Recently viewed grid ───────────────────────────────────────────── */
+/* ── Recently viewed grid — uses the same PlayerCard as My Players ─── */
 function ViewedGrid({ players, onClear, onRemoveOne }) {
-  const navigate = useNavigate();
   if (!players.length) return null;
   return (
     <div className="player-viewed-section">
@@ -75,50 +75,22 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
         <span className="player-viewed-title">Recently Viewed</span>
         <button className="player-viewed-clear" onClick={onClear}>Clear All</button>
       </div>
-      <div className="player-viewed-grid">
-        {players.map((p) => {
-          const color = SPORT_COLORS[p.sport] || '#7c3aed';
-          const label = SPORT_LABELS[p.sport] || p.sport?.toUpperCase();
-          return (
-            // Outer div is the card — position:relative so X stays inside
-            <div
-              key={`${p.sport}-${p.id}`}
-              className="player-viewed-card"
-              onClick={() => navigate(`/player/${p.sport}/${p.id}`)}
-              role="button"
-            >
-              {/* X button anchored inside the card */}
-              <button
-                className="player-viewed-remove"
-                title="Remove"
-                onClick={(e) => { e.stopPropagation(); onRemoveOne(p.id, p.sport); }}
-              >✕</button>
-
-              <div className="player-viewed-avatar">
-                  {p.headshot ? (
-                    <img src={p.headshot} alt="" className="player-viewed-img"
-                      onError={(e) => { e.target.style.display = 'none'; }} />
-                  ) : (
-                    <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
-                  )}
-                </div>
-                <div className="player-viewed-name">
-                  {(() => {
-                    const parts = (p.name || '').split(' ');
-                    const last  = parts.slice(-1)[0] || '';
-                    const first = parts.slice(0, -1).join(' ') || '';
-                    return (<><span className="player-viewed-first">{first}</span><span className="player-viewed-last">{last}</span></>);
-                  })()}
-                </div>
-                <div className="player-viewed-meta">
-                  {p.position && <span className="player-viewed-pos">{p.position}</span>}
-                  {p.jersey   && <span className="player-viewed-jersey">{p.jersey.startsWith('#') ? p.jersey : `#${p.jersey}`}</span>}
-                </div>
-                {p.team && <div className="player-viewed-team">{p.team}</div>}
-                <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
-            </div>
-          );
-        })}
+      <div className="player-roster-grid">
+        {players.map((p) => (
+          <div key={`${p.sport}-${p.id}`} className="player-viewed-card-outer">
+            {/* Use the exact same PlayerCard component as My Players on home page */}
+            <DashboardPlayerCard
+              player={{ id: p.id, _position: p.position }}
+              sport={p.sport}
+              editMode={false}
+            />
+            <button
+              className="player-viewed-remove-overlay"
+              title="Remove from recently viewed"
+              onClick={() => onRemoveOne(p.id, p.sport)}
+            >✕</button>
+          </div>
+        ))}
       </div>
     </div>
   );
