@@ -4027,16 +4027,16 @@ thead .dfs-sticky-player {
 .player-viewed-img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 .player-viewed-placeholder { font-size: 17px; font-weight: 800; color: var(--text2); }
 /* Split name: first on line 1, last (bold) on line 2 */
-.player-viewed-name { display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%; padding: 0 2px; }
-.player-viewed-first { font-size: 9px; font-weight: 500; color: var(--text2); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
-.player-viewed-last  { font-size: 11px; font-weight: 800; color: var(--text);  line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+.player-viewed-name { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; padding: 0 4px; }
+.player-viewed-first { font-size: 11px; font-weight: 400; color: var(--text2); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+.player-viewed-last  { font-size: 14px; font-weight: 800; color: var(--text);  line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
 /* Position + jersey row */
-.player-viewed-meta { display: flex; align-items: center; justify-content: center; gap: 4px; }
-.player-viewed-pos    { font-size: 9px; font-weight: 700; color: var(--text2); }
-.player-viewed-jersey { font-size: 9px; font-weight: 600; color: var(--text2); }
+.player-viewed-meta { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.player-viewed-pos    { font-size: 11px; font-weight: 700; color: var(--text2); }
+.player-viewed-jersey { font-size: 11px; font-weight: 600; color: var(--text2); }
 /* Team name */
-.player-viewed-team { font-size: 9px; font-weight: 600; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; padding: 0 2px; }
-.player-viewed-badge { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 6px; }
+.player-viewed-team { font-size: 11px; font-weight: 600; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; padding: 0 2px; }
+.player-viewed-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; }
 
 /* Empty state */
 .players-empty { text-align: center; padding: 40px 20px; }

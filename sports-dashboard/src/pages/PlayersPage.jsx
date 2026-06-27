@@ -112,7 +112,7 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
                 </div>
                 <div className="player-viewed-meta">
                   {p.position && <span className="player-viewed-pos">{p.position}</span>}
-                  {p.jersey   && <span className="player-viewed-jersey">#{p.jersey}</span>}
+                  {p.jersey   && <span className="player-viewed-jersey">{p.jersey.startsWith('#') ? p.jersey : `#${p.jersey}`}</span>}
                 </div>
                 {p.team && <div className="player-viewed-team">{p.team}</div>}
                 <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
