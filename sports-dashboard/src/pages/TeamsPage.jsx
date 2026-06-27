@@ -182,8 +182,7 @@ export default function TeamsPage() {
         <div className="players-loading"><div className="auth-spinner" /><span>Loading teams…</span></div>
       )}
 
-      {/* Recently viewed */}
-      <ViewedTeams teams={viewed} onClear={() => { localStorage.removeItem(VIEWED_KEY); setViewed([]); }} />
+      {/* Recently viewed teams intentionally omitted */}
     </div>
   );
 }

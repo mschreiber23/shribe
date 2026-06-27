@@ -95,15 +95,27 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
               >✕</button>
 
               <div className="player-viewed-avatar">
-                {p.headshot ? (
-                  <img src={p.headshot} alt="" className="player-viewed-img"
-                    onError={(e) => { e.target.style.display = 'none'; }} />
-                ) : (
-                  <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
-                )}
-              </div>
-              <div className="player-viewed-name">{p.name}</div>
-              <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
+                  {p.headshot ? (
+                    <img src={p.headshot} alt="" className="player-viewed-img"
+                      onError={(e) => { e.target.style.display = 'none'; }} />
+                  ) : (
+                    <div className="player-viewed-placeholder">{p.name?.[0] || '?'}</div>
+                  )}
+                </div>
+                <div className="player-viewed-name">
+                  {(() => {
+                    const parts = (p.name || '').split(' ');
+                    const last  = parts.slice(-1)[0] || '';
+                    const first = parts.slice(0, -1).join(' ') || '';
+                    return (<><span className="player-viewed-first">{first}</span><span className="player-viewed-last">{last}</span></>);
+                  })()}
+                </div>
+                <div className="player-viewed-meta">
+                  {p.position && <span className="player-viewed-pos">{p.position}</span>}
+                  {p.jersey   && <span className="player-viewed-jersey">#{p.jersey}</span>}
+                </div>
+                {p.team && <div className="player-viewed-team">{p.team}</div>}
+                <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
             </div>
           );
         })}

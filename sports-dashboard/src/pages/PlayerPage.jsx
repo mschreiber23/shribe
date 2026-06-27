@@ -391,9 +391,10 @@ export default function PlayerPage() {
             id: playerId,
             sport,
             name: ath.displayName,
-            team: ath.team?.displayName || '',
+            team: ath.team?.abbreviation || ath.team?.shortDisplayName || ath.team?.displayName || '',
             headshot: ath.headshot?.href || `https://a.espncdn.com/i/headshots/${sport}/players/full/${playerId}.png`,
             position: ath.position?.abbreviation || '',
+            jersey: ath.displayJersey || ath.jersey || '',
           });
         }
       })
