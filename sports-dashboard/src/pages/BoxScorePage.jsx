@@ -442,17 +442,19 @@ function getColKey(sport, type) {
 
 function StatsTable({ statGroup, sport }) {
   const navigate = useNavigate();
-  const labels = statGroup.labels || [];
+  const labels   = statGroup.labels || [];
   const athletes = statGroup.athletes || [];
-  const totals = statGroup.totals || [];
-  const type = (statGroup.type || statGroup.name || '').toLowerCase();
-  const key = getColKey(sport, type);
+  const totals   = statGroup.totals || [];
+  const type     = (statGroup.type || statGroup.name || '').toLowerCase();
+  const isMlbBat = sport === 'mlb' && type !== 'pitching';
+  const key  = getColKey(sport, type);
   const want = key ? COLS[key] : [];
   const cols = want.length
     ? want.map((w) => ({ label: w, index: labels.indexOf(w) })).filter((c) => c.index !== -1)
     : labels.map((l, i) => ({ label: l, index: i })).slice(0, 8);
   const hl = HL[sport] || [];
   if (!athletes.length) return null;
+
   return (
     <div className="bsp-table-wrap">
       <table className="bsp-table">
@@ -465,14 +467,15 @@ function StatsTable({ statGroup, sport }) {
         <tbody>
           {athletes.map((a, i) => {
             const player = a.athlete || {};
-            const stats = a.stats || [];
-            const dnp = a.didNotPlay || !stats.length;
+            const stats  = a.stats || [];
+            const dnp    = a.didNotPlay || !stats.length;
+            // MLB: indent substitute players (starter===false)
+            const isSub  = isMlbBat && a.starter === false;
             return (
-              <tr key={i} className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${player.id ? 'bsp-tr-clickable' : ''}`}
+              <tr key={i} className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${player.id ? 'bsp-tr-clickable' : ''} ${isSub ? 'bsp-tr-sub' : ''}`}
                 onClick={() => player.id && navigate(`/player/${sport}/${player.id}`)}>
                 <td className="bsp-td bsp-td-player">
-                  <div className="bsp-player-cell">
-                    {player.headshot?.href && <img src={player.headshot.href} alt="" className="bsp-avatar" />}
+                  <div className={`bsp-player-cell ${isSub ? 'bsp-player-sub' : ''}`}>
                     <div>
                       <span className="bsp-player-name">{player.shortName || player.displayName}</span>
                       <span className="bsp-player-pos"> {a.position?.abbreviation || ''}</span>
@@ -501,9 +504,33 @@ function StatsTable({ statGroup, sport }) {
   );
 }
 
-function TeamStats({ group, sport }) {
-  const team = group?.team || {};
-  const stats = group?.statistics || [];
+/* ── MLB batting/fielding notes (2B, HR, RBI, DP, etc.) ──────────── */
+function MLBGameNotes({ details }) {
+  if (!details?.length) return null;
+  const batting  = details.find((d) => d.name === 'battingDetails');
+  const fielding = details.find((d) => d.name === 'fieldingDetails');
+  const sections = [batting, fielding].filter(Boolean);
+  if (!sections.length) return null;
+  return (
+    <div className="bsp-mlb-notes">
+      {sections.map((section) => (
+        <div key={section.name} className="bsp-notes-section">
+          <div className="bsp-notes-heading">{section.displayName?.toUpperCase()}</div>
+          {(section.stats || []).map((stat) => (
+            <div key={stat.abbreviation} className="bsp-notes-row">
+              <span className="bsp-notes-label">{stat.shortDisplayName || stat.abbreviation}:</span>
+              <span className="bsp-notes-value">{stat.displayValue}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TeamStats({ group, sport, teamDetails }) {
+  const team    = group?.team || {};
+  const stats   = group?.statistics || [];
   const batting  = stats.find((s) => (s.type||s.name) === 'batting')  || stats[0];
   const pitching = stats.find((s) => (s.type||s.name) === 'pitching') || stats[1];
   return (
@@ -514,6 +541,7 @@ function TeamStats({ group, sport }) {
           <span>{team.displayName} Hitting</span>
         </div>
         <StatsTable statGroup={batting} sport={sport} />
+        {sport === 'mlb' && <MLBGameNotes details={teamDetails} />}
       </>)}
       {pitching && (<>
         <div className="bsp-stats-heading" style={{marginTop:16}}>
@@ -616,15 +644,20 @@ export default function BoxScorePage() {
   const status = comp?.status;
   const isLive = status?.type?.state === 'in';
   const isFinal = status?.type?.state === 'post';
-  const players   = data?.boxscore?.players || [];
-  const situation = data?.situation;
-  const rosters   = data?.rosters || [];
+  const players      = data?.boxscore?.players || [];
+  const bsTeams      = data?.boxscore?.teams   || [];  // contains .details with batting/fielding notes
+  const situation    = data?.situation;
+  const rosters      = data?.rosters || [];
 
   const away = comps.find((c) => c.homeAway === 'away') || comps[0];
   const home = comps.find((c) => c.homeAway === 'home') || comps[1];
-  const awayGroup = players.find((p) => p.team?.id === away?.team?.id) || players[0];
-  const homeGroup = players.find((p) => p.team?.id === home?.team?.id) || players[1];
-  const groups = [awayGroup, homeGroup].filter(Boolean);
+  const awayGroup   = players.find((p) => p.team?.id === away?.team?.id) || players[0];
+  const homeGroup   = players.find((p) => p.team?.id === home?.team?.id) || players[1];
+  const groups      = [awayGroup, homeGroup].filter(Boolean);
+  // Team details (batting/fielding notes) keyed by team id
+  const awayDetails = bsTeams.find((t) => t.team?.id === away?.team?.id)?.details || [];
+  const homeDetails = bsTeams.find((t) => t.team?.id === home?.team?.id)?.details || [];
+  const groupDetails = [awayDetails, homeDetails];
 
   const isPre = status?.type?.state === 'pre';
 
@@ -692,7 +725,7 @@ export default function BoxScorePage() {
                     </button>
                   </div>
                 )}
-                {groups[bsTeam] && <TeamStats group={groups[bsTeam]} sport={sport} />}
+                {groups[bsTeam] && <TeamStats group={groups[bsTeam]} sport={sport} teamDetails={groupDetails[bsTeam]} />}
                 {!groups.length && <div className="empty-state"><div className="empty-icon">📋</div><p>Box score not available yet.</p></div>}
               </div>
             )}

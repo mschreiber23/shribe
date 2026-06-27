@@ -2430,6 +2430,18 @@ body {
 .bsp-tr-clickable { cursor: pointer; }
 .bsp-tr-clickable:hover { background: color-mix(in srgb, var(--accent) 8%, var(--bg3)); }
 .bsp-tr-clickable:hover .bsp-player-name { color: var(--accent2); }
+/* Substitute players indented */
+.bsp-tr-sub { background: color-mix(in srgb, var(--bg3) 30%, transparent); }
+.bsp-player-sub { padding-left: 20px !important; }
+.bsp-player-sub .bsp-player-name { color: var(--text2); font-size: 12px; }
+/* Batting / Fielding notes section */
+.bsp-mlb-notes { padding: 10px 14px; border-top: 1px solid var(--border); }
+.bsp-notes-section { margin-bottom: 10px; }
+.bsp-notes-section:last-child { margin-bottom: 0; }
+.bsp-notes-heading { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 6px; }
+.bsp-notes-row { display: flex; gap: 6px; font-size: 11px; line-height: 1.5; margin-bottom: 2px; flex-wrap: wrap; }
+.bsp-notes-label { font-weight: 800; color: var(--text); white-space: nowrap; }
+.bsp-notes-value { color: var(--text2); flex: 1; }
 .bsp-td { padding: 8px 10px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; font-size: 13px; }
 .bsp-td-player { text-align: left; }
 .bsp-hl { font-weight: 800; color: var(--text); }
