@@ -4013,18 +4013,38 @@ thead .dfs-sticky-player {
 .player-viewed-title { font-size: 13px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
 .player-viewed-clear { background: none; border: none; color: var(--text2); font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .player-viewed-clear:hover { color: var(--danger); }
-/* Recently viewed — same grid as My Players */
-.player-viewed-card-outer { position: relative; }
-/* X button floats over the top-right of the sports card */
-.player-viewed-remove-overlay {
-  position: absolute; top: 8px; right: 8px; z-index: 10;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2);
-  color: #fff; font-size: 10px; font-weight: 800;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
+/* Recently viewed grid */
+.player-viewed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+.player-viewed-card {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; cursor: pointer; transition: all 0.15s; text-align: center;
 }
-.player-viewed-remove-overlay:hover { background: #f87171; border-color: #f87171; }
+.player-viewed-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+/* Remove overlay X */
+.player-viewed-remove-overlay {
+  position: absolute; top: 6px; right: 6px; z-index: 10;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; font-size: 9px; font-weight: 800;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; line-height: 1; padding: 0;
+}
+.player-viewed-remove-overlay:hover { background: #ef4444; }
+/* Photo area */
+.player-viewed-photo-wrap {
+  width: 100%; height: 90px; overflow: hidden; background: var(--bg2);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.player-viewed-photo { width: 100%; height: 110px; object-fit: cover; object-position: top center; }
+.player-viewed-initials { font-size: 28px; font-weight: 800; color: var(--text2); padding-bottom: 8px; }
+/* Text info */
+.player-viewed-info { width: 100%; padding: 8px 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.player-viewed-first { font-size: 11px; font-weight: 400; color: var(--text2); line-height: 1; }
+.player-viewed-last  { font-size: 14px; font-weight: 800; color: var(--text);  line-height: 1.2; }
+.player-viewed-sub   { display: flex; gap: 4px; font-size: 10px; color: var(--text2); font-weight: 600; }
+.player-viewed-team  { font-size: 10px; color: var(--text2); font-weight: 600; }
+.player-viewed-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 6px; margin-top: 2px; }
 
 /* Empty state */
 .players-empty { text-align: center; padding: 40px 20px; }
