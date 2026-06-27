@@ -109,7 +109,7 @@ function NavItem({ item, active }) {
     return (
       <Link to={item.path} className={`nav-item nav-item-logo ${active ? 'nav-item-active' : ''}`}>
         <div className="nav-logo-wrap">
-          <ShribelyIcon size={58} />
+          <ShribelyIcon size={72} />
         </div>
         {/* No label under the logo */}
       </Link>

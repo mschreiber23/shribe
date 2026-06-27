@@ -3114,8 +3114,8 @@ body {
 .bottom-nav .nav-item svg { width: 22px; height: 22px; }
 .bottom-nav .nav-item { padding: 6px 4px; gap: 3px; }
 .bottom-nav .nav-item-logo { flex: 1.4; }
-/* Logo lifts above the bar and is noticeably larger */
-.bottom-nav .nav-logo-wrap { margin-top: -18px; filter: drop-shadow(0 4px 12px rgba(168,85,247,0.6)); }
+/* Logo dominates the center — lifts well above the bar */
+.bottom-nav .nav-logo-wrap { margin-top: -28px; filter: drop-shadow(0 6px 16px rgba(168,85,247,0.7)); }
 
 /* Top nav (desktop — hidden on mobile) */
 /* ── Global sticky ticker (shows on non-home pages) ── */
