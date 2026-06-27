@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
+import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
 
 /* Format a stat value:
@@ -542,6 +543,7 @@ export default function PlayerPage() {
     }
   }, [careerTab, sport]);
 
+  const { favorites, addPlayer, removePlayer } = useFavorites();
   const athlete = bio?.athlete || {};
   const summary = athlete.statsSummary?.statistics || [];
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
@@ -711,6 +713,26 @@ export default function PlayerPage() {
               <span className="pp-statcast-badge">Powered by Baseball Savant</span>
             </Link>
           )}
+
+          {/* Add / Remove from My Players */}
+          {(()=>{
+            const isFav = favorites.players.some((p) => p.id === playerId);
+            return (
+              <button
+                className={`pp-fav-btn ${isFav ? 'pp-fav-btn-remove' : 'pp-fav-btn-add'}`}
+                onClick={() => isFav ? removePlayer(playerId) : addPlayer({
+                  id: playerId, sport,
+                  displayName: athlete.displayName,
+                  headshot: athlete.headshot,
+                  team: athlete.team,
+                  position: athlete.position,
+                  _position: athlete.position?.abbreviation || '',
+                })}
+              >
+                {isFav ? '✕  Remove from My Players' : '＋  Add to My Players'}
+              </button>
+            );
+          })()}
 
           {/* Career stats table */}
           <div className="pp-stats-section">

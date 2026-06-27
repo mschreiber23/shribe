@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useFavorites } from '../context/FavoritesContext';
 
 const ESPN_SEARCH = 'https://site.api.espn.com/apis/search/v2';
 const VIEWED_KEY  = 'shribely_viewed_players';
@@ -40,38 +39,29 @@ export function recordPlayerView(player) {
 
 /* ── Player result card ─────────────────────────────────────────────── */
 /* ── Player result card ─────────────────────────────────────────────── */
-function PlayerCard({ player, onClick, isFav, onToggleFav }) {
+function PlayerCard({ player, onClick }) {
   const sport = player.sport;
   const color = SPORT_COLORS[sport] || '#7c3aed';
   const label = SPORT_LABELS[sport] || sport?.toUpperCase();
   return (
-    <div className="player-search-card-wrap">
-      <button className="player-search-card" onClick={onClick}>
-        <div className="player-search-avatar">
-          {player.headshot ? (
-            <img src={player.headshot} alt="" className="player-search-img"
-              onError={(e) => { e.target.style.display = 'none'; }} />
-          ) : (
-            <div className="player-search-placeholder">{player.name?.[0] || '?'}</div>
-          )}
+    <button className="player-search-card" onClick={onClick}>
+      <div className="player-search-avatar">
+        {player.headshot ? (
+          <img src={player.headshot} alt="" className="player-search-img"
+            onError={(e) => { e.target.style.display = 'none'; }} />
+        ) : (
+          <div className="player-search-placeholder">{player.name?.[0] || '?'}</div>
+        )}
+      </div>
+      <div className="player-search-info">
+        <div className="player-search-name">{player.name}</div>
+        <div className="player-search-meta">
+          <span className="player-search-sport-badge" style={{ background: `${color}22`, color }}>{label}</span>
+          {player.team && <span className="player-search-team">{player.team}</span>}
         </div>
-        <div className="player-search-info">
-          <div className="player-search-name">{player.name}</div>
-          <div className="player-search-meta">
-            <span className="player-search-sport-badge" style={{ background: `${color}22`, color }}>{label}</span>
-            {player.team && <span className="player-search-team">{player.team}</span>}
-          </div>
-        </div>
-        <span className="player-search-arrow">›</span>
-      </button>
-      <button
-        className={`player-fav-btn ${isFav ? 'player-fav-btn-remove' : 'player-fav-btn-add'}`}
-        title={isFav ? 'Remove from My Players' : 'Add to My Players'}
-        onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
-      >
-        {isFav ? '✕ Remove' : '＋ My Players'}
-      </button>
-    </div>
+      </div>
+      <span className="player-search-arrow">›</span>
+    </button>
   );
 }
 
@@ -122,7 +112,6 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
 /* ── Main Page ──────────────────────────────────────────────────────── */
 export default function PlayersPage() {
   const navigate = useNavigate();
-  const { favorites, addPlayer, removePlayer } = useFavorites();
   const [query, setQuery]         = useState('');
   const [results, setResults]     = useState([]);
   const [loading, setLoading]     = useState(false);
@@ -197,25 +186,6 @@ export default function PlayersPage() {
     } catch {}
   };
 
-  const isPlayerFav = (player) =>
-    favorites.players.some((p) => p.id === player.id);
-
-  const handleToggleFav = (player) => {
-    if (isPlayerFav(player)) {
-      removePlayer(player.id);
-    } else {
-      // Minimal player object compatible with the favorites system
-      addPlayer({
-        id: player.id,
-        sport: player.sport,
-        displayName: player.name,
-        headshot: { href: player.headshot },
-        team: { displayName: player.team },
-        position: { abbreviation: player.position || '' },
-      });
-    }
-  };
-
   const filteredResults = sportFilter === 'all'
     ? results
     : results.filter((r) => r.sport === sportFilter);
@@ -288,8 +258,6 @@ export default function PlayersPage() {
               key={`${player.sport}-${player.id}`}
               player={player}
               onClick={() => handlePlayerClick(player)}
-              isFav={isPlayerFav(player)}
-              onToggleFav={() => handleToggleFav(player)}
             />
           ))}
         </div>
