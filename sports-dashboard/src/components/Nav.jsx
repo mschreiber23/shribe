@@ -90,14 +90,13 @@ function TeamsIcon({ active }) {
   );
 }
 
-// Me removed from nav — logout now lives on the dashboard homepage
+// Nav order: ShribeIQ - Standings - Shribely Logo - Players - Leaders
 const NAV_ITEMS = [
-  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
-  { path: '/teams',     label: 'Teams',     Icon: TeamsIcon },
-  { path: '/players',   label: 'Search',    Icon: PlayersIcon },
-  { path: '/',          label: '',          logo: true },   // no label under logo
-  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
   { path: '/dfs',       label: 'ShribeIQ',  Icon: DFSIcon },
+  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
+  { path: '/',          label: '',          logo: true },
+  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
+  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
 ];
 
 function NavItem({ item, active }) {
@@ -105,7 +104,7 @@ function NavItem({ item, active }) {
     return (
       <Link to={item.path} className={`nav-item nav-item-logo ${active ? 'nav-item-active' : ''}`}>
         <div className="nav-logo-wrap">
-          <ShribelyIcon size={48} />
+          <ShribelyIcon size={52} />
         </div>
         {/* No label under the logo */}
       </Link>
