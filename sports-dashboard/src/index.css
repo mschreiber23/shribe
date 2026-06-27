@@ -3110,12 +3110,12 @@ body {
 .dashboard-signout-btn:hover { border-color: #f87171; color: #f87171; }
 .nav-label-logo { font-size: 9px; font-weight: 700; color: var(--accent2); }
 
-/* 5-item nav — more breathing room now */
+/* 5-item nav */
 .bottom-nav .nav-item svg { width: 22px; height: 22px; }
 .bottom-nav .nav-item { padding: 6px 4px; gap: 3px; }
 .bottom-nav .nav-item-logo { flex: 1.4; }
-/* Ensure logo wrap lifts the icon visually above the bar */
-.bottom-nav .nav-logo-wrap { margin-top: -12px; }
+/* Logo lifts above the bar and is noticeably larger */
+.bottom-nav .nav-logo-wrap { margin-top: -18px; filter: drop-shadow(0 4px 12px rgba(168,85,247,0.6)); }
 
 /* Top nav (desktop — hidden on mobile) */
 /* ── Global sticky ticker (shows on non-home pages) ── */

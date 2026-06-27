@@ -4,16 +4,21 @@ import { useAuth } from '../context/AuthContext';
 /* ── Shribely Logo Icon ──────────────────────────────── */
 function ShribelyIcon({ size = 38 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="19" cy="19" r="19" fill="url(#sg)" />
+    <svg width={size} height={size} viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="sg" x1="0" y1="0" x2="38" y2="38" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#7c3aed" />
-          <stop offset="100%" stopColor="#a855f7" />
+        <linearGradient id="sg" x1="0" y1="0" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#6d28d9" />
+          <stop offset="100%" stopColor="#c026d3" />
         </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
       </defs>
-      {/* Stylised S */}
-      <text x="19" y="26" textAnchor="middle" fontSize="22" fontWeight="900" fontFamily="Georgia, serif" fill="white" letterSpacing="-1">S</text>
+      {/* Circle background */}
+      <circle cx="30" cy="30" r="30" fill="url(#sg)" />
+      {/* Lightning bolt — speed + analytics */}
+      <path d="M35 10L18 32h13L27 50L44 27H31z" fill="white" filter="url(#glow)" />
     </svg>
   );
 }
@@ -104,7 +109,7 @@ function NavItem({ item, active }) {
     return (
       <Link to={item.path} className={`nav-item nav-item-logo ${active ? 'nav-item-active' : ''}`}>
         <div className="nav-logo-wrap">
-          <ShribelyIcon size={52} />
+          <ShribelyIcon size={58} />
         </div>
         {/* No label under the logo */}
       </Link>
