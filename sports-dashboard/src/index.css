@@ -778,7 +778,7 @@ body {
   border-top: 1px solid var(--border); flex-wrap: wrap;
 }
 /* R/H/E section */
-.final-mlb-left { display: flex; flex-direction: column; min-width: 200px; flex: 1; }
+.final-mlb-left { display: flex; flex-direction: column; min-width: 200px; flex: 1; align-items: flex-start; }
 .final-rhe-header { display: flex; align-items: center; margin-bottom: 2px; }
 .final-rhe-team-col { flex: 1; }
 .final-rhe-label { width: 28px; text-align: right; font-size: 10px; font-weight: 800; color: var(--text2); letter-spacing: 0.3px; }
