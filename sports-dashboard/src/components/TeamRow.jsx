@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
 import { useFavorites } from '../context/FavoritesContext';
-import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import { SPORTS, getTeamLogo, getTeamLogoFallback, getGameBoxscore } from '../api/espn';
 
 function LogoImg({ team, className, style }) {
   const dark = getTeamLogo(team);
@@ -111,6 +111,11 @@ function GameScore({ game, teamId, sport, onOpen }) {
     );
   }
 
+  // ── Final MLB game: enhanced R/H/E + decisions layout ──────────────
+  if (isFinal && sport === 'mlb') {
+    return <FinalMLBGame game={game} teamId={teamId} sport={sport} />;
+  }
+
   return (
     <button className="tr2-game" onClick={onOpen}>
       <div className="tr2-status">
@@ -122,6 +127,110 @@ function GameScore({ game, teamId, sport, onOpen }) {
       </div>
       <div className="tr2-tap-hint">Box Score →</div>
     </button>
+  );
+}
+
+/* ── Final MLB game — ESPN-style R/H/E with win/loss/save ─────────── */
+function FinalMLBGame({ game, teamId, sport }) {
+  const navigate = useNavigate();
+  const [decisions, setDecisions] = useState(null);
+
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
+
+  useEffect(() => {
+    getGameBoxscore(sport, game.id)
+      .then((data) => { if (data.decisions) setDecisions(data.decisions); })
+      .catch(() => {});
+  }, [game.id]);
+
+  const RHERow = ({ c }) => {
+    const isMine = String(c.team?.id) === String(teamId);
+    const rec = c.records?.[0]?.summary || '';
+    const splitRec = c.homeAway === 'home'
+      ? (c.records?.find((r) => r.name === 'home' || r.type === 'home') || c.records?.[1])?.summary
+      : (c.records?.find((r) => r.name === 'road' || r.type === 'road') || c.records?.[2])?.summary;
+    return (
+      <div className={`final-rhe-row ${isMine ? 'final-rhe-mine' : ''}`}>
+        <div className="final-rhe-team">
+          <LogoImg team={c.team} className="final-rhe-logo" />
+          <div>
+            <span className={`final-rhe-name ${isMine ? 'tr2-mine-name' : ''}`}>
+              {c.team?.shortDisplayName || c.team?.abbreviation}
+            </span>
+            <span className="final-rhe-rec">
+              ({rec}{splitRec ? `, ${splitRec} ${c.homeAway === 'home' ? 'Home' : 'Away'}` : ''})
+            </span>
+          </div>
+        </div>
+        <span className={`final-rhe-val ${c.winner ? 'final-rhe-winner' : ''}`}>{getScore(c) ?? '-'}</span>
+        <span className="final-rhe-val final-rhe-dim">{c.hits ?? '-'}</span>
+        <span className="final-rhe-val final-rhe-dim">{c.errors ?? '-'}</span>
+      </div>
+    );
+  };
+
+  const DecisionRow = ({ label, pitcher }) => {
+    if (!pitcher?.athlete) return null;
+    const ath = pitcher.athlete;
+    const headshot = typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href;
+    const stats = pitcher.statistics || [];
+    const wl  = stats.find((s) => ['W-L','ERA'].includes(s.abbreviation));
+    const era = stats.find((s) => s.abbreviation === 'ERA');
+    const sv  = stats.find((s) => s.abbreviation === 'SV');
+    const statStr = label === 'SAVE'
+      ? (sv ? `(${sv.displayValue})` : '')
+      : [wl, era].filter(Boolean).map(s => s.displayValue).join(', ')
+        ? `(${[wl, era].filter(Boolean).map(s => s.displayValue).join(', ')})`
+        : '';
+    return (
+      <div className="final-decision-row"
+        onClick={() => ath.id && navigate(`/player/${sport}/${ath.id}`)}
+        style={{ cursor: ath.id ? 'pointer' : 'default' }}>
+        <span className="final-decision-label">{label}</span>
+        {headshot && <img src={headshot} alt="" className="final-decision-photo" onError={(e) => { e.target.style.display='none'; }} />}
+        <div className="final-decision-info">
+          <span className="final-decision-name" style={{ color: ath.id ? 'var(--accent2)' : 'var(--text)' }}>
+            {ath.shortName || ath.displayName}{ath.jersey ? ` #${ath.jersey}` : ''}
+          </span>
+          {statStr && <span className="final-decision-stats">{statStr}</span>}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="final-mlb-box">
+      {/* Left: FINAL + R/H/E table */}
+      <div className="final-mlb-left">
+        <span className="badge badge-final" style={{ marginBottom: 8 }}>FINAL</span>
+        <div className="final-rhe-header">
+          <span className="final-rhe-team-col" />
+          <span className="final-rhe-label">R</span>
+          <span className="final-rhe-label">H</span>
+          <span className="final-rhe-label">E</span>
+        </div>
+        <RHERow c={away} />
+        <RHERow c={home} />
+      </div>
+
+      {/* Middle: Win/Loss/Save */}
+      {decisions && (
+        <div className="final-mlb-decisions">
+          <DecisionRow label="WIN"  pitcher={decisions.winner} />
+          <DecisionRow label="LOSS" pitcher={decisions.loser} />
+          {decisions.save && <DecisionRow label="SAVE" pitcher={decisions.save} />}
+        </div>
+      )}
+
+      {/* Right: Gamecast + Box Score */}
+      <div className="final-mlb-actions">
+        <button className="final-action-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>Gamecast</button>
+        <button className="final-action-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>Box Score</button>
+      </div>
+    </div>
   );
 }
 

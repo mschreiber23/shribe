@@ -772,6 +772,48 @@ body {
 
 .tr2-no-game { font-size: 13px; color: var(--text2); padding: 14px 16px; }
 
+/* ── Final MLB game — ESPN-style R/H/E with decisions ─────────────── */
+.final-mlb-box {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+  border-top: 1px solid var(--border); flex-wrap: wrap;
+}
+/* R/H/E section */
+.final-mlb-left { display: flex; flex-direction: column; min-width: 200px; flex: 1; }
+.final-rhe-header { display: flex; align-items: center; margin-bottom: 2px; }
+.final-rhe-team-col { flex: 1; }
+.final-rhe-label { width: 28px; text-align: right; font-size: 10px; font-weight: 800; color: var(--text2); letter-spacing: 0.3px; }
+.final-rhe-row { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
+.final-rhe-row:last-child { border-bottom: none; }
+.final-rhe-team { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+.final-rhe-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+.final-rhe-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.final-rhe-rec { font-size: 10px; color: var(--text2); margin-left: 4px; }
+.final-rhe-val { width: 28px; text-align: right; font-size: 14px; font-weight: 700; color: var(--text2); font-variant-numeric: tabular-nums; }
+.final-rhe-winner { color: var(--text); font-size: 16px; }
+.final-rhe-dim { color: var(--text2); font-size: 13px; font-weight: 500; }
+.final-rhe-mine .final-rhe-name { color: var(--team-accent, var(--accent)); }
+/* Decisions */
+.final-mlb-decisions { display: flex; flex-direction: column; gap: 6px; min-width: 160px; flex: 1; padding-top: 2px; }
+.final-decision-row { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.final-decision-row:hover .final-decision-name { text-decoration: underline; }
+.final-decision-label { font-size: 9px; font-weight: 800; color: var(--text2); letter-spacing: 0.5px; width: 30px; flex-shrink: 0; }
+.final-decision-photo { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
+.final-decision-info { display: flex; flex-direction: column; gap: 1px; }
+.final-decision-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.final-decision-stats { font-size: 10px; color: var(--text2); }
+/* Action buttons */
+.final-mlb-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex-shrink: 0; }
+.final-action-btn {
+  padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  background: transparent; border: 1px solid var(--accent2); color: var(--accent2);
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.final-action-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+@media (max-width: 500px) {
+  .final-mlb-decisions { display: none; } /* hide decisions on small phones to save space */
+  .final-mlb-actions { flex-direction: row; }
+}
+
 .tr2-game {
   width: 100%; background: transparent; border: none; color: inherit;
   text-align: left; padding: 12px 16px;
