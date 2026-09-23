@@ -13,31 +13,35 @@ A personal gym workout tracker. Create workout plans from your spreadsheets, bui
 
 ### Requirements
 
-- Node.js 18+
+- Node.js 22+
 
-### Install dependencies
+### Install and run the site locally
+
+The live site is a static app, same as the sports dashboard. Data lives in Supabase, so you only need the client:
 
 ```bash
-npm install
-npm --prefix server install
 npm --prefix client install
+npm --prefix client run dev
 ```
 
-### Run in development
+Open http://localhost:5173.
 
-```bash
-npm run dev
-```
+The first time, run `supabase/setup.sql` in the Supabase SQL editor (the same project the sports app uses).
 
-- Server: http://localhost:3001
-- Client (Vite): http://localhost:5173
+## Deployment
 
-### Production build
+This matches the sports app: GitHub Actions builds the Vite app and publishes it to GitHub Pages.
 
-```bash
-npm run build   # builds client into client/dist
-npm start       # serves API + built client on port 3001
-```
+- Workflow: `.github/workflows/deploy.yml`
+- Custom domain file: `client/public/CNAME` (`shribetrakr.com`)
+- A push to `main` builds `client/` and updates the `gh-pages` branch
+
+Point the domain at GitHub Pages, then Railway can be removed:
+
+- `A` records for `shribetrakr.com`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+- `CNAME` for `www` → `mschreiber23.github.io`
+
+Whoop and photo import run as Supabase Edge Functions (`supabase/functions`). They need `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, and `OPENAI_API_KEY` set in the Supabase project. In the Whoop app, set the redirect URL to `https://shribetrakr.com/whoop/callback`.
 
 ## CSV Import Format
 
@@ -65,6 +69,6 @@ Pull Day,Barbell Row,3x8,
 
 ## Tech Stack
 
-- **Backend**: Node.js + Express + SQLite (via better-sqlite3)
-- **Frontend**: React + Vite + TailwindCSS
-- **Data**: File-based SQLite stored in `server/data/gym.db`
+- **Frontend**: React + Vite + TailwindCSS, hosted on GitHub Pages
+- **Data and login**: Supabase (same project as the sports app)
+- **Whoop and photo import**: Supabase Edge Functions, so those API secrets stay off the website

@@ -15,7 +15,7 @@ import {
   getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar,
   getInbox, acceptShare, dismissShare, getFollowers,
   getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop,
-  getWhoopStats, getWhoopWorkouts,
+  getWhoopStats, getWhoopWorkouts, connectWhoop,
   getSessions, getSession, deleteSession,
 } from '../api';
 import Button from '../components/Button';
@@ -349,7 +349,7 @@ function WhoopTab() {
         <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(99,102,241,0.15)' }}><Heart size={28} className="text-indigo-400" /></div>
         <h2 className="text-lg font-bold mb-2">Connect Your Whoop</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>See recovery, HRV, resting heart rate, strain, and sleep all in one place.</p>
-        <Button onClick={() => { const token = localStorage.getItem('gymtrack_token'); window.location.href = `/api/whoop/connect?token=${encodeURIComponent(token)}`; }}>
+        <Button onClick={() => connectWhoop()}>
           <Link2 size={15} /> Connect Whoop
         </Button>
       </div>

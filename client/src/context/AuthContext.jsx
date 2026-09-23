@@ -1,41 +1,46 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('gymtrack_token'));
+  const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Attach token to every request
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const session = data.session;
+      setToken(session?.access_token ?? null);
+      setUser(session?.user ? { id: session.user.id, email: session.user.email } : null);
+      if (session?.access_token) localStorage.setItem('gymtrack_token', session.access_token);
+      setLoading(false);
+    });
 
-  // Verify token on load
-  useEffect(() => {
-    if (!token) { setLoading(false); return; }
-    axios.get('/api/auth/me')
-      .then(r => setUser(r.data))
-      .catch(() => { logout(); })
-      .finally(() => setLoading(false));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setToken(session?.access_token ?? null);
+      setUser(session?.user ? { id: session.user.id, email: session.user.email } : null);
+      if (session?.access_token) localStorage.setItem('gymtrack_token', session.access_token);
+      else localStorage.removeItem('gymtrack_token');
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = (newToken, newUser) => {
-    localStorage.setItem('gymtrack_token', newToken);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    if (newToken) localStorage.setItem('gymtrack_token', newToken);
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
+    supabase.auth.signOut();
     localStorage.removeItem('gymtrack_token');
-    delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);
   };

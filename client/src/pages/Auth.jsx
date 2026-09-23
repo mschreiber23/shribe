@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 
@@ -12,19 +12,35 @@ export default function Auth() {
   const [name, setName] = useState('');
   const { login } = useAuth();
 
-  const { mutate: submit, isPending, error } = useMutation({
+  const { mutate: submit, isPending } = useMutation({
     mutationFn: async () => {
-      const url = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-      const body = mode === 'login' ? { email, password } : { email, password, name };
-      const res = await axios.post(url, body);
-      return res.data;
+      const trimmed = email.trim().toLowerCase();
+      if (mode === 'register') {
+        if (password.length < 6) throw new Error('Password must be at least 6 characters');
+        const { data, error } = await supabase.auth.signUp({
+          email: trimmed,
+          password,
+          options: { data: { name: name || trimmed.split('@')[0] } },
+        });
+        if (error) throw new Error(error.message);
+        if (!data.session) return { needsConfirm: true };
+        return { token: data.session.access_token, user: { id: data.user.id, email: data.user.email } };
+      }
+      const { data, error } = await supabase.auth.signInWithPassword({ email: trimmed, password });
+      if (error) throw new Error(error.message);
+      return { token: data.session.access_token, user: { id: data.user.id, email: data.user.email } };
     },
     onSuccess: (data) => {
+      if (data.needsConfirm) {
+        toast.success('Check your email to confirm your account, then sign in.');
+        setMode('login');
+        return;
+      }
       login(data.token, data.user);
       toast.success(mode === 'login' ? 'Welcome back!' : 'Account created!');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Something went wrong');
+      toast.error(err.message || 'Something went wrong');
     },
   });
 

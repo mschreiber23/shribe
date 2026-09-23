@@ -1,0 +1,13 @@
+project_id = "zdfocpxjsizaqhyiwsff"
+
+[functions.whoop-connect]
+verify_jwt = true
+
+[functions.whoop-callback]
+verify_jwt = false
+
+[functions.whoop]
+verify_jwt = true
+
+[functions.import-plan-image]
+verify_jwt = true
