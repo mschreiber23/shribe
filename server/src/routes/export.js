@@ -8,8 +8,9 @@ const router = express.Router();
 function rows(sql, params = []) {
   try {
     return db.prepare(sql).all(...params);
-  } catch {
-    return [];
+  } catch (err) {
+    console.error('export query failed:', err.message);
+    return null;
   }
 }
 
@@ -23,21 +24,35 @@ function one(sql, params = []) {
 
 function byIds(table, column, ids) {
   if (!ids.length) return [];
-  const marks = ids.map(() => '?').join(',');
-  return rows(`SELECT * FROM ${table} WHERE ${column} IN (${marks})`, ids);
+  const out = [];
+  for (let i = 0; i < ids.length; i += 400) {
+    const chunk = ids.slice(i, i + 400);
+    const marks = chunk.map(() => '?').join(',');
+    const part = rows(`SELECT * FROM ${table} WHERE ${column} IN (${marks})`, chunk);
+    if (!part) continue;
+    out.push(...part);
+  }
+  return out;
+}
+
+function mineOrLegacy(table, userId, orderBy) {
+  const ordered = orderBy ? ` ORDER BY ${orderBy}` : '';
+  return rows(`SELECT * FROM ${table} WHERE user_id = ? OR user_id IS NULL${ordered}`, [userId])
+    || rows(`SELECT * FROM ${table}${ordered}`)
+    || [];
 }
 
 router.get('/', (req, res) => {
   const userId = req.userId;
   const user = one('SELECT id, email, created_at FROM users WHERE id = ?', [userId]);
   const profile = one('SELECT * FROM profile WHERE user_id = ?', [userId]);
-  const ownedPlans = rows('SELECT * FROM workout_plans WHERE user_id = ? ORDER BY sort_order, id', [userId]);
-  const sessions = rows('SELECT * FROM workout_sessions WHERE user_id = ? ORDER BY date, id', [userId]);
+  const ownedPlans = mineOrLegacy('workout_plans', userId, 'id');
+  const sessions = mineOrLegacy('workout_sessions', userId, 'date, id');
   const ownedIds = new Set(ownedPlans.map(plan => plan.id));
   const extraPlanIds = [...new Set(sessions.map(session => session.plan_id))].filter(id => !ownedIds.has(id));
   const extraPlans = byIds('workout_plans', 'id', extraPlanIds);
   const plans = [
-    ...ownedPlans.map(plan => ({ ...plan, was_mine: 1 })),
+    ...ownedPlans.map(plan => ({ ...plan, was_mine: plan.user_id == null || plan.user_id == userId ? 1 : 0 })),
     ...extraPlans.map(plan => ({ ...plan, was_mine: 0 })),
   ];
   const planIds = plans.map(plan => plan.id);
@@ -45,9 +60,9 @@ router.get('/', (req, res) => {
   const schedule = byIds('schedule_entries', 'plan_id', planIds);
   const sessionIds = sessions.map(session => session.id);
   const sets = byIds('set_logs', 'session_id', sessionIds);
-  const activityLogs = rows('SELECT * FROM activity_logs WHERE user_id = ? ORDER BY date, id', [userId]);
-  const scheduledActivities = rows('SELECT * FROM scheduled_activities WHERE user_id = ?', [userId]);
-  const recoveryDays = rows('SELECT * FROM recovery_days WHERE user_id = ?', [userId]);
+  const activityLogs = mineOrLegacy('activity_logs', userId, 'date, id');
+  const scheduledActivities = mineOrLegacy('scheduled_activities', userId);
+  const recoveryDays = mineOrLegacy('recovery_days', userId);
   const typeIds = [...new Set([
     ...activityLogs.map(log => log.activity_type_id),
     ...scheduledActivities.map(item => item.activity_type_id),

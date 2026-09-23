@@ -523,6 +523,7 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('feed');
   const [feedLimit, setFeedLimit] = useState(10);
+  const [importing, setImporting] = useState(false);
   const avatarFileRef = useRef();
   const qc = useQueryClient();
 
@@ -559,24 +560,34 @@ export default function Profile() {
     <div className="max-w-2xl mx-auto">
       <div className="rounded-xl p-4 mb-5" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
         <h2 className="font-semibold mb-1">Bring over Railway workouts</h2>
-        <p className="text-sm mb-3" style={{ color: 'var(--color-text-muted)' }}>Choose the shribetrakr-backup.json file you downloaded from the old site.</p>
+        <p className="text-sm mb-3" style={{ color: 'var(--color-text-muted)' }}>Choose the shribetrakr-backup.json file you downloaded from the old site. Uploading the same file again fills in anything that was missed.</p>
         <input
           type="file"
           accept="application/json,.json"
+          disabled={importing}
           onChange={async (e) => {
             const file = e.target.files?.[0];
             e.target.value = '';
             if (!file) return;
+            setImporting(true);
             try {
               const backup = JSON.parse(await file.text());
               const result = await importRailwayBackup(backup);
               qc.invalidateQueries();
-              toast.success(`Brought over ${result.plans} plans, ${result.sessions} workouts, and ${result.activities} activities`);
+              const summary = `Brought over ${result.plans} plans and ${result.sessions} of ${result.sessionsInFile} logged workouts.`;
+              if (result.failed) toast.error(`${summary} ${result.firstError}`);
+              else toast.success(summary);
+              if (result.sessionsInFile <= 1) {
+                toast('That file only contains 1 logged workout. Download a new backup from the Railway site, then upload that file here.', { duration: 12000 });
+              }
             } catch (err) {
               toast.error(err.message || 'Could not read that file');
+            } finally {
+              setImporting(false);
             }
           }}
         />
+        {importing && <p className="text-sm mt-3" style={{ color: 'var(--color-text-muted)' }}>Bringing over your workouts. Keep this page open.</p>}
       </div>
       {/* Profile card */}
       <div className="rounded-xl p-5 mb-5" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
