@@ -1,5 +1,10 @@
+// One self-contained function so it can be pasted into the Supabase dashboard.
+// Create an Edge Function named exactly "whoop" and paste this whole file.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { WHOOP_API_V1, WHOOP_API_V2, WHOOP_AUTH, fetchAllPages } from '../_shared/whoop.ts';
+
+const WHOOP_AUTH = 'https://api.prod.whoop.com/oauth/oauth2';
+const WHOOP_API_V1 = 'https://api.prod.whoop.com/developer/v1';
+const WHOOP_API_V2 = 'https://api.prod.whoop.com/developer/v2';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +16,59 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
+}
+
+function siteUrl() {
+  return Deno.env.get('SITE_URL') || 'https://shribetrakr.com';
+}
+
+function redirectUri() {
+  return Deno.env.get('WHOOP_REDIRECT_URI') || `${siteUrl()}/whoop/callback`;
+}
+
+function missingSecrets() {
+  return !Deno.env.get('WHOOP_CLIENT_ID') || !Deno.env.get('WHOOP_CLIENT_SECRET');
+}
+
+async function hmac(payload: string) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(Deno.env.get('WHOOP_CLIENT_SECRET') || ''),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return [...new Uint8Array(sigBuf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function signState(userId: string) {
+  const nonce = crypto.randomUUID().replace(/-/g, '');
+  const payload = `${userId}.${nonce}`;
+  return `${payload}.${await hmac(payload)}`;
+}
+
+async function verifyState(state: string) {
+  const parts = state.split('.');
+  if (parts.length !== 3) return null;
+  const [userId, nonce, sig] = parts;
+  const payload = `${userId}.${nonce}`;
+  if (await hmac(payload) !== sig) return null;
+  return userId;
+}
+
+async function fetchAllPages(baseUrl: string, token: string, maxRecords = 90) {
+  const records: Record<string, unknown>[] = [];
+  let nextToken: string | null = null;
+  do {
+    const url = nextToken ? `${baseUrl}&nextToken=${encodeURIComponent(nextToken)}` : baseUrl;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) break;
+    const data = await res.json();
+    records.push(...(data.records || []));
+    nextToken = data.next_token || null;
+  } while (nextToken && records.length < maxRecords);
+  return records.slice(0, maxRecords);
 }
 
 async function getToken(supabase: ReturnType<typeof createClient>, userId: string) {
@@ -42,6 +100,7 @@ async function getToken(supabase: ReturnType<typeof createClient>, userId: strin
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
   const auth = req.headers.get('Authorization') || '';
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: auth } },
@@ -52,13 +111,70 @@ Deno.serve(async (req) => {
 
   let action = 'status';
   let limit = 30;
+  let code = '';
+  let state = '';
   try {
     const body = await req.json();
     action = body.action || 'status';
     limit = Math.min(parseInt(body.limit) || 30, 90);
+    code = body.code || '';
+    state = body.state || '';
   } catch { /* status by default */ }
 
   try {
+    if (action === 'connect') {
+      if (missingSecrets()) {
+        return json({ error: 'Add WHOOP_CLIENT_ID and WHOOP_CLIENT_SECRET as secrets on this function, then deploy it again.' }, 500);
+      }
+      const signed = await signState(userId);
+      const params = new URLSearchParams({
+        client_id: Deno.env.get('WHOOP_CLIENT_ID') || '',
+        redirect_uri: redirectUri(),
+        response_type: 'code',
+        scope: 'read:profile read:recovery read:sleep read:workout read:cycles read:body_measurement offline',
+        state: signed,
+      });
+      return json({ url: `${WHOOP_AUTH}/auth?${params}` });
+    }
+
+    if (action === 'callback') {
+      if (missingSecrets()) {
+        return json({ error: 'Add WHOOP_CLIENT_ID and WHOOP_CLIENT_SECRET as secrets on this function, then deploy it again.' }, 500);
+      }
+      const stateUser = state ? await verifyState(state) : null;
+      if (!code || !stateUser || stateUser !== userId) return json({ error: 'Missing Whoop code' }, 400);
+
+      const tokenRes = await fetch(`${WHOOP_AUTH}/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirectUri(),
+          client_id: Deno.env.get('WHOOP_CLIENT_ID') || '',
+          client_secret: Deno.env.get('WHOOP_CLIENT_SECRET') || '',
+        }),
+      });
+      const tokenJson = await tokenRes.json();
+      if (!tokenRes.ok) return json({ error: tokenJson.error_description || 'Whoop token exchange failed' }, 400);
+
+      const profileRes = await fetch(`${WHOOP_API_V1}/user/profile/basic`, {
+        headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+      });
+      const profile = profileRes.ok ? await profileRes.json() : {};
+      const expiresAt = Math.floor(Date.now() / 1000) + Number(tokenJson.expires_in || 0);
+
+      const { error } = await supabase.from('whoop_tokens').upsert({
+        user_id: userId,
+        access_token: tokenJson.access_token,
+        refresh_token: tokenJson.refresh_token,
+        expires_at: expiresAt,
+        whoop_user_id: profile.user_id ? String(profile.user_id) : null,
+      }, { onConflict: 'user_id' });
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true });
+    }
+
     if (action === 'status') {
       const { data: row } = await supabase.from('whoop_tokens').select('whoop_user_id, created_at').eq('user_id', userId).maybeSingle();
       return json({ connected: !!row, whoop_user_id: row?.whoop_user_id, connected_at: row?.created_at });

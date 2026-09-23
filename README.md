@@ -43,7 +43,7 @@ Point the domain at GitHub Pages, then Railway can be removed:
 - `A` records for `shribetrakr.com`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
 - `CNAME` for `www` → `mschreiber23.github.io`
 
-Whoop and photo import run as Supabase Edge Functions (`supabase/functions`). They need `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, and `OPENAI_API_KEY` set in the Supabase project. In the Whoop app, set the redirect URL to `https://shribetrakr.com/whoop/callback`.
+Whoop and photo import run as Supabase Edge Functions (`supabase/functions`). Deploy the `whoop` function (the file `supabase/functions/whoop/index.ts` is self-contained) and set `WHOOP_CLIENT_ID` and `WHOOP_CLIENT_SECRET` as secrets on that function. Photo import also needs `OPENAI_API_KEY`. In the Whoop developer app, set the redirect URL to `https://shribetrakr.com/whoop/callback`.
 
 ## CSV Import Format
 

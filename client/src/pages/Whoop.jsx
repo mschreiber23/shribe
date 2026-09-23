@@ -83,6 +83,7 @@ function HistoryChart({ data, dataKey, label, color, unit, domain }) {
 
 export default function Whoop() {
   const [historyDays, setHistoryDays] = useState(30);
+  const [connecting, setConnecting] = useState(false);
   const qc = useQueryClient();
 
   // Check for error/success from OAuth callback
@@ -127,7 +128,19 @@ export default function Whoop() {
           <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: 'var(--color-text-muted)' }}>
             See your daily recovery score, HRV, resting heart rate, strain, and sleep data right here.
           </p>
-          <Button size="lg" onClick={() => connectWhoop()}>
+          <Button
+            size="lg"
+            loading={connecting}
+            onClick={async () => {
+              setConnecting(true);
+              try {
+                await connectWhoop();
+              } catch (err) {
+                toast.error(err.message || 'Could not connect Whoop');
+                setConnecting(false);
+              }
+            }}
+          >
             <Link2 size={16} />
             Connect Whoop Account
           </Button>

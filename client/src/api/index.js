@@ -1090,24 +1090,32 @@ export const getWhoopDaily = () => callWhoop('daily');
 export const getWhoopHistory = (limit) => callWhoop('history', { limit });
 export const disconnectWhoop = () => callWhoop('disconnect');
 
+async function functionErrorMessage(error, fallback) {
+  let message = error?.message || fallback;
+  try {
+    const body = await error?.context?.clone?.()?.json?.() || await error?.context?.json?.();
+    if (body?.error) message = body.error;
+    else if (body?.code === 'NOT_FOUND') message = 'Whoop login is not set up yet. In Supabase, deploy the whoop function and add the Whoop client id and secret.';
+    else if (body?.message) message = body.message;
+  } catch { /* ignore */ }
+  if (/not found/i.test(message)) {
+    message = 'Whoop login is not set up yet. In Supabase, deploy the whoop function and add the Whoop client id and secret.';
+  }
+  return message;
+}
+
 export async function connectWhoop() {
-  const { data, error } = await supabase.functions.invoke('whoop-connect');
+  const { data, error } = await supabase.functions.invoke('whoop', { body: { action: 'connect' } });
   if (error || !data?.url) {
-    fail(new Error(data?.error || 'Whoop connect is not live yet. The workout tracker still works without it.'));
+    const message = data?.error || await functionErrorMessage(error, 'Could not start Whoop login.');
+    fail(new Error(message));
   }
   window.location.href = data.url;
 }
 
 export async function finishWhoopConnect(code, state) {
-  const { data, error } = await supabase.functions.invoke('whoop-callback', { body: { code, state } });
-  if (error) {
-    let message = error.message || 'Whoop connection failed';
-    try {
-      const body = await error.context?.json?.();
-      if (body?.error) message = body.error;
-    } catch { /* ignore */ }
-    fail(new Error(message));
-  }
+  const { data, error } = await supabase.functions.invoke('whoop', { body: { action: 'callback', code, state } });
+  if (error) fail(new Error(await functionErrorMessage(error, 'Whoop connection failed')));
   if (data?.error) fail(new Error(data.error));
   return data;
 }
