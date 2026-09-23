@@ -1120,95 +1120,262 @@ export async function finishWhoopConnect(code, state) {
   return data;
 }
 
+function asDate(value) {
+  if (value == null || value === '') return null;
+  const text = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function asInt(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+function asNum(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function asTimestamp(value) {
+  if (value == null || value === '') return null;
+  let text = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(text)) text = `${text.replace(' ', 'T')}Z`;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+async function listAll(build) {
+  const pageSize = 1000;
+  const all = [];
+  for (let from = 0; ; from += pageSize) {
+    const batch = rows(await build(from, from + pageSize - 1));
+    all.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  return all;
+}
+
+async function insertSetRows(sessionId, sets, exerciseMap) {
+  const payload = [];
+  for (const set of sets) {
+    const exerciseId = exerciseMap[String(set.exercise_id)];
+    if (!exerciseId) continue;
+    payload.push({
+      session_id: sessionId,
+      exercise_id: exerciseId,
+      set_number: asInt(set.set_number) || 1,
+      reps: asInt(set.reps),
+      weight: asNum(set.weight),
+      unit: set.unit || 'lbs',
+      notes: set.notes || null,
+    });
+  }
+  for (let i = 0; i < payload.length; i += 200) {
+    const { error } = await supabase.from('set_logs').insert(payload.slice(i, i + 200));
+    if (error) fail(error);
+  }
+  return payload.length;
+}
+
 export async function importRailwayBackup(backup) {
   if (!backup || !Array.isArray(backup.plans)) fail(new Error('That file is not a ShribeTRAKR backup'));
+  const user = await requireUser();
   const planMap = {};
   const exerciseMap = {};
   const createdPlanIds = [];
+  const failures = [];
+  const noteFailure = (err) => {
+    failures.push(err?.message || 'Could not save one item');
+  };
+
+  const existingPlans = await listAll((from, to) => supabase.from('workout_plans').select('id, name').eq('user_id', user.id).order('id').range(from, to));
+  const plansByName = new Map();
+  for (const plan of existingPlans) {
+    if (!plansByName.has(plan.name)) plansByName.set(plan.name, plan.id);
+  }
 
   const orderedPlans = [...backup.plans].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
   for (const plan of orderedPlans) {
-    const oldExercises = (backup.exercises || []).filter(ex => ex.plan_id === plan.id)
-      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id);
-    const created = await createPlan({
-      name: plan.name,
-      description: plan.description,
-      exercises: oldExercises.map(ex => ({
-        name: ex.name,
-        section: ex.section || 'Workout',
-        order_index: ex.order_index ?? 0,
-        notes: ex.notes || null,
-      })),
-    });
-    planMap[plan.id] = created.id;
-    createdPlanIds.push(created.id);
-    for (const oldEx of oldExercises) {
-      const match = (created.exercises || []).find(ex => ex.name === oldEx.name && (ex.order_index ?? 0) === (oldEx.order_index ?? 0));
-      if (match) exerciseMap[oldEx.id] = match.id;
+    try {
+      const oldExercises = (backup.exercises || []).filter(ex => String(ex.plan_id) === String(plan.id))
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id);
+      let planId = plansByName.get(plan.name);
+      if (!planId) {
+        const created = await createPlan({
+          name: plan.name,
+          description: plan.description,
+          exercises: oldExercises.map(ex => ({
+            name: ex.name,
+            section: ex.section || 'Workout',
+            order_index: ex.order_index ?? 0,
+            notes: ex.notes || null,
+          })),
+        });
+        planId = created.id;
+        plansByName.set(plan.name, planId);
+        createdPlanIds.push(planId);
+        oldExercises.forEach((oldEx, index) => {
+          const match = created.exercises?.[index];
+          if (match) exerciseMap[String(oldEx.id)] = match.id;
+        });
+        if (plan.was_mine && plan.is_global) await toggleGlobalPlan(planId);
+      } else {
+        const existingExercises = rows(await supabase.from('exercises').select('*').eq('plan_id', planId).order('order_index').order('id'));
+        const unused = [...existingExercises];
+        for (const oldEx of oldExercises) {
+          const index = unused.findIndex(ex => ex.name === oldEx.name && (ex.section || 'Workout') === (oldEx.section || 'Workout'));
+          const match = index >= 0 ? unused.splice(index, 1)[0] : await addExercise(planId, {
+            name: oldEx.name,
+            section: oldEx.section || 'Workout',
+            order_index: oldEx.order_index ?? 0,
+            notes: oldEx.notes || null,
+          });
+          if (match) exerciseMap[String(oldEx.id)] = match.id;
+        }
+      }
+      planMap[String(plan.id)] = planId;
+    } catch (err) {
+      noteFailure(err);
     }
-    if (plan.was_mine && plan.is_global) await toggleGlobalPlan(created.id);
   }
-  if (createdPlanIds.length) await reorderPlans(createdPlanIds);
+  if (createdPlanIds.length) {
+    try { await reorderPlans(createdPlanIds); } catch { /* order is optional */ }
+  }
+
+  const existingSessions = await listAll((from, to) => supabase
+    .from('workout_sessions')
+    .select('id, plan_id, date, completed_at, set_logs(id)')
+    .eq('user_id', user.id)
+    .order('id')
+    .range(from, to));
+  const sessionsByPlanDate = new Map();
+  for (const session of existingSessions) {
+    const key = `${session.plan_id}|${asDate(session.date)}`;
+    if (!sessionsByPlanDate.has(key)) sessionsByPlanDate.set(key, []);
+    sessionsByPlanDate.get(key).push(session);
+  }
+
+  const setsBySession = new Map();
+  for (const set of backup.sets || []) {
+    const key = String(set.session_id);
+    if (!setsBySession.has(key)) setsBySession.set(key, []);
+    setsBySession.get(key).push(set);
+  }
 
   let sessionsImported = 0;
   for (const session of backup.sessions || []) {
-    const planId = planMap[session.plan_id];
-    if (!planId) continue;
-    const created = await createSession({ plan_id: planId, date: session.date, notes: session.notes || null });
-    if (session.completed_at) await updateSession(created.id, { notes: session.notes || null, completed_at: session.completed_at });
-    const sets = (backup.sets || []).filter(set => set.session_id === session.id)
-      .sort((a, b) => a.set_number - b.set_number);
-    for (const set of sets) {
-      const exerciseId = exerciseMap[set.exercise_id];
-      if (!exerciseId) continue;
-      await logSet(created.id, {
-        exercise_id: exerciseId,
-        set_number: set.set_number,
-        reps: set.reps,
-        weight: set.weight,
-        unit: set.unit || 'lbs',
-        notes: set.notes || null,
-      });
+    const planId = planMap[String(session.plan_id)];
+    const date = asDate(session.date);
+    if (!planId || !date) continue;
+    const sets = (setsBySession.get(String(session.id)) || []).slice().sort((a, b) => (a.set_number ?? 0) - (b.set_number ?? 0));
+    try {
+      const key = `${planId}|${date}`;
+      const already = sessionsByPlanDate.get(key) || [];
+      const previous = already.shift();
+      if (previous) {
+        if (!(previous.set_logs || []).length && sets.length) await insertSetRows(previous.id, sets, exerciseMap);
+        const completedAt = asTimestamp(session.completed_at);
+        if (completedAt && !previous.completed_at) {
+          await updateSession(previous.id, { notes: session.notes || null, completed_at: completedAt });
+        }
+        sessionsImported += 1;
+        continue;
+      }
+      const created = await createSession({ plan_id: planId, date, notes: session.notes || null });
+      const completedAt = asTimestamp(session.completed_at);
+      if (completedAt) await updateSession(created.id, { notes: session.notes || null, completed_at: completedAt });
+      if (sets.length) await insertSetRows(created.id, sets, exerciseMap);
+      sessionsByPlanDate.set(key, already);
+      sessionsImported += 1;
+    } catch (err) {
+      noteFailure(err);
     }
-    sessionsImported += 1;
   }
 
   for (const entry of backup.schedule || []) {
-    const planId = planMap[entry.plan_id];
-    if (!planId) continue;
-    await setScheduleEntry({ date: entry.date, plan_id: planId, notes: entry.notes || null });
+    const planId = planMap[String(entry.plan_id)];
+    const date = asDate(entry.date);
+    if (!planId || !date) continue;
+    try {
+      await setScheduleEntry({ date, plan_id: planId, notes: entry.notes || null });
+    } catch (err) {
+      noteFailure(err);
+    }
   }
 
   const types = await getActivityTypes();
   const typeByName = Object.fromEntries(types.map(type => [type.name, type]));
   const typeMap = {};
   for (const type of backup.activity_types || []) {
-    let match = typeByName[type.name];
-    if (!match && type.user_id) match = await createActivityType({ name: type.name, emoji: type.emoji || '🏃' });
-    if (match) typeMap[type.id] = match.id;
+    try {
+      let match = typeByName[type.name];
+      if (!match && type.user_id) {
+        match = await createActivityType({ name: type.name, emoji: type.emoji || '🏃' });
+        typeByName[type.name] = match;
+      }
+      if (match) typeMap[String(type.id)] = match.id;
+    } catch (err) {
+      noteFailure(err);
+    }
+  }
+
+  const existingLogs = await listAll((from, to) => supabase
+    .from('activity_logs')
+    .select('date, activity_type_id, metric_value, notes')
+    .eq('user_id', user.id)
+    .order('id')
+    .range(from, to));
+  const logCounts = new Map();
+  for (const log of existingLogs) {
+    const key = `${log.activity_type_id}|${asDate(log.date)}|${log.metric_value || ''}|${log.notes || ''}`;
+    logCounts.set(key, (logCounts.get(key) || 0) + 1);
   }
 
   let activitiesImported = 0;
   for (const log of backup.activity_logs || []) {
-    const typeId = typeMap[log.activity_type_id];
-    if (!typeId) continue;
-    await logActivity({
-      activity_type_id: typeId,
-      date: log.date,
-      duration_mins: log.duration_mins,
-      metric_value: log.metric_value,
-      location: log.location,
-      notes: log.notes,
-    });
-    activitiesImported += 1;
+    const typeId = typeMap[String(log.activity_type_id)];
+    const date = asDate(log.date);
+    if (!typeId || !date) continue;
+    const key = `${typeId}|${date}|${log.metric_value || ''}|${log.notes || ''}`;
+    if ((logCounts.get(key) || 0) > 0) {
+      logCounts.set(key, logCounts.get(key) - 1);
+      activitiesImported += 1;
+      continue;
+    }
+    try {
+      await logActivity({
+        activity_type_id: typeId,
+        date,
+        duration_mins: asInt(log.duration_mins),
+        metric_value: log.metric_value,
+        location: log.location,
+        notes: log.notes,
+      });
+      activitiesImported += 1;
+    } catch (err) {
+      noteFailure(err);
+    }
   }
   for (const item of backup.scheduled_activities || []) {
-    const typeId = typeMap[item.activity_type_id];
-    if (!typeId) continue;
-    await scheduleActivity({ date: item.date, activity_type_id: typeId });
+    const typeId = typeMap[String(item.activity_type_id)];
+    const date = asDate(item.date);
+    if (!typeId || !date) continue;
+    try {
+      await scheduleActivity({ date, activity_type_id: typeId });
+    } catch (err) {
+      noteFailure(err);
+    }
   }
   for (const day of backup.recovery_days || []) {
-    await logRecoveryDay(day.date, day.notes || null);
+    const date = asDate(day.date);
+    if (!date) continue;
+    try {
+      await logRecoveryDay(date, day.notes || null);
+    } catch (err) {
+      noteFailure(err);
+    }
   }
 
   if (backup.profile) {
@@ -1222,14 +1389,24 @@ export async function importRailwayBackup(backup) {
     } catch { /* username may already be taken */ }
   }
   if (backup.avatar?.base64) {
-    const binary = atob(backup.avatar.base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    const file = new File([bytes], backup.avatar.filename || 'avatar.jpg', { type: backup.avatar.mime || 'image/jpeg' });
-    try { await uploadAvatar(file); } catch { /* photo is optional */ }
+    try {
+      const binary = atob(backup.avatar.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      const file = new File([bytes], backup.avatar.filename || 'avatar.jpg', { type: backup.avatar.mime || 'image/jpeg' });
+      await uploadAvatar(file);
+    } catch { /* photo is optional */ }
   }
 
-  return { plans: createdPlanIds.length, sessions: sessionsImported, activities: activitiesImported };
+  return {
+    plans: new Set(Object.values(planMap)).size,
+    sessions: sessionsImported,
+    sessionsInFile: (backup.sessions || []).length,
+    activities: activitiesImported,
+    activitiesInFile: (backup.activity_logs || []).length,
+    failed: failures.length,
+    firstError: failures[0] || null,
+  };
 }
 
 export const api = {
