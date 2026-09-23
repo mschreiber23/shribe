@@ -17,20 +17,22 @@ A personal gym workout tracker. Create workout plans from your spreadsheets, bui
 
 ### Install and run the site locally
 
-The live site is a static app, same as the sports dashboard. Data lives in Supabase, so you only need the client:
+The live site is a static app on GitHub Pages, the same kind of hosting as the sports dashboard. It uses its own Supabase project, so accounts and data stay separate from the sports app.
 
 ```bash
-npm --prefix client install
-npm --prefix client run dev
+cd client
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-Open http://localhost:5173.
+Put the new project's URL and anon key in `client/.env`, then open http://localhost:5173.
 
-The first time, run `supabase/setup.sql` in the Supabase SQL editor (the same project the sports app uses).
+The first time, run `supabase/setup.sql` in that project's SQL editor.
 
 ## Deployment
 
-This matches the sports app: GitHub Actions builds the Vite app and publishes it to GitHub Pages.
+GitHub Actions builds the Vite app and publishes it to GitHub Pages. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the ShribeTRAKR Supabase project as repository secrets before the first deploy.
 
 - Workflow: `.github/workflows/deploy.yml`
 - Custom domain file: `client/public/CNAME` (`shribetrakr.com`)
@@ -70,5 +72,5 @@ Pull Day,Barbell Row,3x8,
 ## Tech Stack
 
 - **Frontend**: React + Vite + TailwindCSS, hosted on GitHub Pages
-- **Data and login**: Supabase (same project as the sports app)
+- **Data and login**: its own Supabase project
 - **Whoop and photo import**: Supabase Edge Functions, so those API secrets stay off the website

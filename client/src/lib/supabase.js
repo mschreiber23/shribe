@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zdfocpxjsizaqhyiwsff.supabase.co'; // pragma: allowlist secret
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_TjSr-VWFlx4GxDRYLS7Yjg_tYI2JjCm'; // pragma: allowlist secret
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY); // pragma: allowlist secret
-export const supabaseUrl = SUPABASE_URL; // pragma: allowlist secret
+export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
+export const supabase = supabaseConfigured ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+export const supabaseUrl = SUPABASE_URL;

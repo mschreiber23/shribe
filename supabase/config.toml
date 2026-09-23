@@ -1,4 +1,5 @@
-project_id = "zdfocpxjsizaqhyiwsff"
+# Link this to the ShribeTRAKR Supabase project with `supabase link`.
+# Do not use the sports app project.
 
 [functions.whoop-connect]
 verify_jwt = true

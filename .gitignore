@@ -6,5 +6,6 @@ server/data/
 *.db
 .env
 server/.env
+client/.env
 .DS_Store
 dist/

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseConfigured } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
@@ -9,6 +9,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabaseConfigured || !supabase) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
@@ -39,7 +43,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    supabase.auth.signOut();
+    supabase?.auth.signOut();
     localStorage.removeItem('gymtrack_token');
     setToken(null);
     setUser(null);

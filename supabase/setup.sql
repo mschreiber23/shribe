@@ -1,4 +1,4 @@
--- ShribeTRAKR schema for the same Supabase project as the sports app.
+-- ShribeTRAKR schema. Run this in a new Supabase project, not the sports app.
 -- Dashboard → SQL Editor → New query → paste this whole file → Run.
 -- Safe to run more than once.
 

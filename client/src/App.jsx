@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Auth from './pages/Auth';
 import { checkSchema } from './lib/schema';
+import { supabaseConfigured } from './lib/supabase';
 
 // Lazy-load all pages — keeps initial bundle tiny
 const Today    = lazy(() => import('./pages/Today'));
@@ -28,18 +29,28 @@ const PageLoader = () => (
   </div>
 );
 
-function SetupRequired({ onRetry, checking }) {
+function SetupRequired({ onRetry, checking, needsProject }) {
   return (
     <div className="max-w-lg mx-auto py-16 px-4">
       <h1 className="text-2xl font-bold mb-3">One setup step left</h1>
       <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
-        ShribeTRAKR now uses the same free Supabase project as your sports app. The database tables are not there yet.
+        ShribeTRAKR has its own website and its own database. It does not use the sports app project.
       </p>
       <ol className="text-sm space-y-2 mb-6 list-decimal pl-5">
-        <li>Open the Supabase dashboard for the sports app project.</li>
-        <li>Go to SQL Editor, then New query.</li>
-        <li>Paste the file <span className="font-mono">supabase/setup.sql</span> from the GitHub repo and press Run.</li>
-        <li>Come back here and press Check again.</li>
+        {needsProject ? (
+          <>
+            <li>In Supabase, create a new project just for ShribeTRAKR.</li>
+            <li>Open SQL Editor, then New query. Paste <span className="font-mono">supabase/setup.sql</span> and press Run.</li>
+            <li>In GitHub, add repository secrets <span className="font-mono">VITE_SUPABASE_URL</span> and <span className="font-mono">VITE_SUPABASE_ANON_KEY</span> from that project's API settings.</li>
+          </>
+        ) : (
+          <>
+            <li>Open the ShribeTRAKR Supabase project, not the sports app.</li>
+            <li>Open SQL Editor, then New query.</li>
+            <li>Paste the file <span className="font-mono">supabase/setup.sql</span> and press Run.</li>
+            <li>Come back here and press Check again.</li>
+          </>
+        )}
       </ol>
       <a
         className="text-sm text-indigo-400 underline"
@@ -75,6 +86,14 @@ function AppRoutes() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-surface)' }}>
         <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!supabaseConfigured) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}>
+        <SetupRequired needsProject onRetry={() => window.location.reload()} checking={false} />
       </div>
     );
   }
