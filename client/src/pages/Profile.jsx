@@ -337,6 +337,7 @@ function HistoryChart({ data, dataKey, label, color, unit, domain }) {
 
 function WhoopTab() {
   const [historyDays, setHistoryDays] = useState(30);
+  const [connecting, setConnecting] = useState(false);
   const qc = useQueryClient();
   const { data: status } = useQuery({ queryKey: ['whoopStatus'], queryFn: getWhoopStatus });
   const { data: daily, isLoading: loadingDaily, refetch } = useQuery({ queryKey: ['whoopDaily'], queryFn: getWhoopDaily, enabled: !!status?.connected, staleTime: 5 * 60 * 1000 });
@@ -349,7 +350,18 @@ function WhoopTab() {
         <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(99,102,241,0.15)' }}><Heart size={28} className="text-indigo-400" /></div>
         <h2 className="text-lg font-bold mb-2">Connect Your Whoop</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>See recovery, HRV, resting heart rate, strain, and sleep all in one place.</p>
-        <Button onClick={() => connectWhoop()}>
+        <Button
+          loading={connecting}
+          onClick={async () => {
+            setConnecting(true);
+            try {
+              await connectWhoop();
+            } catch (err) {
+              toast.error(err.message || 'Could not connect Whoop');
+              setConnecting(false);
+            }
+          }}
+        >
           <Link2 size={15} /> Connect Whoop
         </Button>
       </div>
