@@ -1112,6 +1112,118 @@ export async function finishWhoopConnect(code, state) {
   return data;
 }
 
+export async function importRailwayBackup(backup) {
+  if (!backup || !Array.isArray(backup.plans)) fail(new Error('That file is not a ShribeTRAKR backup'));
+  const planMap = {};
+  const exerciseMap = {};
+  const createdPlanIds = [];
+
+  const orderedPlans = [...backup.plans].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
+  for (const plan of orderedPlans) {
+    const oldExercises = (backup.exercises || []).filter(ex => ex.plan_id === plan.id)
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id);
+    const created = await createPlan({
+      name: plan.name,
+      description: plan.description,
+      exercises: oldExercises.map(ex => ({
+        name: ex.name,
+        section: ex.section || 'Workout',
+        order_index: ex.order_index ?? 0,
+        notes: ex.notes || null,
+      })),
+    });
+    planMap[plan.id] = created.id;
+    createdPlanIds.push(created.id);
+    for (const oldEx of oldExercises) {
+      const match = (created.exercises || []).find(ex => ex.name === oldEx.name && (ex.order_index ?? 0) === (oldEx.order_index ?? 0));
+      if (match) exerciseMap[oldEx.id] = match.id;
+    }
+    if (plan.was_mine && plan.is_global) await toggleGlobalPlan(created.id);
+  }
+  if (createdPlanIds.length) await reorderPlans(createdPlanIds);
+
+  let sessionsImported = 0;
+  for (const session of backup.sessions || []) {
+    const planId = planMap[session.plan_id];
+    if (!planId) continue;
+    const created = await createSession({ plan_id: planId, date: session.date, notes: session.notes || null });
+    if (session.completed_at) await updateSession(created.id, { notes: session.notes || null, completed_at: session.completed_at });
+    const sets = (backup.sets || []).filter(set => set.session_id === session.id)
+      .sort((a, b) => a.set_number - b.set_number);
+    for (const set of sets) {
+      const exerciseId = exerciseMap[set.exercise_id];
+      if (!exerciseId) continue;
+      await logSet(created.id, {
+        exercise_id: exerciseId,
+        set_number: set.set_number,
+        reps: set.reps,
+        weight: set.weight,
+        unit: set.unit || 'lbs',
+        notes: set.notes || null,
+      });
+    }
+    sessionsImported += 1;
+  }
+
+  for (const entry of backup.schedule || []) {
+    const planId = planMap[entry.plan_id];
+    if (!planId) continue;
+    await setScheduleEntry({ date: entry.date, plan_id: planId, notes: entry.notes || null });
+  }
+
+  const types = await getActivityTypes();
+  const typeByName = Object.fromEntries(types.map(type => [type.name, type]));
+  const typeMap = {};
+  for (const type of backup.activity_types || []) {
+    let match = typeByName[type.name];
+    if (!match && type.user_id) match = await createActivityType({ name: type.name, emoji: type.emoji || '🏃' });
+    if (match) typeMap[type.id] = match.id;
+  }
+
+  let activitiesImported = 0;
+  for (const log of backup.activity_logs || []) {
+    const typeId = typeMap[log.activity_type_id];
+    if (!typeId) continue;
+    await logActivity({
+      activity_type_id: typeId,
+      date: log.date,
+      duration_mins: log.duration_mins,
+      metric_value: log.metric_value,
+      location: log.location,
+      notes: log.notes,
+    });
+    activitiesImported += 1;
+  }
+  for (const item of backup.scheduled_activities || []) {
+    const typeId = typeMap[item.activity_type_id];
+    if (!typeId) continue;
+    await scheduleActivity({ date: item.date, activity_type_id: typeId });
+  }
+  for (const day of backup.recovery_days || []) {
+    await logRecoveryDay(day.date, day.notes || null);
+  }
+
+  if (backup.profile) {
+    try {
+      await updateProfile({
+        name: backup.profile.name,
+        username: backup.profile.username,
+        bio: backup.profile.bio,
+        avatar_color: backup.profile.avatar_color,
+      });
+    } catch { /* username may already be taken */ }
+  }
+  if (backup.avatar?.base64) {
+    const binary = atob(backup.avatar.base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const file = new File([bytes], backup.avatar.filename || 'avatar.jpg', { type: backup.avatar.mime || 'image/jpeg' });
+    try { await uploadAvatar(file); } catch { /* photo is optional */ }
+  }
+
+  return { plans: createdPlanIds.length, sessions: sessionsImported, activities: activitiesImported };
+}
+
 export const api = {
   put: (url, data) => {
     const match = String(url).match(/^\/activities\/([^/]+)$/);

@@ -13,13 +13,20 @@ RUN npm --prefix client install
 
 COPY . .
 
-# GitHub Pages builds the site with these values. Railway does not have them,
-# so a Railway rebuild stops here and the current live app stays up.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-RUN if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then echo "Supabase settings are missing from this build"; exit 1; fi
+
+# Railway does not have the Supabase keys. Keep the current site there and
+# add the backup download page. GitHub Pages builds the new site instead.
+RUN if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then \
+      cp client-legacy/index.html client/index.html && \
+      cp client-legacy/vite.config.js client/vite.config.js && \
+      rm -rf client/src client/public && \
+      cp -a client-legacy/src client/src && \
+      cp -a client-legacy/public client/public; \
+    fi
 
 RUN npm run build
 
