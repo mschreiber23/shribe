@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Auth from './pages/Auth';
+import { checkSchema } from './lib/schema';
+import { supabaseConfigured } from './lib/supabase';
 
 // Lazy-load all pages — keeps initial bundle tiny
 const Today    = lazy(() => import('./pages/Today'));
@@ -13,6 +15,7 @@ const Plans    = lazy(() => import('./pages/Plans'));
 const Profile  = lazy(() => import('./pages/Profile'));
 const People   = lazy(() => import('./pages/People'));
 const Privacy  = lazy(() => import('./pages/Privacy'));
+const WhoopCallback = lazy(() => import('./pages/WhoopCallback'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,10 +29,60 @@ const PageLoader = () => (
   </div>
 );
 
+function SetupRequired({ onRetry, checking, needsProject }) {
+  return (
+    <div className="max-w-lg mx-auto py-16 px-4">
+      <h1 className="text-2xl font-bold mb-3">One setup step left</h1>
+      <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>
+        ShribeTRAKR has its own website and its own database. It does not use the sports app project.
+      </p>
+      <ol className="text-sm space-y-2 mb-6 list-decimal pl-5">
+        {needsProject ? (
+          <>
+            <li>In Supabase, create a new project just for ShribeTRAKR.</li>
+            <li>Open SQL Editor, then New query. Paste <span className="font-mono">supabase/setup.sql</span> and press Run.</li>
+            <li>In GitHub, add repository secrets <span className="font-mono">VITE_SUPABASE_URL</span> and <span className="font-mono">VITE_SUPABASE_ANON_KEY</span> from that project's API settings.</li>
+          </>
+        ) : (
+          <>
+            <li>Open the ShribeTRAKR Supabase project, not the sports app.</li>
+            <li>Open SQL Editor, then New query.</li>
+            <li>Paste the file <span className="font-mono">supabase/setup.sql</span> and press Run.</li>
+            <li>Come back here and press Check again.</li>
+          </>
+        )}
+      </ol>
+      <a
+        className="text-sm text-indigo-400 underline"
+        href="https://github.com/mschreiber23/shribe/blob/cursor/github-pages-supabase-9dca/supabase/setup.sql"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Open setup.sql on GitHub
+      </a>
+      <div className="mt-6">
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 rounded-lg font-semibold text-white"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+        >
+          {checking ? 'Checking...' : 'Check again'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { token, loading } = useAuth();
+  const { data: schemaReady, isLoading: schemaLoading, refetch, isFetching } = useQuery({
+    queryKey: ['schema-ready', token],
+    queryFn: checkSchema,
+    enabled: !!token,
+    retry: false,
+  });
 
-  if (loading) {
+  if (loading || (token && schemaLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-surface)' }}>
         <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -37,7 +90,22 @@ function AppRoutes() {
     );
   }
 
+  if (!supabaseConfigured) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}>
+        <SetupRequired needsProject onRetry={() => window.location.reload()} checking={false} />
+      </div>
+    );
+  }
+
   if (!token) return <Auth />;
+  if (schemaReady === false) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}>
+        <SetupRequired onRetry={() => refetch()} checking={isFetching} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -51,6 +119,7 @@ function AppRoutes() {
             <Route path="/people"  element={<People />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/whoop/callback" element={<WhoopCallback />} />
             <Route path="*"        element={<Navigate to="/" />} />
           </Routes>
         </Suspense>

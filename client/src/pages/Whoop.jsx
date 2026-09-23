@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { Heart, Zap, Moon, Activity, Link2, Link2Off, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop, getWhoopDebug } from '../api';
+import { getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop, getWhoopDebug, connectWhoop } from '../api';
 import Button from '../components/Button';
 
 function MetricCard({ icon: Icon, label, value, unit, color, sub }) {
@@ -127,11 +127,7 @@ export default function Whoop() {
           <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: 'var(--color-text-muted)' }}>
             See your daily recovery score, HRV, resting heart rate, strain, and sleep data right here.
           </p>
-          <Button size="lg" onClick={() => {
-            const token = localStorage.getItem('gymtrack_token');
-            if (!token) { alert('Please log in first'); return; }
-            window.location.href = `/api/whoop/connect?token=${encodeURIComponent(token)}`;
-          }}>
+          <Button size="lg" onClick={() => connectWhoop()}>
             <Link2 size={16} />
             Connect Whoop Account
           </Button>

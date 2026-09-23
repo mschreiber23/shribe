@@ -1,0 +1,14 @@
+# Link this to the ShribeTRAKR Supabase project with `supabase link`.
+# Do not use the sports app project.
+
+[functions.whoop-connect]
+verify_jwt = true
+
+[functions.whoop-callback]
+verify_jwt = false
+
+[functions.whoop]
+verify_jwt = true
+
+[functions.import-plan-image]
+verify_jwt = true

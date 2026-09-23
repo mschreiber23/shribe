@@ -13,31 +13,37 @@ A personal gym workout tracker. Create workout plans from your spreadsheets, bui
 
 ### Requirements
 
-- Node.js 18+
+- Node.js 22+
 
-### Install dependencies
+### Install and run the site locally
+
+The live site is a static app on GitHub Pages, the same kind of hosting as the sports dashboard. It uses its own Supabase project, so accounts and data stay separate from the sports app.
 
 ```bash
+cd client
+cp .env.example .env
 npm install
-npm --prefix server install
-npm --prefix client install
-```
-
-### Run in development
-
-```bash
 npm run dev
 ```
 
-- Server: http://localhost:3001
-- Client (Vite): http://localhost:5173
+Put the new project's URL and anon key in `client/.env`, then open http://localhost:5173.
 
-### Production build
+The first time, run `supabase/setup.sql` in that project's SQL editor.
 
-```bash
-npm run build   # builds client into client/dist
-npm start       # serves API + built client on port 3001
-```
+## Deployment
+
+GitHub Actions builds the Vite app and publishes it to GitHub Pages. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the ShribeTRAKR Supabase project as repository secrets before the first deploy.
+
+- Workflow: `.github/workflows/deploy.yml`
+- Custom domain file: `client/public/CNAME` (`shribetrakr.com`)
+- A push to `main` builds `client/` and updates the `gh-pages` branch
+
+Point the domain at GitHub Pages, then Railway can be removed:
+
+- `A` records for `shribetrakr.com`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+- `CNAME` for `www` → `mschreiber23.github.io`
+
+Whoop and photo import run as Supabase Edge Functions (`supabase/functions`). They need `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, and `OPENAI_API_KEY` set in the Supabase project. In the Whoop app, set the redirect URL to `https://shribetrakr.com/whoop/callback`.
 
 ## CSV Import Format
 
@@ -65,6 +71,6 @@ Pull Day,Barbell Row,3x8,
 
 ## Tech Stack
 
-- **Backend**: Node.js + Express + SQLite (via better-sqlite3)
-- **Frontend**: React + Vite + TailwindCSS
-- **Data**: File-based SQLite stored in `server/data/gym.db`
+- **Frontend**: React + Vite + TailwindCSS, hosted on GitHub Pages
+- **Data and login**: its own Supabase project
+- **Whoop and photo import**: Supabase Edge Functions, so those API secrets stay off the website
