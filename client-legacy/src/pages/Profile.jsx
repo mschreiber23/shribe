@@ -15,8 +15,8 @@ import {
   getProfile, updateProfile, getFeed, uploadAvatar, deleteAvatar,
   getInbox, acceptShare, dismissShare, getFollowers,
   getWhoopStatus, getWhoopDaily, getWhoopHistory, disconnectWhoop,
-  getWhoopStats, getWhoopWorkouts, connectWhoop,
-  getSessions, getSession, deleteSession, importRailwayBackup,
+  getWhoopStats, getWhoopWorkouts,
+  getSessions, getSession, deleteSession,
 } from '../api';
 import Button from '../components/Button';
 import { WorkoutEditorModal } from '../components/WorkoutEditor';
@@ -349,7 +349,7 @@ function WhoopTab() {
         <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(99,102,241,0.15)' }}><Heart size={28} className="text-indigo-400" /></div>
         <h2 className="text-lg font-bold mb-2">Connect Your Whoop</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--color-text-muted)' }}>See recovery, HRV, resting heart rate, strain, and sleep all in one place.</p>
-        <Button onClick={() => connectWhoop()}>
+        <Button onClick={() => { const token = localStorage.getItem('gymtrack_token'); window.location.href = `/api/whoop/connect?token=${encodeURIComponent(token)}`; }}>
           <Link2 size={15} /> Connect Whoop
         </Button>
       </div>
@@ -545,27 +545,6 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="rounded-xl p-4 mb-5" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-        <h2 className="font-semibold mb-1">Bring over Railway workouts</h2>
-        <p className="text-sm mb-3" style={{ color: 'var(--color-text-muted)' }}>Choose the shribetrakr-backup.json file you downloaded from the old site.</p>
-        <input
-          type="file"
-          accept="application/json,.json"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            try {
-              const backup = JSON.parse(await file.text());
-              const result = await importRailwayBackup(backup);
-              qc.invalidateQueries();
-              toast.success(`Brought over ${result.plans} plans, ${result.sessions} workouts, and ${result.activities} activities`);
-            } catch (err) {
-              toast.error(err.message || 'Could not read that file');
-            }
-          }}
-        />
-      </div>
       {/* Profile card */}
       <div className="rounded-xl p-5 mb-5" style={{ backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
         <div className="flex items-start justify-between gap-4">

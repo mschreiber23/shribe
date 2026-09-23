@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Download your ShribeTRAKR backup</title>
+</head>
+<body style="margin:0;background:#12121c;color:#eee;font-family:Inter,system-ui,sans-serif;">
+  <main style="max-width:440px;margin:48px auto;padding:24px;">
+    <h1 style="font-size:28px;margin-bottom:8px;">Save your workouts</h1>
+    <p style="line-height:1.5;color:#b8b8cc;">This downloads your plans, sets, golf rounds, and the rest of your account. Your password is not in the file.</p>
+    <button id="go" style="margin-top:20px;background:#6366f1;color:white;border:0;border-radius:12px;padding:14px 18px;font-size:17px;font-weight:700;">Download my backup</button>
+    <p id="msg" style="margin-top:16px;line-height:1.5;color:#b8b8cc;"></p>
+  </main>
+  <script>
+    const token = localStorage.getItem('gymtrack_token');
+    const msg = document.getElementById('msg');
+    if (!token) {
+      msg.textContent = 'Log in at shribetrakr.com first. Then open this page again.';
+    }
+    document.getElementById('go').onclick = async () => {
+      if (!token) {
+        window.location.href = '/';
+        return;
+      }
+      msg.textContent = 'Preparing your file...';
+      const res = await fetch('/api/export', { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) {
+        msg.textContent = 'Log in again on the homepage, then come back to this page.';
+        return;
+      }
+      const blob = await res.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'shribetrakr-backup.json';
+      link.click();
+      msg.textContent = 'File saved. Keep it. On the new site, open Me and choose that file under Bring over Railway workouts.';
+    };
+  </script>
+</body>
+</html>

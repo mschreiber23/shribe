@@ -26,7 +26,12 @@ app.get('/api/profile/avatar/:userId', (req, res) => {
   res.sendFile(path.join(avatarsDir, files[0]));
 });
 
+app.get('/download-my-data', (req, res) => {
+  res.sendFile(path.join(__dirname, 'download-page.html'));
+});
+
 // All routes below require a valid JWT
+app.use('/api/export', requireAuth, require('./routes/export'));
 app.use('/api/plans/import/image', requireAuth, require('./routes/imageImport'));
 app.use('/api/plans', requireAuth, require('./routes/plans'));
 app.use('/api/schedule', requireAuth, require('./routes/schedule'));
